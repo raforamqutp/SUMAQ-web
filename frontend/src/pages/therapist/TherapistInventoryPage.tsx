@@ -6,20 +6,20 @@ import { Package, Droplets, AlertTriangle } from 'lucide-react';
 
 export const TherapistInventoryPage: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const fetchInventory = async () => {
+    const obtenerInventario = async () => {
       try {
         const data = await therapistService.getInventario();
         setProductos(data);
       } catch (err) {
-        console.error("Error loading therapist inventory:", err);
+        console.error("Error cargando inventario de terapeuta:", err);
       } finally {
-        setLoading(false);
+        setCargando(false);
       }
     };
-    fetchInventory();
+    obtenerInventario();
   }, []);
 
   return (
@@ -34,7 +34,7 @@ export const TherapistInventoryPage: React.FC = () => {
         </p>
       </div>
 
-      {loading ? (
+      {cargando ? (
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-3 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
         </div>

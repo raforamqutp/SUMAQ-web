@@ -14,10 +14,10 @@ export const GlobalAgendaPage: React.FC = () => {
   const [fecha, setFecha] = useState(todayStr);
   const [cabinas, setCabinas] = useState<Cabina[]>([]);
   const [citas, setCitas] = useState<Cita[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cargando, setCargando] = useState(true);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const obtenerDatosAgenda = async () => {
+    setCargando(true);
     try {
       const [cabs, citasData] = await Promise.all([
         adminService.getCabinas(),
@@ -26,14 +26,14 @@ export const GlobalAgendaPage: React.FC = () => {
       setCabinas(cabs);
       setCitas(Array.isArray(citasData) ? citasData : citasData.results || []);
     } catch (err) {
-      console.error("Error loading global agenda:", err);
+      console.error("Error cargando agenda global:", err);
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    obtenerDatosAgenda();
   }, [fecha]);
 
   return (
@@ -61,9 +61,9 @@ export const GlobalAgendaPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3 Cabins Grid */}
-      {loading ? (
-        <div className="flex justify-center py-20">
+      {/* Grid of 3 Cabins */}
+      {cargando ? (
+        <div className="flex justify-center py-24">
           <div className="w-10 h-10 border-4 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
