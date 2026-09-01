@@ -2,6 +2,17 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, MapPin, Phone, Mail, Clock, ShieldCheck, Heart } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * COMPONENTE: FOOTER (Pie de Página Institucional)
+ * ============================================================================
+ * Contiene información de marca, contacto y enlaces rápidos:
+ * - Filosofía de bienestar y certificación del personal de Sumaq Spa.
+ * - Enlaces directos al catálogo de tratamientos y reservas online.
+ * - Horarios de atención de las 3 cabinas (Lunes a Domingo).
+ * - Ubicación física, teléfono de recepción y correo de atención.
+ * ============================================================================
+ */
 export const Footer: React.FC = () => {
   return (
     <footer className="bg-[#2C2725] text-[#EDE5DC] pt-16 pb-12 border-t border-[#543F30]">

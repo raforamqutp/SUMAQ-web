@@ -1,6 +1,17 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * COMPONENTE: MODAL (Ventana Emergente / Diálogo Accesible)
+ * ============================================================================
+ * Renderiza ventanas modales para formularios de edición, creación y confirmación:
+ * - Bloqueo de scroll del body (`overflow: hidden`) mientras está abierto.
+ * - Cierre accesible con la tecla Escape y clic en el backdrop oscuro.
+ * - Tamaños adaptativos configurables (`sm`, `md`, `lg`, `xl`, `2xl`).
+ * - Título y subtítulo con tipografía Serif y botón de cierre con icono X.
+ * ============================================================================
+ */
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;

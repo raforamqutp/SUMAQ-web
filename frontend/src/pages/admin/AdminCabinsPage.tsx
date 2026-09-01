@@ -6,6 +6,17 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { DoorClosed, Plus, Edit2 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: GESTIÓN DE CABINAS EXCLUSIVAS (AdminCabinsPage)
+ * ============================================================================
+ * Mantenimiento CRUD de la infraestructura física del Spa:
+ * - Cabina 1: Terapias Holísticas y Masajes Descontracturantes.
+ * - Cabina 2: Dermoestética y Cosmiatría Facial Avanzada.
+ * - Cabina 3: Hidroterapia y Baños Minerales.
+ * - Habilitación / Deshabilitación de cabinas por mantenimiento.
+ * ============================================================================
+ */
 export const AdminCabinsPage: React.FC = () => {
   const { toast } = useToast();
   const [cabinas, setCabinas] = useState<Cabina[]>([]);

@@ -4,6 +4,14 @@ import { Producto } from '../../types/models';
 import { Badge } from '../../components/Badge';
 import { Package, Droplets, AlertTriangle } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: STOCK DE INSUMOS DE CABINA (TherapistInventoryPage)
+ * ============================================================================
+ * Permite a las terapeutas consultar las existencias físicas de aceites,
+ * cremas, geles y mascarillas disponibles en su área de trabajo.
+ * ============================================================================
+ */
 export const TherapistInventoryPage: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);

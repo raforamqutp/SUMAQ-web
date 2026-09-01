@@ -6,6 +6,16 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Sparkles, Plus, Edit2, Trash2, Clock, Droplets, X } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: SERVICIOS & RECETAS DE INSUMOS BOM (AdminServicesPage)
+ * ============================================================================
+ * Catálogo de tratamientos y formulación de insumos (Bill of Materials):
+ * - Nombre del servicio, precio al público, duración y fotografía en alta calidad.
+ * - Constructor de Recetas: Permite asociar insumos del almacén con cantidades
+ *   exactas requeridas por cada tratamiento para deducir automáticamente del Kárdex.
+ * ============================================================================
+ */
 export const AdminServicesPage: React.FC = () => {
   const { toast } = useToast();
   const [servicios, setServicios] = useState<Servicio[]>([]);
