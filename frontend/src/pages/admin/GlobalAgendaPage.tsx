@@ -7,21 +7,6 @@ import { Button } from '../../components/Button';
 import { CalendarDays, Clock, User, Download, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-/**
- * ============================================================================
- * VISTA: AGENDA GLOBAL DE 3 CABINAS (Timeline de Atención Simultánea)
- * ============================================================================
- * Visualiza la disponibilidad y asignación de citas en 3 columnas:
- * - Cabina 1: Terapias Holísticas y Masajes Descontracturantes
- * - Cabina 2: Dermoestética y Cosmiatría Facial
- * - Cabina 3: Hidroterapia y Baños Minerales
- * 
- * Lógica:
- * - Filtra citas por fecha seleccionada.
- * - Muestra slots horarios (08:00 a 16:00).
- * - Identifica citas ocupadas y libres por cabina con badges de estado.
- * ============================================================================
- */
 const SLOTS_HORAS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
 
 export const GlobalAgendaPage: React.FC = () => {
@@ -29,10 +14,10 @@ export const GlobalAgendaPage: React.FC = () => {
   const [fecha, setFecha] = useState(todayStr);
   const [cabinas, setCabinas] = useState<Cabina[]>([]);
   const [citas, setCitas] = useState<Cita[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const obtenerDatosAgenda = async () => {
-    setCargando(true);
+  const fetchData = async () => {
+    setLoading(true);
     try {
       const [cabs, citasData] = await Promise.all([
         adminService.getCabinas(),
@@ -41,14 +26,14 @@ export const GlobalAgendaPage: React.FC = () => {
       setCabinas(cabs);
       setCitas(Array.isArray(citasData) ? citasData : citasData.results || []);
     } catch (err) {
-      console.error("Error cargando agenda global:", err);
+      console.error("Error loading global agenda:", err);
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    obtenerDatosAgenda();
+    fetchData();
   }, [fecha]);
 
   return (
@@ -66,8 +51,10 @@ export const GlobalAgendaPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <label className="text-xs font-semibold text-[#543F30]">Fecha:</label>
+          <label htmlFor="fecha-agenda-global" className="text-xs font-semibold text-[#543F30]">Fecha:</label>
           <input
+            id="fecha-agenda-global"
+            aria-label="Seleccionar fecha para consultar agenda"
             type="date"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
@@ -76,9 +63,9 @@ export const GlobalAgendaPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid of 3 Cabins */}
-      {cargando ? (
-        <div className="flex justify-center py-24">
+      {/* 3 Cabins Grid */}
+      {loading ? (
+        <div className="flex justify-center py-20">
           <div className="w-10 h-10 border-4 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
@@ -96,7 +83,7 @@ export const GlobalAgendaPage: React.FC = () => {
                   <span className="text-[10px] uppercase font-bold tracking-wider text-[#8A3648] bg-[#FDF2F4] px-2.5 py-0.5 rounded-full border border-[#F4BAC6]">
                     {cabina.tipo}
                   </span>
-                  <h3 className="font-serif font-bold text-xl text-[#2C2725] mt-1">{cabina.nombre}</h3>
+                  <h2 className="font-serif font-bold text-xl text-[#2C2725] mt-1">{cabina.nombre}</h2>
                   <p className="text-[11px] text-[#6F5540] mt-0.5">{cabina.descripcion}</p>
                 </div>
 

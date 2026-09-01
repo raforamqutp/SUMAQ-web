@@ -4,30 +4,22 @@ import { Producto } from '../../types/models';
 import { Badge } from '../../components/Badge';
 import { Package, Droplets, AlertTriangle } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: STOCK DE INSUMOS DE CABINA (TherapistInventoryPage)
- * ============================================================================
- * Permite a las terapeutas consultar las existencias físicas de aceites,
- * cremas, geles y mascarillas disponibles en su área de trabajo.
- * ============================================================================
- */
 export const TherapistInventoryPage: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const obtenerInventario = async () => {
+    const fetchInventory = async () => {
       try {
         const data = await therapistService.getInventario();
         setProductos(data);
       } catch (err) {
-        console.error("Error cargando inventario de terapeuta:", err);
+        console.error("Error loading therapist inventory:", err);
       } finally {
-        setCargando(false);
+        setLoading(false);
       }
     };
-    obtenerInventario();
+    fetchInventory();
   }, []);
 
   return (
@@ -42,7 +34,7 @@ export const TherapistInventoryPage: React.FC = () => {
         </p>
       </div>
 
-      {cargando ? (
+      {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-3 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
         </div>

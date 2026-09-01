@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -9,54 +9,49 @@ import { PublicLayout } from './layouts/PublicLayout';
 import { TherapistLayout } from './layouts/TherapistLayout';
 import { AdminLayout } from './layouts/AdminLayout';
 
-// Public Pages
-import { LandingPage } from './pages/public/LandingPage';
-import { ServicesCatalogPage } from './pages/public/ServicesCatalogPage';
-import { BookingWizardPage } from './pages/public/BookingWizardPage';
-import { BookingConfirmationPage } from './pages/public/BookingConfirmationPage';
+// Public Pages (Lazy Loaded for WPO & Fast LCP)
+const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })));
+const ServicesCatalogPage = lazy(() => import('./pages/public/ServicesCatalogPage').then(m => ({ default: m.ServicesCatalogPage })));
+const BookingWizardPage = lazy(() => import('./pages/public/BookingWizardPage').then(m => ({ default: m.BookingWizardPage })));
+const BookingConfirmationPage = lazy(() => import('./pages/public/BookingConfirmationPage').then(m => ({ default: m.BookingConfirmationPage })));
 
 // Auth Pages
-import { LoginPage } from './pages/auth/LoginPage';
-import { UnauthorizedPage } from './pages/auth/UnauthorizedPage';
-import { NotFoundPage } from './pages/auth/NotFoundPage';
+const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
+const UnauthorizedPage = lazy(() => import('./pages/auth/UnauthorizedPage').then(m => ({ default: m.UnauthorizedPage })));
+const NotFoundPage = lazy(() => import('./pages/auth/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 // Therapist Pages
-import { TherapistAgendaPage } from './pages/therapist/TherapistAgendaPage';
-import { TherapistAppointmentDetailPage } from './pages/therapist/TherapistAppointmentDetailPage';
-import { TherapistInventoryPage } from './pages/therapist/TherapistInventoryPage';
+const TherapistAgendaPage = lazy(() => import('./pages/therapist/TherapistAgendaPage').then(m => ({ default: m.TherapistAgendaPage })));
+const TherapistAppointmentDetailPage = lazy(() => import('./pages/therapist/TherapistAppointmentDetailPage').then(m => ({ default: m.TherapistAppointmentDetailPage })));
+const TherapistInventoryPage = lazy(() => import('./pages/therapist/TherapistInventoryPage').then(m => ({ default: m.TherapistInventoryPage })));
 
 // Admin Pages
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { GlobalAgendaPage } from './pages/admin/GlobalAgendaPage';
-import { AdminAppointmentsPage } from './pages/admin/AdminAppointmentsPage';
-import { AdminInventoryPage } from './pages/admin/AdminInventoryPage';
-import { AdminMarketingPage } from './pages/admin/AdminMarketingPage';
-import { AdminServicesPage } from './pages/admin/AdminServicesPage';
-import { AdminTherapistsPage } from './pages/admin/AdminTherapistsPage';
-import { AdminCabinsPage } from './pages/admin/AdminCabinsPage';
-import { AdminUsersPage } from './pages/admin/AdminUsersPage';
-import { AdminReportsPage } from './pages/admin/AdminReportsPage';
-import { AdminCashRegisterPage } from './pages/admin/AdminCashRegisterPage';
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
+const GlobalAgendaPage = lazy(() => import('./pages/admin/GlobalAgendaPage').then(m => ({ default: m.GlobalAgendaPage })));
+const AdminAppointmentsPage = lazy(() => import('./pages/admin/AdminAppointmentsPage').then(m => ({ default: m.AdminAppointmentsPage })));
+const AdminInventoryPage = lazy(() => import('./pages/admin/AdminInventoryPage').then(m => ({ default: m.AdminInventoryPage })));
+const AdminMarketingPage = lazy(() => import('./pages/admin/AdminMarketingPage').then(m => ({ default: m.AdminMarketingPage })));
+const AdminServicesPage = lazy(() => import('./pages/admin/AdminServicesPage').then(m => ({ default: m.AdminServicesPage })));
+const AdminTherapistsPage = lazy(() => import('./pages/admin/AdminTherapistsPage').then(m => ({ default: m.AdminTherapistsPage })));
+const AdminCabinsPage = lazy(() => import('./pages/admin/AdminCabinsPage').then(m => ({ default: m.AdminCabinsPage })));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
+const AdminReportsPage = lazy(() => import('./pages/admin/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
+const AdminCashRegisterPage = lazy(() => import('./pages/admin/AdminCashRegisterPage').then(m => ({ default: m.AdminCashRegisterPage })));
 
-/**
- * ============================================================================
- * ENRUTADOR PRINCIPAL DEL APLICATIVO (App.tsx)
- * ============================================================================
- * Estructura la arquitectura de navegación SPA:
- * - Proveedores Globales: Router -> ToastProvider -> AuthProvider
- * - Flujo Público (PublicLayout): Landing Page, Catálogo, Wizard de 4 pasos.
- * - Flujo Autenticación: Login, No Autorizado (403), 404 Not Found.
- * - Flujo Terapeuta (TherapistLayout): Protegido para rol 'TERAPEUTA' y 'ADMIN'.
- * - Flujo Admin (AdminLayout): Protegido para roles 'ADMIN' y 'RECEPCIONISTA'.
- * ============================================================================
- */
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-10 h-10 border-4 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
 export const App: React.FC = () => {
   return (
     <Router>
       <ToastProvider>
         <AuthProvider>
-          <Routes>
-            {/* Flujo Público: Navegación libre para clientes */}
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+            {/* Public Flow */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
               <Route path="/servicios" element={<ServicesCatalogPage />} />
@@ -64,7 +59,7 @@ export const App: React.FC = () => {
               <Route path="/confirmacion" element={<BookingConfirmationPage />} />
             </Route>
 
-            {/* Vistas de Autenticación y Control de Acceso */}
+            {/* Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
@@ -142,10 +137,11 @@ export const App: React.FC = () => {
             {/* 404 Route */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </AuthProvider>
-      </ToastProvider>
-    </Router>
-  );
+        </Suspense>
+      </AuthProvider>
+    </ToastProvider>
+  </Router>
+);
 };
 
 export default App;

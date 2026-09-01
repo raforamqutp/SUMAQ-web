@@ -16,117 +16,104 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 
-/**
- * ============================================================================
- * VISTA: PUNTO DE VENTA / CAJA CHICA POS (AdminCashRegisterPage)
- * ============================================================================
- * Maneja el ciclo completo de facturación y cobranza en mostrador:
- * - Carrito dinámico para agregar servicios principales y productos de apoyo
- * - Identificación del cliente y vinculación con historia clínica
- * - Motor de cupones de descuento (ej. SUMAQBIENVENIDA 20%, RELAXDAY 15%)
- * - Cálculo de base imponible e IGV (18%)
- * - Métodos de pago: Efectivo (con cálculo de vuelto), Tarjeta POS y QR (Yape/Plin)
- * - Emisión simulada de boletas en PDF
- * ============================================================================
- */
-interface ItemCarrito {
+interface CartItem {
   id: string;
-  nombre: string;
-  tipo: 'SERVICIO' | 'PRODUCTO';
-  precio: number;
-  cantidad: number;
+  name: string;
+  type: 'SERVICIO' | 'PRODUCTO';
+  price: number;
+  quantity: number;
 }
 
 export const AdminCashRegisterPage: React.FC = () => {
   const { toast } = useToast();
   
   // Header state
-  const [turnoActual] = useState('Turno: Mañana (08:00 - 14:00)');
-  const [cajeroActual] = useState('Recepcionista: Elena Morales');
+  const [shift] = useState('Turno: Mañana (08:00 - 14:00)');
+  const [cashier] = useState('Recepcionista: Elena Morales');
   
   // Customer state
-  const [dniCliente, setDniCliente] = useState('72345678');
-  const [nombreCliente, setNombreCliente] = useState('María García Ramos');
-  const [codigoHistoriaClinica] = useState('HC-0042');
+  const [clientDni, setClientDni] = useState('72345678');
+  const [clientName, setClientName] = useState('María García Ramos');
+  const [historyCode] = useState('HC-0042');
   
   // Cart items
-  const [carrito, setCarrito] = useState<ItemCarrito[]>([
-    { id: '1', nombre: 'Masaje Relajante con Aromaterapia (60 min)', tipo: 'SERVICIO', precio: 160.00, cantidad: 1 },
-    { id: '2', nombre: 'Aceite Esencial de Lavanda 30ml (Extra)', tipo: 'PRODUCTO', precio: 45.00, cantidad: 1 },
-    { id: '3', nombre: 'Crema Hidratante Facial Dermo (Extra)', tipo: 'PRODUCTO', precio: 40.00, cantidad: 1 }
+  const [cart, setCart] = useState<CartItem[]>([
+    { id: '1', name: 'Masaje Relajante con Aromaterapia (60 min)', type: 'SERVICIO', price: 160.00, quantity: 1 },
+    { id: '2', name: 'Aceite Esencial de Lavanda 30ml (Extra)', type: 'PRODUCTO', price: 45.00, quantity: 1 },
+    { id: '3', name: 'Crema Hidratante Facial Dermo (Extra)', type: 'PRODUCTO', price: 40.00, quantity: 1 }
   ]);
 
   // Discount state
-  const [codigoCupon, setCodigoCupon] = useState('SUMAQBIENVENIDA');
-  const [porcentajeDescuento, setPorcentajeDescuento] = useState<number>(20);
-  const [cuponAplicado, setCuponAplicado] = useState<boolean>(true);
+  const [couponCode, setCouponCode] = useState('SUMAQBIENVENIDA');
+  const [discountPercent, setDiscountPercent] = useState<number>(20);
+  const [couponApplied, setCouponApplied] = useState<boolean>(true);
 
   // Payment state
-  const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TARJETA' | 'YAPE' | 'PLIN'>('EFECTIVO');
-  const [montoRecibido, setMontoRecibido] = useState<number>(250);
-  const [estaCompletado, setEstaCompletado] = useState<boolean>(false);
+  const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'YAPE' | 'PLIN'>('EFECTIVO');
+  const [amountReceived, setAmountReceived] = useState<number>(250);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   // Calculations
-  const subtotal = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-  const montoDescuento = cuponAplicado ? (subtotal * porcentajeDescuento) / 100 : 0;
-  const baseImponible = subtotal - montoDescuento;
-  const igv = baseImponible * 0.18;
-  const total = baseImponible;
-  const vueltoCambio = Math.max(0, montoRecibido - total);
+  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const discountAmount = couponApplied ? (subtotal * discountPercent) / 100 : 0;
+  const taxableBase = subtotal - discountAmount;
+  const igv = taxableBase * 0.18;
+  const total = taxableBase;
+  const change = Math.max(0, amountReceived - total);
 
-  const manejarAplicarCupon = () => {
-    if (codigoCupon.trim().toUpperCase() === 'SUMAQBIENVENIDA') {
-      setPorcentajeDescuento(20);
-      setCuponAplicado(true);
+  const handleApplyCoupon = () => {
+    if (couponCode.trim().toUpperCase() === 'SUMAQBIENVENIDA') {
+      setDiscountPercent(20);
+      setCouponApplied(true);
       toast.success('Cupón Aplicado', 'Descuento del 20% aplicado con SUMAQBIENVENIDA');
-    } else if (codigoCupon.trim().toUpperCase() === 'RELAXDAY') {
-      setPorcentajeDescuento(15);
-      setCuponAplicado(true);
+    } else if (couponCode.trim().toUpperCase() === 'RELAXDAY') {
+      setDiscountPercent(15);
+      setCouponApplied(true);
       toast.success('Cupón Aplicado', 'Descuento del 15% aplicado con RELAXDAY');
     } else {
       toast.error('Cupón Inválido', 'El código ingresado no existe o no está vigente');
     }
   };
 
-  const manejarEliminarItem = (id: string) => {
-    setCarrito(carrito.filter(item => item.id !== id));
+  const handleRemoveItem = (id: string) => {
+    setCart(cart.filter(item => item.id !== id));
     toast.info('Ítem Removido', 'Se eliminó el ítem de la venta actual');
   };
 
-  const manejarAgregarItem = (tipo: 'SERVICIO' | 'PRODUCTO') => {
-    const nuevoItem: ItemCarrito = {
+  const handleAddItem = (type: 'SERVICIO' | 'PRODUCTO') => {
+    const newItem: CartItem = {
       id: String(Date.now()),
-      nombre: tipo === 'SERVICIO' ? 'Tratamiento Dermoestético Adicional' : 'Ampolla de Colágeno Puro',
-      tipo,
-      precio: tipo === 'SERVICIO' ? 50.00 : 25.00,
-      cantidad: 1
+      name: type === 'SERVICIO' ? 'Tratamiento Dermoestético Adicional' : 'Ampolla de Colágeno Puro',
+      type,
+      price: type === 'SERVICIO' ? 50.00 : 25.00,
+      quantity: 1
     };
-    setCarrito([...carrito, nuevoItem]);
+    setCart([...cart, newItem]);
     toast.success('Ítem Agregado', 'Nuevo concepto incluido en la transacción');
   };
 
-  const manejarEfectivoRapido = (val: number) => {
-    setMontoRecibido(val);
+  const handleQuickCash = (val: number) => {
+    setAmountReceived(val);
   };
 
-  const manejarEmitirComprobante = (conPdf: boolean) => {
-    setEstaCompletado(true);
-    if (conPdf) {
+  const handleEmitInvoice = (withPdf: boolean) => {
+    setIsCompleted(true);
+    if (withPdf) {
       toast.success('Boleta Emitida', `Total cobrado: S/ ${total.toFixed(2)} (PDF generado)`);
     } else {
       toast.success('Venta Registrada', `Total cobrado: S/ ${total.toFixed(2)} en caja chica`);
     }
   };
 
-  const manejarReiniciarVenta = () => {
-    setEstaCompletado(false);
-    setCarrito([
-      { id: '1', nombre: 'Masaje Relajante con Aromaterapia (60 min)', tipo: 'SERVICIO', precio: 160.00, cantidad: 1 }
+  const handleResetSale = () => {
+    setIsCompleted(false);
+    setCart([
+      { id: '1', name: 'Masaje Relajante con Aromaterapia (60 min)', type: 'SERVICIO', price: 160.00, quantity: 1 }
     ]);
-    setCuponAplicado(false);
-    setCodigoCupon('');
-    setPorcentajeDescuento(0);
-    setMontoRecibido(200);
+    setCouponApplied(false);
+    setCouponCode('');
+    setDiscountPercent(0);
+    setAmountReceived(200);
     toast.info('Nueva Venta', 'Formulario de caja reiniciado');
   };
 
@@ -142,7 +129,7 @@ export const AdminCashRegisterPage: React.FC = () => {
             <h1 className="text-2xl font-serif text-[#2C2725]">Punto de Venta / Caja Chica</h1>
           </div>
           <p className="text-xs text-[#7A7067] mt-1">
-            {turnoActual} · {cajeroActual}
+            {shift} · {cashier}
           </p>
         </div>
 
@@ -157,7 +144,7 @@ export const AdminCashRegisterPage: React.FC = () => {
           </button>
           <button 
             type="button"
-            onClick={manejarReiniciarVenta}
+            onClick={handleResetSale}
             className="px-4 py-2 text-xs font-semibold text-white bg-[#8C6F55] hover:bg-[#785E47] rounded-xl shadow-sm flex items-center gap-2 transition"
           >
             <Plus className="w-4 h-4" />
@@ -166,29 +153,29 @@ export const AdminCashRegisterPage: React.FC = () => {
         </div>
       </div>
 
-      {estaCompletado ? (
+      {isCompleted ? (
         <div className="bg-white p-10 rounded-2xl border border-[#EBE4DC] shadow-sm text-center max-w-xl mx-auto space-y-4">
           <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-serif text-[#2C2725]">Transacción Completada con Éxito</h2>
           <p className="text-sm text-[#7A7067]">
-            Comprobante registrado para <strong>{nombreCliente}</strong> ({codigoHistoriaClinica}).
+            Comprobante registrado para <strong>{clientName}</strong> ({historyCode}).
           </p>
           <div className="p-4 bg-[#FBF9F7] rounded-xl border border-[#EBE4DC] text-left text-xs space-y-1">
             <p><strong>Monto Total:</strong> S/ {total.toFixed(2)}</p>
-            <p><strong>Método de Pago:</strong> {metodoPago}</p>
-            {metodoPago === 'EFECTIVO' && (
+            <p><strong>Método de Pago:</strong> {paymentMethod}</p>
+            {paymentMethod === 'EFECTIVO' && (
               <>
-                <p><strong>Monto Recibido:</strong> S/ {montoRecibido.toFixed(2)}</p>
-                <p><strong>Vuelto:</strong> S/ {vueltoCambio.toFixed(2)}</p>
+                <p><strong>Monto Recibido:</strong> S/ {amountReceived.toFixed(2)}</p>
+                <p><strong>Vuelto:</strong> S/ {change.toFixed(2)}</p>
               </>
             )}
           </div>
           <div className="flex justify-center gap-3 pt-2">
             <button
               type="button"
-              onClick={manejarReiniciarVenta}
+              onClick={handleResetSale}
               className="px-5 py-2.5 bg-[#8C6F55] text-white text-xs font-semibold rounded-xl hover:bg-[#785E47] transition flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
@@ -211,8 +198,8 @@ export const AdminCashRegisterPage: React.FC = () => {
                   <label className="block text-[#7A7067] mb-1 font-medium">DNI / Documento</label>
                   <input
                     type="text"
-                    value={dniCliente}
-                    onChange={(e) => setDniCliente(e.target.value)}
+                    value={clientDni}
+                    onChange={(e) => setClientDni(e.target.value)}
                     className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E0D8CE] rounded-lg text-[#2C2725]"
                   />
                 </div>
@@ -220,8 +207,8 @@ export const AdminCashRegisterPage: React.FC = () => {
                   <label className="block text-[#7A7067] mb-1 font-medium">Nombre Completo</label>
                   <input
                     type="text"
-                    value={nombreCliente}
-                    onChange={(e) => setNombreCliente(e.target.value)}
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
                     className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E0D8CE] rounded-lg text-[#2C2725]"
                   />
                 </div>
@@ -229,7 +216,7 @@ export const AdminCashRegisterPage: React.FC = () => {
                   <label className="block text-[#7A7067] mb-1 font-medium">Nº Historia Clínica</label>
                   <div className="flex items-center gap-2">
                     <span className="w-full px-3 py-2 bg-[#F3ECE4] border border-[#E0D8CE] rounded-lg font-mono font-bold text-[#8C6F55]">
-                      {codigoHistoriaClinica}
+                      {historyCode}
                     </span>
                     <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
                       ACTIVA
@@ -249,14 +236,14 @@ export const AdminCashRegisterPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => manejarAgregarItem('SERVICIO')}
+                    onClick={() => handleAddItem('SERVICIO')}
                     className="px-2.5 py-1.5 text-[11px] font-medium bg-[#F3ECE4] text-[#8C6F55] rounded-lg hover:bg-[#EBE2D7] transition"
                   >
                     + Servicio Extra
                   </button>
                   <button
                     type="button"
-                    onClick={() => manejarAgregarItem('PRODUCTO')}
+                    onClick={() => handleAddItem('PRODUCTO')}
                     className="px-2.5 py-1.5 text-[11px] font-medium bg-[#F3ECE4] text-[#8C6F55] rounded-lg hover:bg-[#EBE2D7] transition"
                   >
                     + Producto Extra
@@ -277,25 +264,26 @@ export const AdminCashRegisterPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F0EAE2]">
-                    {carrito.map((item) => (
+                    {cart.map((item) => (
                       <tr key={item.id} className="hover:bg-[#FAF8F5]">
-                        <td className="py-3 px-3 font-medium text-[#2C2725]">{item.nombre}</td>
+                        <td className="py-3 px-3 font-medium text-[#2C2725]">{item.name}</td>
                         <td className="py-3 px-3">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                            item.tipo === 'SERVICIO' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                            item.type === 'SERVICIO' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
                           }`}>
-                            {item.tipo}
+                            {item.type}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-center font-mono">{item.cantidad}</td>
-                        <td className="py-3 px-3 text-right font-mono">{item.precio.toFixed(2)}</td>
+                        <td className="py-3 px-3 text-center font-mono">{item.quantity}</td>
+                        <td className="py-3 px-3 text-right font-mono">{item.price.toFixed(2)}</td>
                         <td className="py-3 px-3 text-right font-mono font-bold text-[#2C2725]">
-                          {(item.precio * item.cantidad).toFixed(2)}
+                          {(item.price * item.quantity).toFixed(2)}
                         </td>
                         <td className="py-3 px-2 text-center">
                           <button
                             type="button"
-                            onClick={() => manejarEliminarItem(item.id)}
+                            aria-label={`Eliminar ${item.name} del carrito`}
+                            onClick={() => handleRemoveItem(item.id)}
                             className="p-1 text-rose-500 hover:bg-rose-50 rounded transition"
                             title="Eliminar"
                           >
@@ -316,23 +304,24 @@ export const AdminCashRegisterPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
                   <input
+                    aria-label="Código de cupón promocional"
                     type="text"
-                    value={codigoCupon}
-                    onChange={(e) => setCodigoCupon(e.target.value)}
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
                     placeholder="Ej: SUMAQBIENVENIDA"
-                    className="px-3 py-1.5 bg-[#FAF8F5] border border-[#E0D8CE] rounded-lg text-xs font-mono uppercase flex-1"
+                    className="px-3 py-1.5 bg-[#FAF8F5] border border-[#E0D8CE] rounded-lg text-xs font-mono uppercase flex-1 text-[#2C2725]"
                   />
                   <button
                     type="button"
-                    onClick={manejarAplicarCupon}
+                    onClick={handleApplyCoupon}
                     className="px-3 py-1.5 bg-[#8C6F55] text-white text-xs font-medium rounded-lg hover:bg-[#785E47] transition"
                   >
                     Aplicar
                   </button>
                 </div>
-                {cuponAplicado && (
+                {couponApplied && (
                   <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    -{porcentajeDescuento}% OFF
+                    -{discountPercent}% OFF
                   </span>
                 )}
               </div>
@@ -352,10 +341,10 @@ export const AdminCashRegisterPage: React.FC = () => {
                   <span>Subtotal Bruto:</span>
                   <span className="font-mono">S/ {subtotal.toFixed(2)}</span>
                 </div>
-                {cuponAplicado && (
+                {couponApplied && (
                   <div className="flex justify-between text-emerald-700 font-medium">
-                    <span>Descuento Promocional ({porcentajeDescuento}%):</span>
-                    <span className="font-mono">- S/ {montoDescuento.toFixed(2)}</span>
+                    <span>Descuento Promocional ({discountPercent}%):</span>
+                    <span className="font-mono">- S/ {discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-[#8C8278]">
@@ -387,9 +376,9 @@ export const AdminCashRegisterPage: React.FC = () => {
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => setMetodoPago(m.id as any)}
+                        onClick={() => setPaymentMethod(m.id as any)}
                         className={`p-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition ${
-                          metodoPago === m.id
+                          paymentMethod === m.id
                             ? 'border-[#8C6F55] bg-[#F3ECE4] text-[#8C6F55] font-bold shadow-sm'
                             : 'border-[#E0D8CE] bg-[#FAF8F5] text-[#7A7067] hover:bg-[#F2ECE4]'
                         }`}
@@ -403,15 +392,17 @@ export const AdminCashRegisterPage: React.FC = () => {
               </div>
 
               {/* Dynamic Payment Details */}
-              {metodoPago === 'EFECTIVO' ? (
+              {paymentMethod === 'EFECTIVO' ? (
                 <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E0D8CE] space-y-2 text-xs">
                   <div className="flex justify-between items-center">
-                    <label className="font-semibold text-[#2C2725]">Efectivo Recibido:</label>
+                    <label htmlFor="efectivo-recibido-pos" className="font-semibold text-[#2C2725]">Efectivo Recibido:</label>
                     <input
+                      id="efectivo-recibido-pos"
+                      aria-label="Monto de efectivo recibido en soles"
                       type="number"
-                      value={montoRecibido}
-                      onChange={(e) => setMontoRecibido(Number(e.target.value))}
-                      className="w-24 px-2 py-1 bg-white border border-[#D5CCC2] rounded font-mono text-right font-bold"
+                      value={amountReceived}
+                      onChange={(e) => setAmountReceived(Number(e.target.value))}
+                      className="w-24 px-2 py-1 bg-white border border-[#D5CCC2] rounded font-mono text-right font-bold text-[#2C2725]"
                     />
                   </div>
                   {/* Quick buttons */}
@@ -420,17 +411,18 @@ export const AdminCashRegisterPage: React.FC = () => {
                       <button
                         key={val}
                         type="button"
-                        onClick={() => manejarEfectivoRapido(val)}
-                        className="px-2 py-0.5 bg-white border border-[#E0D8CE] rounded text-[10px] font-mono hover:bg-[#F3ECE4] transition"
+                        aria-label={`Seleccionar billete de ${val} soles`}
+                        onClick={() => handleQuickCash(val)}
+                        className="px-2 py-1 bg-white border border-[#D5CCC2] rounded text-[11px] font-bold text-[#5A5047] hover:bg-[#F2ECE4] transition"
                       >
-                        S/{val}
+                        S/ {val}
                       </button>
                     ))}
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-[#EBE4DC]">
                     <span className="font-bold text-emerald-800">VUELTO / CAMBIO:</span>
                     <span className="text-sm font-mono font-bold text-emerald-700">
-                      S/ {vueltoCambio.toFixed(2)}
+                      S/ {change.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -440,7 +432,7 @@ export const AdminCashRegisterPage: React.FC = () => {
                     <QrCode className="w-20 h-20 text-[#8C6F55]" />
                   </div>
                   <p className="text-[11px] text-[#7A7067]">
-                    Escanee el código QR dinámico desde la App de <strong>{metodoPago}</strong> por el monto exacto de <strong>S/ {total.toFixed(2)}</strong>
+                    Escanee el código QR dinámico desde la App de <strong>{paymentMethod}</strong> por el monto exacto de <strong>S/ {total.toFixed(2)}</strong>
                   </p>
                 </div>
               )}
@@ -449,7 +441,7 @@ export const AdminCashRegisterPage: React.FC = () => {
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => manejarEmitirComprobante(true)}
+                  onClick={() => handleEmitInvoice(true)}
                   className="w-full py-3 bg-[#8C6F55] text-white text-xs font-bold rounded-xl hover:bg-[#785E47] transition shadow-sm flex items-center justify-center gap-2"
                 >
                   <FileText className="w-4 h-4" />
@@ -457,7 +449,7 @@ export const AdminCashRegisterPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => manejarEmitirComprobante(false)}
+                  onClick={() => handleEmitInvoice(false)}
                   className="w-full py-2.5 bg-[#FAF8F5] text-[#5A5047] text-xs font-semibold rounded-xl border border-[#E0D8CE] hover:bg-[#F0EAE2] transition text-center"
                 >
                   Registrar sin Comprobante

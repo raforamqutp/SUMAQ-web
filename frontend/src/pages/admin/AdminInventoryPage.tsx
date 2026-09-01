@@ -15,36 +15,24 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: CONTROL DE INVENTARIO & KÁRDEX (AdminInventoryPage)
- * ============================================================================
- * Gestión logística y de almacén de insumos:
- * - Pestaña 1 (STOCK): Existencias actuales, costo unitario, valorización total
- *   del almacén y semáforo automático de stock crítico.
- * - Pestaña 2 (KARDEX): Trazabilidad histórica de movimientos de entrada
- *   (compras/ajustes) y salidas (consumo automático en citas atendidas).
- * - Modal: Registro manual de compras y regularización física de existencias.
- * ============================================================================
- */
 export const AdminInventoryPage: React.FC = () => {
   const { toast } = useToast();
-  const [pestanaActiva, setPestanaActiva] = useState<'STOCK' | 'KARDEX'>('STOCK');
+  const [activeTab, setActiveTab] = useState<'STOCK' | 'KARDEX'>('STOCK');
   const [productos, setProductos] = useState<Producto[]>([]);
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   // Manual Movement Modal State
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [productoSeleccionadoId, setProductoSeleccionadoId] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedProductoId, setSelectedProductoId] = useState<number | null>(null);
   const [tipoMovimiento, setTipoMovimiento] = useState<string>('ENTRADA_COMPRA');
   const [cantidad, setCantidad] = useState<number>(1);
   const [costoUnitario, setCostoUnitario] = useState<number>(0);
   const [descripcion, setDescripcion] = useState('');
-  const [enviando, setEnviando] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const obtenerInventario = async () => {
-    setCargando(true);
+  const fetchInventory = async () => {
+    setLoading(true);
     try {
       const [prods, movs] = await Promise.all([
         adminService.getProductos(),
@@ -53,51 +41,51 @@ export const AdminInventoryPage: React.FC = () => {
       setProductos(prods);
       setMovimientos(movs);
     } catch (err) {
-      console.error("Error cargando inventario:", err);
+      console.error("Error loading inventory:", err);
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    obtenerInventario();
+    fetchInventory();
   }, []);
 
-  const manejarAbrirModalMovimiento = (producto?: Producto) => {
+  const handleOpenMovementModal = (producto?: Producto) => {
     if (producto) {
-      setProductoSeleccionadoId(producto.id);
+      setSelectedProductoId(producto.id);
       setCostoUnitario(parseFloat(producto.costo_unitario.toString()));
     } else if (productos.length > 0) {
-      setProductoSeleccionadoId(productos[0].id);
+      setSelectedProductoId(productos[0].id);
       setCostoUnitario(parseFloat(productos[0].costo_unitario.toString()));
     }
-    setModalAbierto(true);
+    setModalOpen(true);
   };
 
-  const manejarGuardarMovimiento = async () => {
-    if (!productoSeleccionadoId || cantidad <= 0) {
+  const handleSubmitMovement = async () => {
+    if (!selectedProductoId || cantidad <= 0) {
       toast.error('Datos inválidos', 'Seleccione un insumo y una cantidad mayor a cero.');
       return;
     }
-    setEnviando(true);
+    setSubmitting(true);
     try {
       await adminService.registrarMovimientoManual({
-        producto_id: productoSeleccionadoId,
+        producto_id: selectedProductoId,
         tipo: tipoMovimiento,
         cantidad,
         costo_unitario: costoUnitario > 0 ? costoUnitario : undefined,
         descripcion: descripcion.trim() || undefined,
       });
       toast.success('Movimiento Registrado', 'El stock y kárdex han sido actualizados exitosamente.');
-      setModalAbierto(false);
+      setModalOpen(false);
       setDescripcion('');
       setCantidad(1);
-      obtenerInventario();
+      fetchInventory();
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Error al procesar movimiento de inventario.';
       toast.error('Error', msg);
     } finally {
-      setEnviando(false);
+      setSubmitting(false);
     }
   };
 
@@ -119,7 +107,7 @@ export const AdminInventoryPage: React.FC = () => {
           <Button
             variant="primary"
             size="md"
-            onClick={() => manejarAbrirModalMovimiento()}
+            onClick={() => handleOpenMovementModal()}
             icon={<Plus className="w-4 h-4" />}
           >
             Registrar Movimiento / Compra
@@ -130,9 +118,9 @@ export const AdminInventoryPage: React.FC = () => {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-[#EDE5DC] pb-3">
         <button
-          onClick={() => setPestanaActiva('STOCK')}
+          onClick={() => setActiveTab('STOCK')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            pestanaActiva === 'STOCK'
+            activeTab === 'STOCK'
               ? 'bg-[#8C6F55] text-white shadow-sm'
               : 'bg-white text-[#6F5540] border border-[#EDE5DC] hover:bg-[#F6F2EC]'
           }`}
@@ -142,9 +130,9 @@ export const AdminInventoryPage: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setPestanaActiva('KARDEX')}
+          onClick={() => setActiveTab('KARDEX')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-            pestanaActiva === 'KARDEX'
+            activeTab === 'KARDEX'
               ? 'bg-[#8C6F55] text-white shadow-sm'
               : 'bg-white text-[#6F5540] border border-[#EDE5DC] hover:bg-[#F6F2EC]'
           }`}
@@ -155,9 +143,9 @@ export const AdminInventoryPage: React.FC = () => {
       </div>
 
       {/* TAB 1: STOCK TABLE */}
-      {pestanaActiva === 'STOCK' && (
+      {activeTab === 'STOCK' && (
         <div className="bg-white rounded-3xl border border-[#EDE5DC] shadow-sm overflow-hidden">
-          {cargando ? (
+          {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-8 h-8 border-3 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
             </div>
@@ -206,7 +194,7 @@ export const AdminInventoryPage: React.FC = () => {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => manejarAbrirModalMovimiento(prod)}
+                            onClick={() => handleOpenMovementModal(prod)}
                             icon={<ArrowUpDown className="w-3 h-3" />}
                           >
                             Ajustar
@@ -223,9 +211,9 @@ export const AdminInventoryPage: React.FC = () => {
       )}
 
       {/* TAB 2: KARDEX MOVEMENTS TABLE */}
-      {pestanaActiva === 'KARDEX' && (
+      {activeTab === 'KARDEX' && (
         <div className="bg-white rounded-3xl border border-[#EDE5DC] shadow-sm overflow-hidden">
-          {cargando ? (
+          {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-8 h-8 border-3 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
             </div>
@@ -244,7 +232,7 @@ export const AdminInventoryPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#EDE5DC]">
                   {movimientos.map((mov) => {
-                    const esPositivo = mov.tipo === 'ENTRADA_COMPRA' || mov.tipo === 'AJUSTE_POSITIVO';
+                    const isPositive = mov.tipo === 'ENTRADA_COMPRA' || mov.tipo === 'AJUSTE_POSITIVO';
 
                     return (
                       <tr key={mov.id} className="hover:bg-[#FAF8F5] transition-colors">
@@ -257,17 +245,17 @@ export const AdminInventoryPage: React.FC = () => {
                         <td className="p-4">
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              esPositivo
+                              isPositive
                                 ? 'bg-[#EFF8F4] text-[#24634B]'
                                 : 'bg-[#FFF2F0] text-[#9B2C1C]'
                             }`}
                           >
-                            {esPositivo ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                             {mov.tipo}
                           </span>
                         </td>
-                        <td className={`p-4 font-mono font-bold text-sm ${esPositivo ? 'text-[#24634B]' : 'text-[#9B2C1C]'}`}>
-                          {esPositivo ? '+' : '-'}{parseFloat(mov.cantidad.toString()).toFixed(1)} {mov.unidad_medida}
+                        <td className={`p-4 font-mono font-bold text-sm ${isPositive ? 'text-[#24634B]' : 'text-[#9B2C1C]'}`}>
+                          {isPositive ? '+' : '-'}{parseFloat(mov.cantidad.toString()).toFixed(1)} {mov.unidad_medida}
                         </td>
                         <td className="p-4 font-mono text-[#5E3A2B]">
                           S/ {parseFloat(mov.costo_unitario.toString()).toFixed(2)}
@@ -290,8 +278,8 @@ export const AdminInventoryPage: React.FC = () => {
 
       {/* MODAL: REGISTRAR MOVIMIENTO MANUAL */}
       <Modal
-        isOpen={modalAbierto}
-        onClose={() => setModalAbierto(false)}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
         title="Registrar Movimiento de Inventario"
         subtitle="Entradas por compra o ajustes manuales en almacén"
       >
@@ -299,10 +287,10 @@ export const AdminInventoryPage: React.FC = () => {
           <div>
             <label className="block font-semibold text-[#543F30] mb-1.5">Insumo / Producto</label>
             <select
-              value={productoSeleccionadoId || ''}
+              value={selectedProductoId || ''}
               onChange={(e) => {
                 const pId = parseInt(e.target.value, 10);
-                setProductoSeleccionadoId(pId);
+                setSelectedProductoId(pId);
                 const p = productos.find((x) => x.id === pId);
                 if (p) setCostoUnitario(parseFloat(p.costo_unitario.toString()));
               }}
@@ -367,14 +355,14 @@ export const AdminInventoryPage: React.FC = () => {
           </div>
 
           <div className="pt-4 flex justify-end gap-2">
-            <Button variant="outline" size="md" onClick={() => setModalAbierto(false)}>
+            <Button variant="outline" size="md" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
             <Button
               variant="primary"
               size="md"
-              loading={enviando}
-              onClick={manejarGuardarMovimiento}
+              loading={submitting}
+              onClick={handleSubmitMovement}
             >
               Registrar en Kárdex
             </Button>

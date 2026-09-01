@@ -15,16 +15,6 @@ import {
   XCircle,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: GESTIÓN DE CITAS & RESERVAS (AdminAppointmentsPage)
- * ============================================================================
- * Panel de consulta y administración global de todas las citas del spa:
- * - Filtros por texto (nombre, DNI, código de reserva), estado y fecha.
- * - Cambios de estado en un clic (Confirmar, Atender, Cancelar).
- * - Exportación / descarga de comprobantes en PDF.
- * ============================================================================
- */
 export const AdminAppointmentsPage: React.FC = () => {
   const { toast } = useToast();
   const [citas, setCitas] = useState<Cita[]>([]);

@@ -7,16 +7,6 @@ import { Badge } from '../../components/Badge';
 import { useToast } from '../../contexts/ToastContext';
 import { UserCog, Plus, Edit2, Shield, User as UserIcon } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: GESTIÓN DE USUARIOS & ROLES (AdminUsersPage)
- * ============================================================================
- * Control de acceso al sistema y administración de cuentas internas:
- * - Creación de credenciales para Administradores, Recepcionistas y Terapeutas.
- * - Modificación de datos de perfil, correo y contraseñas.
- * - Activación o bloqueo de cuentas de usuario.
- * ============================================================================
- */
 export const AdminUsersPage: React.FC = () => {
   const { toast } = useToast();
   const [usuarios, setUsuarios] = useState<User[]>([]);

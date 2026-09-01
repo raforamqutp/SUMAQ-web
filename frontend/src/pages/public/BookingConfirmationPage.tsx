@@ -15,16 +15,6 @@ import {
 
 import { downloadPdf } from '../../services/api';
 
-/**
- * ============================================================================
- * VISTA: CONFIRMACIÓN DE RESERVA (BookingConfirmationPage)
- * ============================================================================
- * Pantalla final de éxito tras completar el Wizard de reservas:
- * - Muestra el código de seguimiento de la cita (SQ-YYYYMMDD-XXXX).
- * - Resumen de cabina asignada, especialista, fecha, hora y total pagado.
- * - Botón para descargar el comprobante en PDF.
- * ============================================================================
- */
 export const BookingConfirmationPage: React.FC = () => {
   const location = useLocation();
   const cita: Cita = location.state?.cita;

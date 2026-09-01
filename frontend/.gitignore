@@ -22,11 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-~$*
-*.docx
-*.pdf
-*DOCUMENTO*
-*INFORME*
-*RESUMEN*
-docs_diagrams/
-

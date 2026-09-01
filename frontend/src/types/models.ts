@@ -1,17 +1,3 @@
-/**
- * ============================================================================
- * MODELOS DE DATOS DEL NEGOCIO (TypeScript Interfaces)
- * ============================================================================
- * Define la estructura y tipado estricto para todas las entidades:
- * - User: Usuarios del sistema interno (Admin, Recepcionista, Terapeuta)
- * - Cliente: Pacientes del spa con DNI, contacto e historial clínico
- * - Cabina: 3 Cabinas temáticas (Holística, Dermoestética, Hidroterapia)
- * - Terapeuta: Especialistas de bienestar asignadas a cabinas
- * - Producto & MovimientoInventario: Kárdex, stock y costos de insumos
- * - Servicio & RecetaServicio: Catálogo de tratamientos y recetas de insumos
- * - Cita: Reservas con horario, cabina, terapeuta, montos y estados
- * ============================================================================
- */
 export interface User {
   id: number;
   email: string;

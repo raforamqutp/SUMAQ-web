@@ -1,24 +1,5 @@
 @import "tailwindcss";
 
-/**
- * ============================================================================
- * GUÍA DE DISEÑO Y PALETA DE COLORES - SUMAQ SPA & CENTRO DE BIENESTAR
- * ============================================================================
- * @theme define los "Design Tokens" (variables de diseño) globales para Tailwind v4:
- * 
- * - Fuentes:
- *   --font-serif: Para títulos elegantes de spa ('Cormorant Garamond').
- *   --font-sans: Para textos legibles y formularios ('Plus Jakarta Sans').
- * 
- * - Paleta Cromática Tierra / Spa:
- *   #FAF8F5 / #FCFBF9 -> Fondos cálidos y suaves (reemplazan al blanco plano).
- *   #EDE5DC / #DFD0C0 -> Bordes sutiles y divisores.
- *   #8C6F55           -> Color principal (Marrón dorado / Tierra).
- *   #543F30 / #3D2D22 -> Textos de alta legibilidad para títulos.
- *   #EFF8F4 / #24634B -> Tonos verdes para estados completados o normales.
- *   #FFF2F0 / #9B2C1C -> Tonos rojizos para alertas y stock crítico.
- * ============================================================================
- */
 @theme {
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;

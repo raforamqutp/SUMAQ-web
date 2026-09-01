@@ -23,17 +23,6 @@ import {
   Droplets,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: FICHA CLÍNICA & ATENCIÓN DEL PACIENTE (TherapistAppointmentDetailPage)
- * ============================================================================
- * Espacio de trabajo directo en cabina durante la sesión:
- * - Datos del paciente, alergias conocidas y diagnóstico del tipo de piel.
- * - Desglose de insumos de la receta que se consumirán durante el tratamiento.
- * - Registro de notas de evolución, observaciones dermatológicas y recomendaciones.
- * - Botón "Finalizar Atención": Cambia el estado a ATENDIDA y descuenta el stock del Kárdex.
- * ============================================================================
- */
 export const TherapistAppointmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const citaId = parseInt(id || '0', 10);

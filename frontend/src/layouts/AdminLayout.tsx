@@ -20,17 +20,6 @@ import {
   DollarSign,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * PLANTILLA MAESTRA DE ADMINISTRACIÓN: ADMIN LAYOUT
- * ============================================================================
- * Estructura visual para el personal administrativo y de recepción:
- * - Sidebar Izquierda: Menú con 11 módulos (Dashboard, Agenda, Caja, Kárdex, etc.).
- * - Filtrado por Rol: Oculta Dashboard y Reportes para el rol 'RECEPCIONISTA'.
- * - Header Superior: Muestra alertas de insumos, usuario activo y botón de cierre de sesión.
- * - Versión Móvil: Menú lateral deslizante con overlay backdrop.
- * ============================================================================
- */
 export const AdminLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();

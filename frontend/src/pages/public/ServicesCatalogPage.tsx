@@ -5,15 +5,6 @@ import { Servicio } from '../../types/models';
 import { Button } from '../../components/Button';
 import { Sparkles, Clock, Calendar, Droplets } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: CATÁLOGO DE SERVICIOS & TRATAMIENTOS (ServicesCatalogPage)
- * ============================================================================
- * Muestra la lista completa de rituales y sesiones de bienestar:
- * - Filtros visuales, duración en minutos y precio público en Soles (S/).
- * - Botón "Reservar Este Tratamiento" que preselecciona el servicio en el Wizard.
- * ============================================================================
- */
 export const ServicesCatalogPage: React.FC = () => {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);

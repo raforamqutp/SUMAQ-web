@@ -3,13 +3,6 @@ import { Link } from 'react-router-dom';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/Button';
 
-/**
- * ============================================================================
- * VISTA: ERROR 404 (Página No Encontrada)
- * ============================================================================
- * Maneja rutas inexistentes o URLs mal escritas con diseño coherente de Sumaq Spa.
- * ============================================================================
- */
 export const NotFoundPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">

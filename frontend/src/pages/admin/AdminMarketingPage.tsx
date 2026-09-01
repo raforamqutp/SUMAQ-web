@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
 import { Promocion } from '../../types/models';
 import { Button } from '../../components/Button';
@@ -8,18 +6,7 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Tag, Plus, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: MARKETING & PROMOCIONES (AdminMarketingPage)
- * ============================================================================
- * Creación y control de campañas comerciales y cupones de descuento:
- * - Código de cupón alfanumérico (ej. SUMAQ15, RELAXDAY).
- * - Porcentaje de descuento (10% a 50%) y vigencia temporal.
- * - Habilitación / deshabilitación inmediata de ofertas públicas.
- * ============================================================================
- */
 export const AdminMarketingPage: React.FC = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,10 +22,6 @@ export const AdminMarketingPage: React.FC = () => {
   const [fechaFin, setFechaFin] = useState('2026-12-31');
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  if (user?.rol === 'RECEPCIONISTA') {
-    return <Navigate to="/admin/agenda" replace />;
-  }
 
   const fetchPromociones = async () => {
     setLoading(true);

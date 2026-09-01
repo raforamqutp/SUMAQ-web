@@ -21,18 +21,6 @@ import {
   Banknote,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: WIZARD DE RESERVA ONLINE EN 4 PASOS (BookingWizardPage)
- * ============================================================================
- * Flujo guiado de autoservicio para clientes de Sumaq Spa:
- * - Paso 1 (Servicio & Fecha): Selección de tratamiento y calendario.
- * - Paso 2 (Terapeuta & Horarios): Asignación de cabina y cálculo de slots libres.
- * - Paso 3 (Datos Personales & Cupones): Formulario con validación y descuento.
- * - Paso 4 (Pasarela de Pago): QR Yape/Plin, Tarjeta Débito/Crédito y Efectivo.
- *   Genera el código único de seguimiento (SQ-YYYYMMDD-XXXX).
- * ============================================================================
- */
 export const BookingWizardPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -354,10 +342,12 @@ export const BookingWizardPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-semibold text-[#543F30] mb-1.5">
+                <label htmlFor="dni-cliente" className="block text-xs font-semibold text-[#543F30] mb-1.5">
                   DNI / Documento de Identidad <span className="text-[#C84B31]">*</span>
                 </label>
                 <input
+                  id="dni-cliente"
+                  aria-label="Documento nacional de identidad del cliente"
                   type="text"
                   maxLength={12}
                   value={dni}
@@ -368,10 +358,12 @@ export const BookingWizardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#543F30] mb-1.5">
+                <label htmlFor="nombre-cliente" className="block text-xs font-semibold text-[#543F30] mb-1.5">
                   Nombre y Apellidos Completos <span className="text-[#C84B31]">*</span>
                 </label>
                 <input
+                  id="nombre-cliente"
+                  aria-label="Nombre y apellidos completos del cliente"
                   type="text"
                   value={nombreCompleto}
                   onChange={(e) => setNombreCompleto(e.target.value)}
@@ -381,10 +373,12 @@ export const BookingWizardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#543F30] mb-1.5">
+                <label htmlFor="telefono-cliente" className="block text-xs font-semibold text-[#543F30] mb-1.5">
                   Teléfono / WhatsApp de Contacto <span className="text-[#C84B31]">*</span>
                 </label>
                 <input
+                  id="telefono-cliente"
+                  aria-label="Teléfono o número de WhatsApp"
                   type="tel"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
@@ -394,10 +388,12 @@ export const BookingWizardPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#543F30] mb-1.5">
+                <label htmlFor="email-cliente" className="block text-xs font-semibold text-[#543F30] mb-1.5">
                   Correo Electrónico (Para envío de comprobante)
                 </label>
                 <input
+                  id="email-cliente"
+                  aria-label="Correo electrónico para recibir comprobante de reserva"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -523,10 +519,12 @@ export const BookingWizardPage: React.FC = () => {
             </div>
 
             <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#EDE5DC] max-w-sm">
-              <label className="block text-xs font-semibold text-[#543F30] mb-1.5">
+              <label htmlFor="fecha-reserva-wizard" className="block text-xs font-semibold text-[#543F30] mb-1.5">
                 Selecciona la Fecha de Atención
               </label>
               <input
+                id="fecha-reserva-wizard"
+                aria-label="Seleccionar fecha de atención para la cita"
                 type="date"
                 min={todayStr}
                 value={fecha}
@@ -712,6 +710,7 @@ export const BookingWizardPage: React.FC = () => {
                       <div className="grid grid-cols-4 gap-2">
                         <input
                           id="card-chunk-0"
+                          aria-label="Primeros 4 digitos de la tarjeta"
                           type="text"
                           inputMode="numeric"
                           maxLength={4}
@@ -723,6 +722,7 @@ export const BookingWizardPage: React.FC = () => {
                         />
                         <input
                           id="card-chunk-1"
+                          aria-label="Segundos 4 digitos de la tarjeta"
                           type="text"
                           inputMode="numeric"
                           maxLength={4}
@@ -734,6 +734,7 @@ export const BookingWizardPage: React.FC = () => {
                         />
                         <input
                           id="card-chunk-2"
+                          aria-label="Terceros 4 digitos de la tarjeta"
                           type="text"
                           inputMode="numeric"
                           maxLength={4}
@@ -745,6 +746,7 @@ export const BookingWizardPage: React.FC = () => {
                         />
                         <input
                           id="card-chunk-3"
+                          aria-label="Ultimos 4 digitos de la tarjeta"
                           type="text"
                           inputMode="numeric"
                           maxLength={4}
@@ -758,8 +760,10 @@ export const BookingWizardPage: React.FC = () => {
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-[#543F30] font-semibold mb-1">Nombre y Apellidos del Titular</label>
+                      <label htmlFor="card-holder-name" className="block text-[#543F30] font-semibold mb-1">Nombre y Apellidos del Titular</label>
                       <input
+                        id="card-holder-name"
+                        aria-label="Nombre y apellidos del titular de la tarjeta"
                         type="text"
                         value={cardHolder}
                         onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
@@ -769,8 +773,10 @@ export const BookingWizardPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-[#543F30] font-semibold mb-1">Fecha de Expiracion</label>
+                      <label htmlFor="card-exp-date" className="block text-[#543F30] font-semibold mb-1">Fecha de Expiracion</label>
                       <input
+                        id="card-exp-date"
+                        aria-label="Fecha de expiracion mes y año"
                         type="text"
                         maxLength={5}
                         value={cardExp}
@@ -781,9 +787,11 @@ export const BookingWizardPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-[#543F30] font-semibold mb-1">Codigo de Seguridad (CVV)</label>
+                      <label htmlFor="card-cvv-code" className="block text-[#543F30] font-semibold mb-1">Codigo de Seguridad (CVV)</label>
                       <div className="relative">
                         <input
+                          id="card-cvv-code"
+                          aria-label="Codigo de seguridad CVV de 3 digitos"
                           type="password"
                           maxLength={4}
                           value={cardCvv}
@@ -819,8 +827,10 @@ export const BookingWizardPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
                     <div>
-                      <label className="block text-[#543F30] font-semibold mb-1">Numero de Celular Yape</label>
+                      <label htmlFor="yape-phone-number" className="block text-[#543F30] font-semibold mb-1">Numero de Celular Yape</label>
                       <input
+                        id="yape-phone-number"
+                        aria-label="Numero de celular registrado en Yape"
                         type="text"
                         maxLength={9}
                         value={yapePhone}
@@ -831,11 +841,13 @@ export const BookingWizardPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-[#543F30] font-semibold mb-1">
+                      <label htmlFor="yape-otp-code" className="block text-[#543F30] font-semibold mb-1">
                         Codigo de Aprobacion Yape (6 digitos)
                       </label>
                       <div className="flex gap-2">
                         <input
+                          id="yape-otp-code"
+                          aria-label="Codigo de aprobacion OTP de 6 digitos de Yape"
                           type="text"
                           maxLength={6}
                           value={yapeOtp}
@@ -848,6 +860,7 @@ export const BookingWizardPage: React.FC = () => {
                         />
                         <button
                           type="button"
+                          aria-label="Validar codigo de aprobacion Yape"
                           onClick={() => {
                             if (yapeOtp.trim().length >= 5) {
                               setYapeVerified(true);

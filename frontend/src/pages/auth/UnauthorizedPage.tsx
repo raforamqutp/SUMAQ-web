@@ -3,14 +3,6 @@ import { Link } from 'react-router-dom';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/Button';
 
-/**
- * ============================================================================
- * VISTA: ERROR 403 (Acceso Denegado / No Autorizado)
- * ============================================================================
- * Se muestra cuando un usuario autenticado intenta ingresar a una ruta fuera
- * de los privilegios asignados a su rol (ej. Recepcionista intentando ver reportes).
- * ============================================================================
- */
 export const UnauthorizedPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">

@@ -3,17 +3,6 @@ import { ApiResponse } from '../types/api';
 import { Cita, FichaAtencion, Producto, Terapeuta } from '../types/models';
 import { mockStore } from './mockData';
 
-/**
- * ============================================================================
- * SERVICIO DEL TERAPEUTA (therapistService.ts)
- * ============================================================================
- * Métodos para la gestión de atención clínica en cabina:
- * - getMiAgenda(): Lista citas de la especialista conectada.
- * - getCitaDetalle(): Obtiene datos del cliente, servicio y ficha clínica.
- * - guardarFichaAtencion(): Registra notas médicas y finaliza la cita deduciendo insumos.
- * - getMisInsumos(): Consulta stock de insumos asignados a su cabina.
- * ============================================================================
- */
 export interface FichaAtencionPayload {
   cita_id?: number;
   tipo_piel: string;

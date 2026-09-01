@@ -1,25 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
 import { ReporteData } from '../../types/models';
 import { StatCard } from '../../components/StatCard';
 import { Button } from '../../components/Button';
 import { BarChart3, Calendar, DollarSign, TrendingUp, Package, Users2, Download } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: REPORTES & ANALÍTICA FINANCIERA (AdminReportsPage)
- * ============================================================================
- * Informes ejecutivos consolidados por rango de fechas:
- * - Facturación bruta, costo de insumos consumidos y margen de utilidad neta.
- * - Desglose de ingresos por método de pago (Efectivo, Tarjeta, Yape/Plin).
- * - Rendimiento y productividad por especialista y por cabina.
- * - Exportación de balances contables en PDF.
- * ============================================================================
- */
 export const AdminReportsPage: React.FC = () => {
-  const { user } = useAuth();
   const todayStr = new Date().toISOString().split('T')[0];
   const lastMonthStr = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -27,10 +13,6 @@ export const AdminReportsPage: React.FC = () => {
   const [fechaFin, setFechaFin] = useState(todayStr);
   const [reporte, setReporte] = useState<ReporteData | null>(null);
   const [loading, setLoading] = useState(true);
-
-  if (user?.rol === 'RECEPCIONISTA') {
-    return <Navigate to="/admin/agenda" replace />;
-  }
 
   const fetchReports = async () => {
     setLoading(true);

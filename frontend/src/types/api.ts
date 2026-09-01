@@ -1,13 +1,3 @@
-/**
- * ============================================================================
- * CONTRATOS DE RESPUESTAS HTTP (API Response Interfaces)
- * ============================================================================
- * Estandariza la estructura JSON que retorna el backend Django/FastAPI:
- * - ApiResponse<T>: Envoltorio genérico estándar con éxito y datos.
- * - ApiPaginatedData<T>: Paginación con total de registros y páginas.
- * - ApiError: Formato homogéneo de captura y reporte de errores.
- * ============================================================================
- */
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;

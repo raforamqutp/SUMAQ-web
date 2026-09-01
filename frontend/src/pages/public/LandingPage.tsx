@@ -20,20 +20,6 @@ import {
   Phone,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: PÁGINA PRINCIPAL / LANDING PAGE (LandingPage.tsx)
- * ============================================================================
- * Portada institucional y experiencia de marca de Sumaq Spa:
- * 1. Hero Section: Título editorial, propuesta de valor y CTA de reserva.
- * 2. Presentación & Filosofía: Enfoque holístico, dermoestético e hidroterapia.
- * 3. Catálogo Destacado: Tratamientos más solicitados con precios y duración.
- * 4. Las 3 Cabinas Exclusivas: Recorrido visual de cada ambiente temático.
- * 5. Equipo de Terapeutas: Especialistas de bienestar con fotos y perfiles.
- * 6. Cupones y Promociones Activas: Cupones copiables con un solo clic.
- * 7. Testimonios de Clientes: Valoraciones reales 5 estrellas.
- * ============================================================================
- */
 export const LandingPage: React.FC = () => {
   const { toast } = useToast();
   const [servicios, setServicios] = useState<Servicio[]>([]);
