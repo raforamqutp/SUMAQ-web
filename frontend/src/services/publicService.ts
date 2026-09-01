@@ -3,6 +3,18 @@ import { ApiResponse } from '../types/api';
 import { Servicio, Cabina, Terapeuta, Promocion, SlotDisponibilidad, Cita } from '../types/models';
 import { mockStore } from './mockData';
 
+/**
+ * ============================================================================
+ * SERVICIO PÚBLICO (publicService.ts)
+ * ============================================================================
+ * Métodos de consulta pública para clientes y flujo de reserva:
+ * - getServicios(): Lista de tratamientos y precios.
+ * - getTerapeutas(), getCabinas(): Información de staff y cabinas temáticas.
+ * - getDisponibilidad(): Consulta slots libres de 60 min por fecha/cabina.
+ * - crearReserva(): Registra una nueva cita y descuenta cupón si aplica.
+ * - getPromocionesActivas(): Lista ofertas y cupones de descuento vigentes.
+ * ============================================================================
+ */
 export interface ReservaPayload {
   dni: string;
   nombre_completo: string;

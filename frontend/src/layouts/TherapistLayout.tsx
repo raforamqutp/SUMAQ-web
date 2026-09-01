@@ -3,6 +3,16 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Sparkles, Calendar, Package, LogOut, ArrowLeft, User as UserIcon } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * PLANTILLA MAESTRA DEL TERAPEUTA: THERAPIST LAYOUT
+ * ============================================================================
+ * Entorno de trabajo enfocado en cabina para las especialistas:
+ * - Topbar Oscura: Navegación simplificada entre Agenda Diaria e Insumos.
+ * - Identificación de la Especialista: Nombre, rol y botón de logout rápido.
+ * - Botón de Retorno: Permite regresar al sitio web público en cualquier momento.
+ * ============================================================================
+ */
 export const TherapistLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();

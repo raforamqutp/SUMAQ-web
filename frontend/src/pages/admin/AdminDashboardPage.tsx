@@ -18,32 +18,44 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: DASHBOARD ADMINISTRATIVO & KPIs (Panel Ejecutivo)
+ * ============================================================================
+ * Muestra el resumen financiero y operacional del Spa en tiempo real:
+ * - Ingresos Totales, Costo de Insumos y Ganancia Operativa
+ * - Ocupación diaria calculada sobre la capacidad de las 3 cabinas (27 slots)
+ * - Conteo de citas por estado (Pendientes, Atendidas, Canceladas)
+ * - Tendencia de 7 días (Ingresos vs. Costos de Insumos)
+ * - Ranking de tratamientos más solicitados y alertas de stock crítico
+ * ============================================================================
+ */
 export const AdminDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [datosDashboard, setDatosDashboard] = useState<DashboardData | null>(null);
+  const [cargando, setCargando] = useState(true);
 
   if (user?.rol === 'RECEPCIONISTA') {
     return <Navigate to="/admin/agenda" replace />;
   }
 
-  const fetchDashboard = async () => {
-    setLoading(true);
+  const obtenerDashboard = async () => {
+    setCargando(true);
     try {
       const res = await adminService.getDashboard();
-      setData(res);
+      setDatosDashboard(res);
     } catch (err) {
-      console.error("Error loading dashboard data:", err);
+      console.error("Error cargando datos de dashboard:", err);
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboard();
+    obtenerDashboard();
   }, []);
 
-  if (loading || !data) {
+  if (cargando || !datosDashboard) {
     return (
       <div className="flex justify-center py-24">
         <div className="w-10 h-10 border-4 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
@@ -51,8 +63,8 @@ export const AdminDashboardPage: React.FC = () => {
     );
   }
 
-  const fin = data.resumen_financiero;
-  const ops = data.operaciones_hoy;
+  const resumenFinanciero = datosDashboard.resumen_financiero;
+  const operacionesHoy = datosDashboard.operaciones_hoy;
 
   return (
     <div className="space-y-8">
@@ -86,32 +98,32 @@ export const AdminDashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Ingresos Totales"
-          value={`S/ ${fin.ingresos_totales.toFixed(2)}`}
-          subtitle={`Hoy: S/ ${fin.ingresos_hoy.toFixed(2)}`}
+          value={`S/ ${resumenFinanciero.ingresos_totales.toFixed(2)}`}
+          subtitle={`Hoy: S/ ${resumenFinanciero.ingresos_hoy.toFixed(2)}`}
           icon={<DollarSign className="w-6 h-6" />}
           accentColor="bg-[#EFF8F4] text-[#24634B]"
         />
 
         <StatCard
           title="Costo de Insumos"
-          value={`S/ ${fin.costo_insumos_total.toFixed(2)}`}
-          subtitle={`Hoy: S/ ${fin.costo_insumos_hoy.toFixed(2)}`}
+          value={`S/ ${resumenFinanciero.costo_insumos_total.toFixed(2)}`}
+          subtitle={`Hoy: S/ ${resumenFinanciero.costo_insumos_hoy.toFixed(2)}`}
           icon={<Package className="w-6 h-6" />}
           accentColor="bg-[#FFF8F7] text-[#9B2C1C]"
         />
 
         <StatCard
           title="Ganancia Operativa"
-          value={`S/ ${fin.ganancia_operativa.toFixed(2)}`}
-          subtitle={`Hoy: S/ ${fin.ganancia_operativa_hoy.toFixed(2)}`}
+          value={`S/ ${resumenFinanciero.ganancia_operativa.toFixed(2)}`}
+          subtitle={`Hoy: S/ ${resumenFinanciero.ganancia_operativa_hoy.toFixed(2)}`}
           icon={<TrendingUp className="w-6 h-6" />}
           accentColor="bg-[#F2EDFF] text-[#5A3896]"
         />
 
         <StatCard
           title="Ocupación Hoy"
-          value={`${ops.tasa_ocupacion_porcentaje}%`}
-          subtitle={`${ops.citas_totales} de ${ops.capacidad_maxima} slots ocupados`}
+          value={`${operacionesHoy.tasa_ocupacion_porcentaje}%`}
+          subtitle={`${operacionesHoy.citas_totales} de ${operacionesHoy.capacidad_maxima} slots ocupados`}
           icon={<Percent className="w-6 h-6" />}
           accentColor="bg-[#F6F2EC] text-[#8C6F55]"
         />
@@ -125,19 +137,19 @@ export const AdminDashboardPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EDE5DC]">
               <span className="text-xs text-[#8C6F55] block">Total Citas:</span>
-              <span className="text-2xl font-bold font-serif text-[#2C2725]">{ops.citas_totales}</span>
+              <span className="text-2xl font-bold font-serif text-[#2C2725]">{operacionesHoy.citas_totales}</span>
             </div>
             <div className="p-4 rounded-2xl bg-[#FFF9EB] border border-[#F2D794]">
               <span className="text-xs text-[#8C6615] block">Pendientes:</span>
-              <span className="text-2xl font-bold font-serif text-[#8C6615]">{ops.citas_pendientes}</span>
+              <span className="text-2xl font-bold font-serif text-[#8C6615]">{operacionesHoy.citas_pendientes}</span>
             </div>
             <div className="p-4 rounded-2xl bg-[#EFF8F4] border border-[#A8DAC2]">
               <span className="text-xs text-[#24634B] block">Atendidas:</span>
-              <span className="text-2xl font-bold font-serif text-[#24634B]">{ops.citas_atendidas}</span>
+              <span className="text-2xl font-bold font-serif text-[#24634B]">{operacionesHoy.citas_atendidas}</span>
             </div>
             <div className="p-4 rounded-2xl bg-[#FFF2F0] border border-[#F8B4AB]">
               <span className="text-xs text-[#9B2C1C] block">Canceladas:</span>
-              <span className="text-2xl font-bold font-serif text-[#9B2C1C]">{ops.citas_canceladas}</span>
+              <span className="text-2xl font-bold font-serif text-[#9B2C1C]">{operacionesHoy.citas_canceladas}</span>
             </div>
           </div>
         </div>
@@ -150,17 +162,17 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
 
           <div className="space-y-3 pt-2">
-            {data.tendencia_7_dias.map((d) => (
+            {datosDashboard.tendencia_7_dias.map((d) => (
               <div key={d.fecha_iso} className="flex items-center gap-4 text-xs">
                 <span className="w-12 font-mono font-semibold text-[#543F30] shrink-0">{d.fecha}</span>
                 <div className="flex-1 flex gap-1 h-5 rounded-full overflow-hidden bg-[#F6F2EC] p-0.5">
                   <div
-                    style={{ width: `${Math.min(100, (d.ingresos / Math.max(1, fin.ingresos_totales || 100)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (d.ingresos / Math.max(1, resumenFinanciero.ingresos_totales || 100)) * 100)}%` }}
                     className="bg-[#8C6F55] rounded-full min-w-[6px]"
                     title={`Ingresos: S/ ${d.ingresos.toFixed(2)}`}
                   />
                   <div
-                    style={{ width: `${Math.min(100, (d.costos / Math.max(1, fin.ingresos_totales || 100)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (d.costos / Math.max(1, resumenFinanciero.ingresos_totales || 100)) * 100)}%` }}
                     className="bg-[#C84B31] rounded-full min-w-[4px]"
                     title={`Costos: S/ ${d.costos.toFixed(2)}`}
                   />
@@ -181,7 +193,7 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="bg-white rounded-3xl border border-[#EDE5DC] p-6 shadow-sm space-y-4">
           <h3 className="font-serif font-bold text-lg text-[#3D2D22]">Tratamientos Más Solicitados</h3>
           <div className="space-y-3">
-            {data.servicios_populares.map((s, idx) => (
+            {datosDashboard.servicios_populares.map((s, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between p-3.5 rounded-xl bg-[#FAF8F5] border border-[#EDE5DC] text-xs"
@@ -203,10 +215,10 @@ export const AdminDashboardPage: React.FC = () => {
           <div>
             <div className="flex items-center justify-between">
               <h3 className="font-serif font-bold text-lg text-[#3D2D22]">Estado del Inventario</h3>
-              {data.alertas.productos_criticos_conteo > 0 ? (
+              {datosDashboard.alertas.productos_criticos_conteo > 0 ? (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FFF2F0] text-[#9B2C1C] border border-[#F8B4AB] flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  {data.alertas.productos_criticos_conteo} en alerta
+                  {datosDashboard.alertas.productos_criticos_conteo} en alerta
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EFF8F4] text-[#24634B] border border-[#A8DAC2]">

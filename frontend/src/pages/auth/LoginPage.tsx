@@ -11,21 +11,21 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [correo, setCorreo] = useState('');
+  const [contrasena, setContrasena] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
+  const rutaOrigen = location.state?.from?.pathname || '/';
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const manejarEnvio = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!correo || !contrasena) {
       toast.error('Campos obligatorios', 'Por favor ingrese su correo y contraseña.');
       return;
     }
-    setLoading(true);
+    setCargando(true);
     try {
-      const data = await login(email, password);
+      const data = await login(correo, contrasena);
       toast.success('Bienvenido al sistema', `Sesion iniciada como ${data.user.nombre_completo}`);
       if (data.user.rol === 'ADMIN') {
         navigate('/admin');
@@ -34,19 +34,19 @@ export const LoginPage: React.FC = () => {
       } else if (data.user.rol === 'TERAPEUTA') {
         navigate('/terapeuta');
       } else {
-        navigate(from);
+        navigate(rutaOrigen);
       }
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Credenciales invalidas o cuenta inactiva.';
       toast.error('Error de autenticacion', msg);
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
   };
 
-  const handleQuickLogin = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
+  const manejarAccesoRapido = (correoDemo: string, contrasenaDemo: string) => {
+    setCorreo(correoDemo);
+    setContrasena(contrasenaDemo);
   };
 
   return (
@@ -71,7 +71,7 @@ export const LoginPage: React.FC = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="bg-white/90 border border-[#EDE5DC] py-8 px-6 shadow-sm rounded-2xl sm:px-10">
-          <form className="space-y-5" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={manejarEnvio}>
             <div>
               <label className="block text-xs font-semibold text-[#543F30]">
                 Correo Electronico
@@ -82,8 +82,8 @@ export const LoginPage: React.FC = () => {
                 </div>
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
                   required
                   placeholder="ejemplo@sumaqspa.pe"
                   className="block w-full pl-10 pr-3 py-2.5 bg-[#FAF8F5] border border-[#DFD0C0] rounded-xl text-sm text-[#2C2725] placeholder-[#C9B29B] focus:outline-none focus:ring-2 focus:ring-[#8C6F55] focus:border-transparent transition-all"
@@ -101,8 +101,8 @@ export const LoginPage: React.FC = () => {
                 </div>
                 <input
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={contrasena}
+                  onChange={(e) => setContrasena(e.target.value)}
                   required
                   placeholder="••••••••••••"
                   className="block w-full pl-10 pr-3 py-2.5 bg-[#FAF8F5] border border-[#DFD0C0] rounded-xl text-sm text-[#2C2725] placeholder-[#C9B29B] focus:outline-none focus:ring-2 focus:ring-[#8C6F55] focus:border-transparent transition-all"
@@ -114,7 +114,7 @@ export const LoginPage: React.FC = () => {
               type="submit"
               variant="primary"
               size="lg"
-              loading={loading}
+              loading={cargando}
               className="w-full"
             >
               Iniciar Sesion
@@ -129,7 +129,7 @@ export const LoginPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickLogin('admin@sumaqspa.pe', 'AdminSumaq2026!')}
+                onClick={() => manejarAccesoRapido('admin@sumaqspa.pe', 'AdminSumaq2026!')}
                 className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5A3896]">
@@ -141,7 +141,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('recepcion@sumaqspa.pe', 'Recepcion2026!')}
+                onClick={() => manejarAccesoRapido('recepcion@sumaqspa.pe', 'Recepcion2026!')}
                 className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#0077B6]">
@@ -153,7 +153,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('elena.morales@sumaqspa.pe', 'Terapeuta2026!')}
+                onClick={() => manejarAccesoRapido('elena.morales@sumaqspa.pe', 'Terapeuta2026!')}
                 className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8A3648]">

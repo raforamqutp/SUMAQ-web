@@ -4,6 +4,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from './Button';
 import { Sparkles, Calendar, User as UserIcon, LogOut, Menu, X, Shield, Clock } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * COMPONENTE: NAVBAR (Barra de Navegación Principal)
+ * ============================================================================
+ * Barra superior fija con soporte para Glassmorphism (desenfoque de fondo):
+ * - Logotipo institucional de Sumaq Spa
+ * - Enlaces de navegación: Inicio, Catálogo de Tratamientos, Reservar Cita
+ * - Estado dinámico de sesión: Si está logueado, muestra acceso directo a su
+ *   panel (/admin o /terapeuta) o botón para Iniciar Sesión.
+ * - Menú hamburguesa responsive para dispositivos móviles.
+ * ============================================================================
+ */
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, isAdmin, isTherapist, logout } = useAuth();
   const location = useLocation();

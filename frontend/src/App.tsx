@@ -38,13 +38,25 @@ import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
 import { AdminCashRegisterPage } from './pages/admin/AdminCashRegisterPage';
 
+/**
+ * ============================================================================
+ * ENRUTADOR PRINCIPAL DEL APLICATIVO (App.tsx)
+ * ============================================================================
+ * Estructura la arquitectura de navegación SPA:
+ * - Proveedores Globales: Router -> ToastProvider -> AuthProvider
+ * - Flujo Público (PublicLayout): Landing Page, Catálogo, Wizard de 4 pasos.
+ * - Flujo Autenticación: Login, No Autorizado (403), 404 Not Found.
+ * - Flujo Terapeuta (TherapistLayout): Protegido para rol 'TERAPEUTA' y 'ADMIN'.
+ * - Flujo Admin (AdminLayout): Protegido para roles 'ADMIN' y 'RECEPCIONISTA'.
+ * ============================================================================
+ */
 export const App: React.FC = () => {
   return (
     <Router>
       <ToastProvider>
         <AuthProvider>
           <Routes>
-            {/* Public Flow */}
+            {/* Flujo Público: Navegación libre para clientes */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
               <Route path="/servicios" element={<ServicesCatalogPage />} />
@@ -52,7 +64,7 @@ export const App: React.FC = () => {
               <Route path="/confirmacion" element={<BookingConfirmationPage />} />
             </Route>
 
-            {/* Auth Routes */}
+            {/* Vistas de Autenticación y Control de Acceso */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 

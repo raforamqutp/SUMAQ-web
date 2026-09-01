@@ -3,6 +3,16 @@ import { ApiResponse } from '../types/api';
 import { User } from '../types/models';
 import { MOCK_USERS } from './mockData';
 
+/**
+ * ============================================================================
+ * SERVICIO DE AUTENTICACIÓN (authService.ts)
+ * ============================================================================
+ * Gestiona el ciclo de vida de la sesión del usuario:
+ * - login(): Envía credenciales a /auth/login/ o recurre al mock de usuarios.
+ * - getCurrentUser(): Valida el token actual con /auth/me/.
+ * - logout(): Limpia tokens y datos de usuario de localStorage.
+ * ============================================================================
+ */
 export interface LoginResponseData {
   user: User;
   terapeuta_id?: number | null;

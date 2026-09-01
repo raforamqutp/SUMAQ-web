@@ -15,32 +15,43 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: AGENDA DEL DÍA DEL TERAPEUTA (TherapistAgendaPage)
+ * ============================================================================
+ * Panel de trabajo para los especialistas de cabina:
+ * - Filtra y lista las citas asignadas a la terapeuta logueada
+ * - Muestra la cabina asignada y horario de inicio/fin de cada tratamiento
+ * - Pestañas de filtrado: Todas, Pendientes, Completadas y Canceladas
+ * - Acceso directo a la Ficha Clínica y atención del paciente
+ * ============================================================================
+ */
 export const TherapistAgendaPage: React.FC = () => {
   const todayStr = new Date().toISOString().split('T')[0];
   const [fecha, setFecha] = useState(todayStr);
   const [citas, setCitas] = useState<Cita[]>([]);
   const [terapeuta, setTerapeuta] = useState<Terapeuta | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [cargando, setCargando] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
 
-  const fetchAgenda = async () => {
-    setLoading(true);
+  const obtenerAgenda = async () => {
+    setCargando(true);
     try {
       const data = await therapistService.getMiAgenda(fecha);
       setCitas(data.citas);
       setTerapeuta(data.terapeuta);
     } catch (err) {
-      console.error("Error loading therapist agenda:", err);
+      console.error("Error cargando agenda de terapeuta:", err);
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
   };
 
   useEffect(() => {
-    fetchAgenda();
+    obtenerAgenda();
   }, [fecha]);
 
-  const filteredCitas = citas.filter((c) => {
+  const citasFiltradas = citas.filter((c) => {
     if (filtroEstado === 'TODOS') return true;
     return c.estado === filtroEstado;
   });
@@ -93,18 +104,18 @@ export const TherapistAgendaPage: React.FC = () => {
       </div>
 
       {/* Appointments List */}
-      {loading ? (
+      {cargando ? (
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-3 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
         </div>
-      ) : filteredCitas.length === 0 ? (
+      ) : citasFiltradas.length === 0 ? (
         <div className="bg-white rounded-3xl border border-[#EDE5DC] p-12 text-center text-xs text-[#8C6F55]">
           <Calendar className="w-8 h-8 text-[#C9B29B] mx-auto mb-2" />
           No hay citas programadas para esta fecha con el filtro seleccionado.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredCitas.map((cita) => (
+          {citasFiltradas.map((cita) => (
             <div
               key={cita.id}
               className="bg-white rounded-2xl border border-[#EDE5DC] p-5 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"

@@ -16,6 +16,19 @@ import {
 } from '../types/models';
 import { mockStore } from './mockData';
 
+/**
+ * ============================================================================
+ * SERVICIO DE ADMINISTRACIÓN (adminService.ts)
+ * ============================================================================
+ * Proporciona métodos CRUD para todos los módulos operativos y financieros:
+ * - getDashboard(): KPIs financieros, ocupación de cabinas y alertas.
+ * - getCitas(), updateCitaEstado(), reprogramarCita(): Gestión de agenda.
+ * - getInventario(), registrarMovimiento(): Almacén y Kárdex.
+ * - getCabinas(), getTerapeutas(), getServicios(), getUsuarios(): Mantenimientos.
+ * - getCajaHoy(), registrarMovimientoCaja(): Flujo de caja POS.
+ * Cada método cuenta con fallback automático hacia mockStore.
+ * ============================================================================
+ */
 export const adminService = {
   // Dashboard & Analytics
   getDashboard: async (): Promise<DashboardData> => {

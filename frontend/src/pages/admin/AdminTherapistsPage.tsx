@@ -6,6 +6,16 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Users2, Plus, Edit2, ShieldCheck, Mail, DoorClosed } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: GESTIÓN DE TERAPEUTAS & ESPECIALISTAS (AdminTherapistsPage)
+ * ============================================================================
+ * Administración del personal asistencial del Spa:
+ * - Vinculación de terapeuta con su cuenta de usuario del sistema.
+ * - Asignación de cabina física de atención fija o rotativa.
+ * - Registro de especialidades (Holística, Dermoestética, Hidroterapia) y foto.
+ * ============================================================================
+ */
 export const AdminTherapistsPage: React.FC = () => {
   const { toast } = useToast();
   const [terapeutas, setTerapeutas] = useState<Terapeuta[]>([]);

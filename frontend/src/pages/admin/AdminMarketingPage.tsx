@@ -8,6 +8,16 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Tag, Plus, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: MARKETING & PROMOCIONES (AdminMarketingPage)
+ * ============================================================================
+ * Creación y control de campañas comerciales y cupones de descuento:
+ * - Código de cupón alfanumérico (ej. SUMAQ15, RELAXDAY).
+ * - Porcentaje de descuento (10% a 50%) y vigencia temporal.
+ * - Habilitación / deshabilitación inmediata de ofertas públicas.
+ * ============================================================================
+ */
 export const AdminMarketingPage: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();

@@ -21,6 +21,18 @@ import {
   Banknote,
 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: WIZARD DE RESERVA ONLINE EN 4 PASOS (BookingWizardPage)
+ * ============================================================================
+ * Flujo guiado de autoservicio para clientes de Sumaq Spa:
+ * - Paso 1 (Servicio & Fecha): Selección de tratamiento y calendario.
+ * - Paso 2 (Terapeuta & Horarios): Asignación de cabina y cálculo de slots libres.
+ * - Paso 3 (Datos Personales & Cupones): Formulario con validación y descuento.
+ * - Paso 4 (Pasarela de Pago): QR Yape/Plin, Tarjeta Débito/Crédito y Efectivo.
+ *   Genera el código único de seguimiento (SQ-YYYYMMDD-XXXX).
+ * ============================================================================
+ */
 export const BookingWizardPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
