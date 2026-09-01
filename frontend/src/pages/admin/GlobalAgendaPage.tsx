@@ -7,6 +7,21 @@ import { Button } from '../../components/Button';
 import { CalendarDays, Clock, User, Download, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+/**
+ * ============================================================================
+ * VISTA: AGENDA GLOBAL DE 3 CABINAS (Timeline de Atención Simultánea)
+ * ============================================================================
+ * Visualiza la disponibilidad y asignación de citas en 3 columnas:
+ * - Cabina 1: Terapias Holísticas y Masajes Descontracturantes
+ * - Cabina 2: Dermoestética y Cosmiatría Facial
+ * - Cabina 3: Hidroterapia y Baños Minerales
+ * 
+ * Lógica:
+ * - Filtra citas por fecha seleccionada.
+ * - Muestra slots horarios (08:00 a 16:00).
+ * - Identifica citas ocupadas y libres por cabina con badges de estado.
+ * ============================================================================
+ */
 const SLOTS_HORAS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
 
 export const GlobalAgendaPage: React.FC = () => {

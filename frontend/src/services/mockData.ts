@@ -441,7 +441,21 @@ export const MOCK_MOVIMIENTOS_CAJA: MovimientoCaja[] = [
   },
 ];
 
-// Helper Store to manage in-memory local state
+/**
+ * ============================================================================
+ * MOTOR DE PERSISTENCIA Y SIMULACIÓN RELACIONAL: LOCAL MOCK STORE
+ * ============================================================================
+ * Simula una base de datos relacional completa en memoria y en localStorage:
+ * 1. Inicializa con datos semilla (Seed Data) para la evaluación del Sprint S04.
+ * 2. Persiste citas y stock en localStorage ('sumaq_mock_citas', 'sumaq_mock_productos')
+ *    para no perder cambios al recargar la página.
+ * 3. Ejecuta cálculos transaccionales:
+ *    - Disponibilidad horaria por cabina/terapeuta
+ *    - Descuento automático de insumos al finalizar atenciones (BOM / Recetas)
+ *    - Registro de ingresos/egresos en caja chica
+ *    - Cálculo matemático reactivo de métricas para el Dashboard
+ * ============================================================================
+ */
 class LocalMockStore {
   servicios = [...MOCK_SERVICIOS];
   cabinas = [...MOCK_CABINAS];

@@ -15,6 +15,18 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: CONTROL DE INVENTARIO & KÁRDEX (AdminInventoryPage)
+ * ============================================================================
+ * Gestión logística y de almacén de insumos:
+ * - Pestaña 1 (STOCK): Existencias actuales, costo unitario, valorización total
+ *   del almacén y semáforo automático de stock crítico.
+ * - Pestaña 2 (KARDEX): Trazabilidad histórica de movimientos de entrada
+ *   (compras/ajustes) y salidas (consumo automático en citas atendidas).
+ * - Modal: Registro manual de compras y regularización física de existencias.
+ * ============================================================================
+ */
 export const AdminInventoryPage: React.FC = () => {
   const { toast } = useToast();
   const [pestanaActiva, setPestanaActiva] = useState<'STOCK' | 'KARDEX'>('STOCK');

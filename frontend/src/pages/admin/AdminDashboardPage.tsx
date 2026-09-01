@@ -18,6 +18,18 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: DASHBOARD ADMINISTRATIVO & KPIs (Panel Ejecutivo)
+ * ============================================================================
+ * Muestra el resumen financiero y operacional del Spa en tiempo real:
+ * - Ingresos Totales, Costo de Insumos y Ganancia Operativa
+ * - Ocupación diaria calculada sobre la capacidad de las 3 cabinas (27 slots)
+ * - Conteo de citas por estado (Pendientes, Atendidas, Canceladas)
+ * - Tendencia de 7 días (Ingresos vs. Costos de Insumos)
+ * - Ranking de tratamientos más solicitados y alertas de stock crítico
+ * ============================================================================
+ */
 export const AdminDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [datosDashboard, setDatosDashboard] = useState<DashboardData | null>(null);

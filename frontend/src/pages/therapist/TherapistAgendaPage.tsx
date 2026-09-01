@@ -15,6 +15,17 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * VISTA: AGENDA DEL DÍA DEL TERAPEUTA (TherapistAgendaPage)
+ * ============================================================================
+ * Panel de trabajo para los especialistas de cabina:
+ * - Filtra y lista las citas asignadas a la terapeuta logueada
+ * - Muestra la cabina asignada y horario de inicio/fin de cada tratamiento
+ * - Pestañas de filtrado: Todas, Pendientes, Completadas y Canceladas
+ * - Acceso directo a la Ficha Clínica y atención del paciente
+ * ============================================================================
+ */
 export const TherapistAgendaPage: React.FC = () => {
   const todayStr = new Date().toISOString().split('T')[0];
   const [fecha, setFecha] = useState(todayStr);

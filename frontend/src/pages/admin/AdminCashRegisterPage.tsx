@@ -16,6 +16,19 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 
+/**
+ * ============================================================================
+ * VISTA: PUNTO DE VENTA / CAJA CHICA POS (AdminCashRegisterPage)
+ * ============================================================================
+ * Maneja el ciclo completo de facturación y cobranza en mostrador:
+ * - Carrito dinámico para agregar servicios principales y productos de apoyo
+ * - Identificación del cliente y vinculación con historia clínica
+ * - Motor de cupones de descuento (ej. SUMAQBIENVENIDA 20%, RELAXDAY 15%)
+ * - Cálculo de base imponible e IGV (18%)
+ * - Métodos de pago: Efectivo (con cálculo de vuelto), Tarjeta POS y QR (Yape/Plin)
+ * - Emisión simulada de boletas en PDF
+ * ============================================================================
+ */
 interface ItemCarrito {
   id: string;
   nombre: string;

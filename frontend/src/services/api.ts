@@ -1,5 +1,17 @@
 import axios from 'axios';
 
+/**
+ * ============================================================================
+ * CAPA DE COMUNICACIÓN HTTP: AXIOS CLIENT & JWT INTERCEPTORS
+ * ============================================================================
+ * Centraliza las peticiones hacia el Backend RESTful (Django/FastAPI):
+ * - baseURL: Inyecta la variable de entorno VITE_API_URL o fallback a localhost:8000.
+ * - Request Interceptor: Inyecta automáticamente 'Authorization: Bearer <token>'
+ *   en cada petición si el usuario ha iniciado sesión.
+ * - Response Interceptor: Si recibe un código 401 (Token Expirado), intenta
+ *   renovar el access_token utilizando el refresh_token de forma transparente.
+ * ============================================================================
+ */
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
 export const apiClient = axios.create({
@@ -9,7 +21,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor: Attach JWT token if stored
+// Interceptor de Solicitudes: Adjunta token JWT si existe en localStorage
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('sumaq_access_token');

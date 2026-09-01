@@ -1,5 +1,17 @@
 import React from 'react';
 
+/**
+ * ============================================================================
+ * COMPONENTE REUTILIZABLE: STATCARD (Tarjeta de Métrica / KPI)
+ * ============================================================================
+ * Renderiza tarjetas ejecutivas para el Dashboard con:
+ * - Título del indicador en mayúsculas
+ * - Valor numérico destacado en tipografía Serif
+ * - Subtítulo descriptivo / comparativo
+ * - Icono vectorial con fondo degradado (accentColor)
+ * - Indicador de tendencia porcentual (positivo verde / negativo rojo)
+ * ============================================================================
+ */
 interface StatCardProps {
   title: string;
   value: string | number;
