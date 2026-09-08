@@ -1,3 +1,5 @@
+// Servicio de autenticación JWT: gestiona inicio de sesión, persistencia de tokens y roles de usuario
+
 import { apiClient } from './api';
 import { ApiResponse } from '../types/api';
 import { User } from '../types/models';
@@ -11,6 +13,7 @@ export interface LoginResponseData {
 }
 
 export const authService = {
+  // Autentica credenciales contra el backend Django; en caso de indisponibilidad conmuta a mock data
   login: async (email: string, password: string): Promise<LoginResponseData> => {
     try {
       const response = await apiClient.post<ApiResponse<LoginResponseData>>('/auth/login/', {
@@ -28,7 +31,7 @@ export const authService = {
       }
       return data;
     } catch {
-      // Standalone Fallback
+      // Fallback local autónomo para demostraciones y sustentaciones offline
       const normalizedEmail = email.trim().toLowerCase();
       let matchedUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail);
       let terapeutaId: number | null = null;

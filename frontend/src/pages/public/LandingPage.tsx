@@ -1,3 +1,5 @@
+// Página de inicio / Landing Page: escaparate institucional, catálogo destacado, cabinas, terapeutas y cupones
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -18,6 +20,7 @@ import {
   Star,
   MapPin,
   Phone,
+  CalendarDays,
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
@@ -28,6 +31,7 @@ export const LandingPage: React.FC = () => {
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Hidratación en paralelo mediante Promise.all para minimizar el Time-To-Interactive (TTI)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -50,6 +54,7 @@ export const LandingPage: React.FC = () => {
     fetchData();
   }, []);
 
+  // Copia el código de cupón al portapapeles y notifica mediante Toast
   const copyCoupon = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success('¡Cupón copiado!', `El código "${code}" ha sido copiado al portapapeles.`);
@@ -81,6 +86,11 @@ export const LandingPage: React.FC = () => {
             <Link to="/reservar" className="w-full sm:w-auto">
               <Button variant="primary" size="lg" className="w-full sm:w-auto" icon={<Calendar className="w-5 h-5" />}>
                 Reservar Cita Online
+              </Button>
+            </Link>
+            <Link to="/mis-citas" className="w-full sm:w-auto">
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto" icon={<CalendarDays className="w-4 h-4" />}>
+                Ver / Gestionar Mi Cita
               </Button>
             </Link>
             <Link to="/servicios" className="w-full sm:w-auto">

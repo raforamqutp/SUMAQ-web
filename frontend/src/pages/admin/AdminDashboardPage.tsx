@@ -1,5 +1,8 @@
+// Panel de control ejecutivo y KPIs administrativos: métricas financieras, ocupación de cabinas y alertas de kárdex
+
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
 import { DashboardData } from '../../types/models';
 import { StatCard } from '../../components/StatCard';
@@ -18,9 +21,16 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
+  const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Redirección defensiva RBAC: recepcionistas son derivados directamente a la agenda
+  if (user?.rol === 'RECEPCIONISTA') {
+    return <Navigate to="/admin/agenda" replace />;
+  }
+
+  // Carga de métricas consolidadas (ingresos, costos de insumos por BOM, ocupación y tendencias)
   const fetchDashboard = async () => {
     setLoading(true);
     try {

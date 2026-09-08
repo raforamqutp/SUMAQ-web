@@ -1,3 +1,5 @@
+// Barra de navegación responsiva con renderizado condicional según estado de sesión y rol RBAC
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,10 +39,10 @@ export const Navbar: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
             <Link
               to="/"
-              className={`text-sm font-medium transition-colors hover:text-[#8C6F55] ${
+              className={`text-sm font-medium whitespace-nowrap transition-colors hover:text-[#8C6F55] ${
                 isActive('/') ? 'text-[#8C6F55] font-semibold border-b-2 border-[#8C6F55] pb-1' : 'text-[#543F30]'
               }`}
             >
@@ -48,7 +50,7 @@ export const Navbar: React.FC = () => {
             </Link>
             <Link
               to="/servicios"
-              className={`text-sm font-medium transition-colors hover:text-[#8C6F55] ${
+              className={`text-sm font-medium whitespace-nowrap transition-colors hover:text-[#8C6F55] ${
                 isActive('/servicios') ? 'text-[#8C6F55] font-semibold border-b-2 border-[#8C6F55] pb-1' : 'text-[#543F30]'
               }`}
             >
@@ -56,20 +58,28 @@ export const Navbar: React.FC = () => {
             </Link>
             <a
               href="/#cabinas-terapeutas"
-              className="text-sm font-medium text-[#543F30] hover:text-[#8C6F55] transition-colors"
+              className="text-sm font-medium whitespace-nowrap text-[#543F30] hover:text-[#8C6F55] transition-colors"
             >
               Cabinas & Terapeutas
             </a>
             <a
               href="/#promociones"
-              className="text-sm font-medium text-[#543F30] hover:text-[#8C6F55] transition-colors"
+              className="text-sm font-medium whitespace-nowrap text-[#543F30] hover:text-[#8C6F55] transition-colors"
             >
               Promociones
             </a>
+            <Link
+              to="/mis-citas"
+              className={`text-sm font-medium whitespace-nowrap transition-colors hover:text-[#8C6F55] ${
+                isActive('/mis-citas') ? 'text-[#8C6F55] font-semibold border-b-2 border-[#8C6F55] pb-1' : 'text-[#543F30]'
+              }`}
+            >
+              Mis Citas
+            </Link>
           </nav>
 
           {/* Action CTAs and User Menu */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-3">
             <Link to="/reservar">
               <Button variant="primary" size="md" icon={<Calendar className="w-4 h-4" />}>
                 Reservar Cita
@@ -92,9 +102,9 @@ export const Navbar: React.FC = () => {
                     </Button>
                   </Link>
                 )}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EDE5DC] text-xs font-medium text-[#543F30]">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EDE5DC] text-xs font-medium text-[#543F30] whitespace-nowrap">
                   <UserIcon className="w-3.5 h-3.5 text-[#8C6F55]" />
-                  <span className="max-w-[120px] truncate">{user.nombre_completo.split(' ')[0]}</span>
+                  <span className="max-w-[100px] truncate">{user.nombre_completo.split(' ')[0]}</span>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -105,14 +115,19 @@ export const Navbar: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <Link to="/login" className="text-xs font-semibold text-[#8C6F55] hover:text-[#3D2D22] transition-colors">
+              <Link to="/login" className="text-xs font-semibold text-[#8C6F55] hover:text-[#3D2D22] transition-colors whitespace-nowrap pl-2">
                 Acceso Personal
               </Link>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-2">
+          {/* Mobile / Tablet Menu Button */}
+          <div className="lg:hidden flex items-center gap-2">
+            <Link to="/mis-citas">
+              <Button variant="outline" size="sm">
+                Mis Citas
+              </Button>
+            </Link>
             <Link to="/reservar">
               <Button variant="primary" size="sm">
                 Reservar
@@ -120,7 +135,8 @@ export const Navbar: React.FC = () => {
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-[#543F30] p-2 rounded-lg hover:bg-[#EDE5DC]"
+              className="text-[#543F30] p-2 rounded-lg hover:bg-[#EDE5DC] cursor-pointer"
+              aria-label="Abrir menú de navegación"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -128,9 +144,9 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Dropdown Menu */}
+      {/* Mobile / Tablet Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#FAF8F5] border-b border-[#EDE5DC] px-4 pt-2 pb-6 space-y-3">
+        <div className="lg:hidden bg-[#FAF8F5] border-b border-[#EDE5DC] px-4 pt-2 pb-6 space-y-3 shadow-lg animate-in fade-in duration-200">
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}
@@ -144,6 +160,13 @@ export const Navbar: React.FC = () => {
             className="block py-2 text-base font-medium text-[#3D2D22] border-b border-[#EDE5DC]"
           >
             Servicios & Rituales
+          </Link>
+          <Link
+            to="/mis-citas"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block py-2 text-base font-medium text-[#3D2D22] border-b border-[#EDE5DC]"
+          >
+            Mis Citas & Gestión de Reserva
           </Link>
           <a
             href="/#cabinas-terapeutas"

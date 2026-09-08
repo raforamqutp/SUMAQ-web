@@ -1,3 +1,5 @@
+// Componente Badge: mapea estados de citas, roles de usuario y semáforo de inventario a tokens cromáticos
+
 import React from 'react';
 
 interface BadgeProps {
@@ -6,6 +8,7 @@ interface BadgeProps {
 }
 
 export const Badge: React.FC<BadgeProps> = ({ status, variant = 'subtle' }) => {
+  // Normaliza el texto a mayúsculas para evitar discrepancias entre backend y UI
   const normalized = status.toUpperCase();
 
   let styles = 'bg-[#EDE5DC] text-[#543F30] border-[#DFD0C0]';

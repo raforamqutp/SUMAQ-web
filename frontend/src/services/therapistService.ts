@@ -1,3 +1,5 @@
+// Servicio para el portal de terapeuta: gestión de agenda diaria, ficha de atención clínica y cierre de citas con descuento de insumos
+
 import { apiClient } from './api';
 import { ApiResponse } from '../types/api';
 import { Cita, FichaAtencion, Producto, Terapeuta } from '../types/models';
@@ -11,6 +13,7 @@ export interface FichaAtencionPayload {
 }
 
 export const therapistService = {
+  // Consulta la agenda personalizada del terapeuta autenticado filtrando por fecha
   getMiAgenda: async (
     fecha?: string
   ): Promise<{ fecha: string; terapeuta: Terapeuta; total_citas: number; citas: Cita[] }> => {
@@ -33,6 +36,7 @@ export const therapistService = {
     }
   },
 
+  // Obtiene el expediente de la cita incluyendo servicios base, adicionales y ficha médica
   getCitaDetail: async (id: number): Promise<Cita> => {
     try {
       const response = await apiClient.get<ApiResponse<Cita>>(`/terapeuta/citas/${id}/`);
@@ -43,6 +47,7 @@ export const therapistService = {
     }
   },
 
+  // Registra la ficha inicial de diagnóstico dermatológico y antecedentes
   saveFichaAtencion: async (payload: FichaAtencionPayload): Promise<FichaAtencion> => {
     try {
       const response = await apiClient.post<ApiResponse<FichaAtencion>>('/terapeuta/fichas/', payload);
@@ -64,6 +69,7 @@ export const therapistService = {
     }
   },
 
+  // Actualiza notas de evolución clínica y diagnóstico cutáneo
   updateFichaAtencion: async (id: number, payload: Partial<FichaAtencionPayload>): Promise<FichaAtencion> => {
     try {
       const response = await apiClient.patch<ApiResponse<FichaAtencion>>(`/terapeuta/fichas/${id}/`, payload);
@@ -90,6 +96,7 @@ export const therapistService = {
     }
   },
 
+  // Agrega un servicio complementario durante la sesión recalculando subtotales y consumos
   addServicioAdicional: async (citaId: number, servicioId: number, cantidad: number = 1): Promise<Cita> => {
     try {
       const response = await apiClient.post<ApiResponse<Cita>>(`/terapeuta/citas/${citaId}/agregar-servicio/`, {
@@ -134,6 +141,7 @@ export const therapistService = {
     }
   },
 
+  // Marca la cita como ATENDIDA y descuenta atómicamente los insumos de la receta BOM
   completarCita: async (citaId: number): Promise<Cita> => {
     try {
       const response = await apiClient.patch<ApiResponse<Cita>>(`/terapeuta/citas/${citaId}/completar/`);
@@ -143,7 +151,7 @@ export const therapistService = {
       const cita = mockStore.citas.find((c) => c.id === Number(citaId)) || mockStore.citas[0];
       cita.estado = 'ATENDIDA';
 
-      // Discount inventory
+      // Descuento en memoria del inventario según receta del servicio
       if (cita.servicio?.recetas) {
         for (const r of cita.servicio.recetas) {
           const prod = mockStore.productos.find((p) => p.id === r.producto);
@@ -159,6 +167,7 @@ export const therapistService = {
     }
   },
 
+  // Consulta el stock de insumos disponible para cabina
   getInventario: async (): Promise<Producto[]> => {
     try {
       const response = await apiClient.get<ApiResponse<Producto[]>>('/terapeuta/inventario/');
@@ -169,6 +178,7 @@ export const therapistService = {
     }
   },
 
+  // Genera URL autenticada para visualización o impresión directa del comprobante PDF
   getComprobantePDFUrl: (citaId: number): string => {
     const token = localStorage.getItem('sumaq_access_token');
     return token
@@ -176,3 +186,4 @@ export const therapistService = {
       : `http://127.0.0.1:8000/api/terapeuta/citas/${citaId}/pdf/`;
   },
 };
+

@@ -1,3 +1,5 @@
+// Layout para el portal de terapeutas: navegación rápida a agenda diaria e inventario de insumos
+
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

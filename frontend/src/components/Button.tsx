@@ -1,3 +1,5 @@
+// Botón polimórfico reutilizable con soporte para variantes de marca, estados de carga e íconos
+
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

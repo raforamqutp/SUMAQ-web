@@ -15,7 +15,9 @@ import {
   FichaAtencion
 } from '../types/models';
 
-// Default Seed Data
+// Semilla de datos iniciales y almacén reactivo en memoria para fallback autónomo y testing
+
+// Cabinas temáticas predeterminadas del centro de bienestar
 export const MOCK_CABINAS: Cabina[] = [
   {
     id: 1,
@@ -441,7 +443,7 @@ export const MOCK_MOVIMIENTOS_CAJA: MovimientoCaja[] = [
   },
 ];
 
-// Helper Store to manage in-memory local state
+// Store en memoria para gestión de estado local con persistencia en Web Storage
 class LocalMockStore {
   servicios = [...MOCK_SERVICIOS];
   cabinas = [...MOCK_CABINAS];
@@ -482,6 +484,7 @@ class LocalMockStore {
     }
   }
 
+  // Genera matriz de 9 slots de 60 min (08:00 a 17:00) verificando solapamiento contra citas existentes
   getDisponibilidad(fecha: string, _servicioId?: number, terapeutaId?: number, cabinaId?: number) {
     const hours = [
       { start: '08:00:00', end: '09:00:00' },
@@ -499,7 +502,7 @@ class LocalMockStore {
     const cabina = this.cabinas.find((c) => c.id === (cabinaId || terapeuta.cabina_id)) || this.cabinas[0];
 
     const slots: SlotDisponibilidad[] = hours.map((h) => {
-      // Check if slot is occupied
+      // Comprueba si el slot ya está ocupado por una cita activa (no cancelada)
       const occupied = this.citas.some(
         (c) =>
           c.fecha === fecha &&
@@ -524,6 +527,7 @@ class LocalMockStore {
     return { fecha, slots };
   }
 
+  // Motor de creación de reserva con deduplicación de cliente por DNI y cálculo de cupón
   reservarWeb(payload: any): Cita {
     let cliente = this.clientes.find((c) => c.dni === payload.dni);
     if (!cliente) {
@@ -580,6 +584,7 @@ class LocalMockStore {
     return newCita;
   }
 
+  // Genera métricas financieras consolidadas y agregación de reservas
   getDashboard(): DashboardData {
     const revenue = this.citas
       .filter((c) => c.estado === 'ATENDIDA')
@@ -624,6 +629,74 @@ class LocalMockStore {
         { servicio__nombre: 'Envoltura Corporal & Hidroterapia', total: 8 },
       ],
     };
+  }
+
+  // Consulta pública de cita para el cliente mediante Código de Reserva + DNI con cálculo de regla 24h
+  consultarCita(codigo: string, dni: string): {
+    cita: Cita;
+    horas_restantes: number;
+    puede_modificar: boolean;
+    motivo_bloqueo: string | null;
+  } {
+    const cleanCode = codigo.trim().toUpperCase();
+    const cleanDni = dni.trim();
+
+    const cita = this.citas.find(
+      (c) => c.codigo_reserva?.toUpperCase() === cleanCode && c.cliente?.dni === cleanDni
+    );
+
+    if (!cita) {
+      throw new Error("No se encontró ninguna cita con el código de reserva y DNI proporcionados. Verifique los datos ingresados.");
+    }
+
+    const dtCita = new Date(`${cita.fecha}T${cita.hora_inicio}`);
+    const ahora = new Date();
+    const diffMs = dtCita.getTime() - ahora.getTime();
+    const horasRestantes = Number((diffMs / (1000 * 60 * 60)).toFixed(1));
+
+    const puedeModificar = cita.estado === 'PENDIENTE' && horasRestantes >= 24;
+    const motivoBloqueo = puedeModificar
+      ? null
+      : cita.estado !== 'PENDIENTE'
+      ? 'La cita ya ha sido completada o cancelada previamente.'
+      : `Por política de cancelación, las modificaciones online requieren al menos 24 horas de anticipación (quedan ${horasRestantes}h).`;
+
+    return {
+      cita,
+      horas_restantes: horasRestantes,
+      puede_modificar: puedeModificar,
+      motivo_bloqueo: motivoBloqueo,
+    };
+  }
+
+  // Cancelación de reserva por parte del cliente con validación de la regla de 24 horas
+  cancelarCitaWeb(codigo: string, dni: string, _motivo?: string): Cita {
+    const info = this.consultarCita(codigo, dni);
+    if (!info.puede_modificar) {
+      throw new Error(info.motivo_bloqueo || "No es posible cancelar la cita con menos de 24 horas de anticipación.");
+    }
+
+    info.cita.estado = 'CANCELADA';
+    this.saveToStorage();
+    return info.cita;
+  }
+
+  // Reprogramación de fecha y hora de la cita con validación de 24 horas
+  reprogramarCitaWeb(codigo: string, dni: string, nuevaFecha: string, nuevaHora: string): Cita {
+    const info = this.consultarCita(codigo, dni);
+    if (!info.puede_modificar) {
+      throw new Error(info.motivo_bloqueo || "No es posible reprogramar la cita con menos de 24 horas de anticipación.");
+    }
+
+    const [h, m] = nuevaHora.split(':');
+    const horaFin = `${String(Number(h) + 1).padStart(2, '0')}:${m}:00`;
+
+    info.cita.fecha = nuevaFecha;
+    info.cita.hora_inicio = nuevaHora.length === 5 ? `${nuevaHora}:00` : nuevaHora;
+    info.cita.hora_fin = horaFin;
+
+    this.saveToStorage();
+    return info.cita;
   }
 }
 

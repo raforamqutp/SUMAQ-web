@@ -1,3 +1,5 @@
+// Página de autenticación: procesamiento de login, control de sesión JWT y enrutamiento condicional por rol
+
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,6 +19,7 @@ export const LoginPage: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/';
 
+  // Envía credenciales al backend y redirige al panel según el rol del usuario autenticado
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {

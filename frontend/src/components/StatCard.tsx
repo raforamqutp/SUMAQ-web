@@ -1,3 +1,5 @@
+// Tarjeta de métricas KPI para dashboards ejecutivos con indicador de tendencia comparativa
+
 import React from 'react';
 
 interface StatCardProps {

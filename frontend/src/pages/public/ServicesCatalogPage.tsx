@@ -1,3 +1,5 @@
+// Catálogo público de servicios: listado de tratamientos, precios, duración y fórmula de insumos (BOM)
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -9,6 +11,7 @@ export const ServicesCatalogPage: React.FC = () => {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Carga el catálogo público de servicios y recetas desde el backend Django
   useEffect(() => {
     const fetchServices = async () => {
       try {

@@ -1,3 +1,5 @@
+// Servicio de administración y operaciones: KPIs financieros, agenda global, kárdex, recetas BOM y caja
+
 import { apiClient } from './api';
 import { ApiResponse, ApiPaginatedData } from '../types/api';
 import {
@@ -17,7 +19,7 @@ import {
 import { mockStore } from './mockData';
 
 export const adminService = {
-  // Dashboard & Analytics
+  // Resumen ejecutivo de métricas financieras, tasa de ocupación diaria y alertas de stock
   getDashboard: async (): Promise<DashboardData> => {
     try {
       const response = await apiClient.get<ApiResponse<DashboardData>>('/admin/dashboard/');
@@ -192,6 +194,7 @@ export const adminService = {
     }
   },
 
+  // Movimientos de inventario: registro de entradas por compra y ajustes físicos
   getMovimientosInventario: async (productoId?: number): Promise<MovimientoInventario[]> => {
     try {
       const params = productoId ? `?producto_id=${productoId}` : '';
@@ -208,6 +211,7 @@ export const adminService = {
     }
   },
 
+  // Registra asiento manual en el kárdex actualizando el stock disponible del insumo
   registrarMovimientoManual: async (payload: {
     producto_id: number;
     tipo: string;
@@ -299,7 +303,7 @@ export const adminService = {
     }
   },
 
-  // Servicios & Recetas (BOM)
+  // Gestión de servicios y fórmulas de insumos (Bill of Materials / BOM)
   getServicios: async (): Promise<Servicio[]> => {
     try {
       const response = await apiClient.get<any>('/admin/servicios/');
@@ -353,6 +357,7 @@ export const adminService = {
     }
   },
 
+  // Vincula un insumo y su cantidad requerida a la receta del servicio
   addRecetaItem: async (
     servicioId: number,
     payload: { producto_id: number; cantidad_requerida: number }

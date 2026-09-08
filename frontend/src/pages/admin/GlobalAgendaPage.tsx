@@ -1,3 +1,5 @@
+// Vista matriz de agenda simultánea: monitoreo de ocupación de las 3 cabinas físicas en franjas horarias de 08:00 a 17:00
+
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { downloadPdf } from '../../services/api';
@@ -7,6 +9,7 @@ import { Button } from '../../components/Button';
 import { CalendarDays, Clock, User, Download, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// Slots horarios operativos del centro de bienestar (bloques de 60 minutos)
 const SLOTS_HORAS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
 
 export const GlobalAgendaPage: React.FC = () => {
@@ -16,6 +19,7 @@ export const GlobalAgendaPage: React.FC = () => {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Consulta concurrente de cabinas y citas del día seleccionado
   const fetchData = async () => {
     setLoading(true);
     try {

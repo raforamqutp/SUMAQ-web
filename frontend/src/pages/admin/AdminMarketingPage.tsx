@@ -1,4 +1,8 @@
+// Gestión de marketing y fidelización: CRUD de cupones de descuento, control de vigencia y activación comercial
+
 import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
 import { Promocion } from '../../types/models';
 import { Button } from '../../components/Button';
@@ -7,11 +11,12 @@ import { useToast } from '../../contexts/ToastContext';
 import { Tag, Plus, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
 export const AdminMarketingPage: React.FC = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
+  // Formulario modal para creación y edición de cupones
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promocion | null>(null);
   const [titulo, setTitulo] = useState('');
@@ -23,6 +28,12 @@ export const AdminMarketingPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Redirección de seguridad: solo administradores tienen acceso a la configuración de descuentos
+  if (user?.rol === 'RECEPCIONISTA') {
+    return <Navigate to="/admin/agenda" replace />;
+  }
+
+  // Carga de la lista completa de cupones y campañas promocionales
   const fetchPromociones = async () => {
     setLoading(true);
     try {

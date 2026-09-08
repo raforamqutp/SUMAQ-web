@@ -1,3 +1,5 @@
+// Panel de agenda diaria del terapeuta: visualización de turnos, estado de citas y acceso a fichas clínicas
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { therapistService } from '../../services/therapistService';
@@ -23,6 +25,7 @@ export const TherapistAgendaPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
 
+  // Consulta la agenda del terapeuta autenticado para la fecha seleccionada
   const fetchAgenda = async () => {
     setLoading(true);
     try {
@@ -36,10 +39,12 @@ export const TherapistAgendaPage: React.FC = () => {
     }
   };
 
+  // Recarga automática de la lista al modificar la fecha de consulta
   useEffect(() => {
     fetchAgenda();
   }, [fecha]);
 
+  // Filtrado en memoria de citas por estado (PENDIENTE, ATENDIDA, CANCELADA o TODOS)
   const filteredCitas = citas.filter((c) => {
     if (filtroEstado === 'TODOS') return true;
     return c.estado === filtroEstado;

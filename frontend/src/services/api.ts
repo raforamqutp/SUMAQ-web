@@ -1,3 +1,5 @@
+// Cliente HTTP centralizado con Axios, inyección de token JWT y auto-refresh
+
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
@@ -9,7 +11,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor: Attach JWT token if stored
+// Interceptor de solicitudes: adjunta el token JWT de acceso en cabeceras de autorización
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('sumaq_access_token');
@@ -21,7 +23,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: standard error extraction & token refresh handling
+// Interceptor de respuestas: renueva el access token con el refresh token si expira (401)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -42,7 +44,7 @@ apiClient.interceptors.response.use(
           localStorage.removeItem('sumaq_access_token');
           localStorage.removeItem('sumaq_refresh_token');
           localStorage.removeItem('sumaq_user');
-          // If on a protected route, could redirect
+          // En caso de fallo de refresh, la sesión se invalida y el contexto redirigirá a login
         }
       }
     }
@@ -50,6 +52,7 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Descarga segura de comprobantes PDF mediante streaming Blob con fallback a URL autenticada
 export async function downloadPdf(endpointUrl: string, defaultFilename: string = 'Comprobante_Sumaq.pdf') {
   try {
     const response = await apiClient.get(endpointUrl, {
