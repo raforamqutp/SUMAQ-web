@@ -1,3 +1,5 @@
+// Gestión del equipo de especialistas: asignación de cabinas físicas, perfiles profesionales y vinculación con cuentas de usuario
+
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { Terapeuta, Cabina, User } from '../../types/models';
@@ -6,16 +8,6 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Users2, Plus, Edit2, ShieldCheck, Mail, DoorClosed } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: GESTIÓN DE TERAPEUTAS & ESPECIALISTAS (AdminTherapistsPage)
- * ============================================================================
- * Administración del personal asistencial del Spa:
- * - Vinculación de terapeuta con su cuenta de usuario del sistema.
- * - Asignación de cabina física de atención fija o rotativa.
- * - Registro de especialidades (Holística, Dermoestética, Hidroterapia) y foto.
- * ============================================================================
- */
 export const AdminTherapistsPage: React.FC = () => {
   const { toast } = useToast();
   const [terapeutas, setTerapeutas] = useState<Terapeuta[]>([]);
@@ -23,7 +15,7 @@ export const AdminTherapistsPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
+  // Formulario modal para perfil y asignación de terapeuta
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTerapeuta, setEditingTerapeuta] = useState<Terapeuta | null>(null);
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
@@ -33,6 +25,7 @@ export const AdminTherapistsPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Carga concurrente de terapeutas, cabinas y usuarios con rol TERAPEUTA
   const fetchData = async () => {
     setLoading(true);
     try {

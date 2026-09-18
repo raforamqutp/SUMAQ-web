@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /terapeuta/
+
+Sitemap: https://sumaqspa.pe/sitemap.xml

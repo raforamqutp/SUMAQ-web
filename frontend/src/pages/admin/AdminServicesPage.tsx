@@ -1,3 +1,5 @@
+// Catálogo de servicios y recetas de insumos (BOM): definición de precios, duración y fórmula de descuento de insumos por sesión
+
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { Servicio, Producto } from '../../types/models';
@@ -6,23 +8,13 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Sparkles, Plus, Edit2, Trash2, Clock, Droplets, X } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: SERVICIOS & RECETAS DE INSUMOS BOM (AdminServicesPage)
- * ============================================================================
- * Catálogo de tratamientos y formulación de insumos (Bill of Materials):
- * - Nombre del servicio, precio al público, duración y fotografía en alta calidad.
- * - Constructor de Recetas: Permite asociar insumos del almacén con cantidades
- *   exactas requeridas por cada tratamiento para deducir automáticamente del Kárdex.
- * ============================================================================
- */
 export const AdminServicesPage: React.FC = () => {
   const { toast } = useToast();
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
+  // Formulario modal para creación y edición de servicios y su receta (BOM)
   const [modalOpen, setModalOpen] = useState(false);
   const [editingServicio, setEditingServicio] = useState<Servicio | null>(null);
   const [nombre, setNombre] = useState('');
@@ -32,10 +24,11 @@ export const AdminServicesPage: React.FC = () => {
   const [imagenUrl, setImagenUrl] = useState('');
   const [activo, setActivo] = useState(true);
 
-  // Recipe items state in modal
+  // Lista dinámica de insumos requeridos por el servicio (RecetaServicio)
   const [recetasItems, setRecetasItems] = useState<Array<{ producto_id: number; cantidad_requerida: number }>>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  // Carga concurrente del catálogo de servicios y productos disponibles para recetas
   const fetchData = async () => {
     setLoading(true);
     try {

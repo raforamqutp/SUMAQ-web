@@ -1,3 +1,5 @@
+// Administración central de citas y reservas: búsqueda por DNI/código, filtrado por estado y descarga de comprobantes
+
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { downloadPdf } from '../../services/api';
@@ -15,26 +17,17 @@ import {
   XCircle,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: GESTIÓN DE CITAS & RESERVAS (AdminAppointmentsPage)
- * ============================================================================
- * Panel de consulta y administración global de todas las citas del spa:
- * - Filtros por texto (nombre, DNI, código de reserva), estado y fecha.
- * - Cambios de estado en un clic (Confirmar, Atender, Cancelar).
- * - Exportación / descarga de comprobantes en PDF.
- * ============================================================================
- */
 export const AdminAppointmentsPage: React.FC = () => {
   const { toast } = useToast();
   const [citas, setCitas] = useState<Cita[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filtros combinados de búsqueda (DNI, código, estado y fecha)
   const [search, setSearch] = useState('');
   const [estado, setEstado] = useState('');
   const [fecha, setFecha] = useState('');
 
+  // Consulta paginada/filtrada al backend con normalización de estructura de datos
   const fetchCitas = async () => {
     setLoading(true);
     try {
@@ -55,11 +48,13 @@ export const AdminAppointmentsPage: React.FC = () => {
     fetchCitas();
   }, [estado, fecha]);
 
+  // Manejador del formulario de búsqueda por texto o DNI
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchCitas();
   };
 
+  // Actualización administrativa del estado de la cita (ej. cancelación anticipada)
   const handleUpdateStatus = async (id: number, nuevoEstado: 'PENDIENTE' | 'ATENDIDA' | 'CANCELADA') => {
     try {
       await adminService.updateCitaEstado(id, nuevoEstado);

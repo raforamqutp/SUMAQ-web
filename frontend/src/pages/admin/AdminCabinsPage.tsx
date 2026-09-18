@@ -1,3 +1,5 @@
+// Administración de cabinas temáticas: configuración de espacios físicos (Holística, Dermoestética, Hidroterapia) y estado de operatividad
+
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { Cabina } from '../../types/models';
@@ -6,23 +8,12 @@ import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { DoorClosed, Plus, Edit2 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: GESTIÓN DE CABINAS EXCLUSIVAS (AdminCabinsPage)
- * ============================================================================
- * Mantenimiento CRUD de la infraestructura física del Spa:
- * - Cabina 1: Terapias Holísticas y Masajes Descontracturantes.
- * - Cabina 2: Dermoestética y Cosmiatría Facial Avanzada.
- * - Cabina 3: Hidroterapia y Baños Minerales.
- * - Habilitación / Deshabilitación de cabinas por mantenimiento.
- * ============================================================================
- */
 export const AdminCabinsPage: React.FC = () => {
   const { toast } = useToast();
   const [cabinas, setCabinas] = useState<Cabina[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
+  // Formulario modal para registro y modificación de cabinas
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCabina, setEditingCabina] = useState<Cabina | null>(null);
   const [nombre, setNombre] = useState('');
@@ -31,6 +22,7 @@ export const AdminCabinsPage: React.FC = () => {
   const [activa, setActiva] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Carga del catálogo de las 3 cabinas físicas del centro
   const fetchCabinas = async () => {
     setLoading(true);
     try {
