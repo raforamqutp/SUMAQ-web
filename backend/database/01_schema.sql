@@ -106,7 +106,7 @@ CREATE TABLE `recetas_servicio` (
   `cantidad_requerida` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
   UNIQUE KEY `uk_servicio_producto` (`servicio_id`, `producto_id`),
   CONSTRAINT `fk_recetas_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_recetas_producto` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`) ON DELETE PROTECT
+  CONSTRAINT `fk_recetas_producto` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. TABLA PROMOCIONES (Campañas de marketing y cupones de descuento)
@@ -144,10 +144,10 @@ CREATE TABLE `citas` (
   `codigo_cupon_aplicado` VARCHAR(50) NOT NULL DEFAULT '',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT `fk_citas_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE PROTECT,
-  CONSTRAINT `fk_citas_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE PROTECT,
-  CONSTRAINT `fk_citas_terapeuta` FOREIGN KEY (`terapeuta_id`) REFERENCES `terapeutas` (`id`) ON DELETE PROTECT,
-  CONSTRAINT `fk_citas_cabina` FOREIGN KEY (`cabina_id`) REFERENCES `cabinas` (`id`) ON DELETE PROTECT,
+  CONSTRAINT `fk_citas_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_citas_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_citas_terapeuta` FOREIGN KEY (`terapeuta_id`) REFERENCES `terapeutas` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_citas_cabina` FOREIGN KEY (`cabina_id`) REFERENCES `cabinas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_citas_promocion` FOREIGN KEY (`promocion_id`) REFERENCES `promociones` (`id`) ON DELETE SET NULL,
   INDEX `idx_cita_terapeuta_slot` (`fecha`, `terapeuta_id`, `hora_inicio`, `hora_fin`, `estado`),
   INDEX `idx_cita_cabina_slot` (`fecha`, `cabina_id`, `hora_inicio`, `hora_fin`, `estado`),
@@ -179,7 +179,7 @@ CREATE TABLE `servicios_adicionales_atencion` (
   `subtotal` DECIMAL(10,2) NOT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_servicios_adicionales_ficha` FOREIGN KEY (`ficha_atencion_id`) REFERENCES `fichas_atencion` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_servicios_adicionales_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE PROTECT
+  CONSTRAINT `fk_servicios_adicionales_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 12. TABLA MOVIMIENTOS DE INVENTARIO (Kárdex valorizado)
