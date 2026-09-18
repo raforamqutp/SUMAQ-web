@@ -1,3 +1,5 @@
+// Catálogo público de servicios: listado de tratamientos, precios, duración y fórmula de insumos (BOM)
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -5,19 +7,11 @@ import { Servicio } from '../../types/models';
 import { Button } from '../../components/Button';
 import { Sparkles, Clock, Calendar, Droplets } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: CATÁLOGO DE SERVICIOS & TRATAMIENTOS (ServicesCatalogPage)
- * ============================================================================
- * Muestra la lista completa de rituales y sesiones de bienestar:
- * - Filtros visuales, duración en minutos y precio público en Soles (S/).
- * - Botón "Reservar Este Tratamiento" que preselecciona el servicio en el Wizard.
- * ============================================================================
- */
 export const ServicesCatalogPage: React.FC = () => {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Carga el catálogo público de servicios y recetas desde el backend Django
   useEffect(() => {
     const fetchServices = async () => {
       try {

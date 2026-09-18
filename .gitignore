@@ -3,3 +3,16 @@ dist/
 .env
 .DS_Store
 *.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+.pytest_cache/
+venv/
+env/
+ENV/
+
+# Reference repository
+final/

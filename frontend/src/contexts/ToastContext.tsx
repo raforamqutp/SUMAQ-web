@@ -1,20 +1,8 @@
+// Sistema de notificaciones contextuales tipo Toast con auto-cierre temporizado y estilos según severidad
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-/**
- * ============================================================================
- * CONTEXTO GLOBAL: TOAST CONTEXT (Notificaciones Flotantes)
- * ============================================================================
- * Proporciona un sistema de alertas no invasivas que aparecen en la esquina
- * inferior derecha de la pantalla y desaparecen automáticamente a los 4.5s.
- * 
- * Métodos disponibles mediante useToast():
- * - toast.success('Título', 'Mensaje opcional') -> Verde
- * - toast.error('Título', 'Mensaje opcional')   -> Rojo
- * - toast.warning('Título', 'Mensaje opcional') -> Ámbar
- * - toast.info('Título', 'Mensaje opcional')    -> Tierra/Neutro
- * ============================================================================
- */
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface Toast {
@@ -38,6 +26,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Encola un nuevo toast con identificador único y programa su auto-destrucción a los 4.5 segundos
   const addToast = useCallback((type: ToastType, title: string, message?: string) => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, title, message }]);

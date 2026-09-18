@@ -1,19 +1,9 @@
+// Contexto global de autenticación y autorización basada en roles (RBAC) para Sumaq Spa
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types/models';
 import { authService, LoginResponseData } from '../services/authService';
 
-/**
- * ============================================================================
- * CONTEXTO GLOBAL: AUTH CONTEXT (Gestión de Sesión & Roles)
- * ============================================================================
- * Maneja el estado global de autenticación en todo el árbol de React:
- * - user: Datos del usuario autenticado (nombre, correo, rol)
- * - terapeutaId: ID asignado en caso de que el rol sea 'TERAPEUTA'
- * - token: JWT de acceso persistido en localStorage ('sumaq_access_token')
- * - isAuthenticated: Booleano derivado (true si existen user y token)
- * - login / logout: Métodos globales para iniciar y cerrar sesión
- * ============================================================================
- */
 interface AuthContextType {
   user: User | null;
   terapeutaId: number | null;
@@ -34,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('sumaq_access_token'));
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Inicializa la sesión validando el token persistido contra el endpoint /auth/me/
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('sumaq_access_token');

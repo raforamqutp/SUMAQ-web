@@ -1,3 +1,5 @@
+// Detalle de atención clínica del terapeuta: edición de anamnesis, adición de tratamientos y cierre con descuento atómico de insumos
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { therapistService } from '../../services/therapistService';
@@ -23,17 +25,6 @@ import {
   Droplets,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: FICHA CLÍNICA & ATENCIÓN DEL PACIENTE (TherapistAppointmentDetailPage)
- * ============================================================================
- * Espacio de trabajo directo en cabina durante la sesión:
- * - Datos del paciente, alergias conocidas y diagnóstico del tipo de piel.
- * - Desglose de insumos de la receta que se consumirán durante el tratamiento.
- * - Registro de notas de evolución, observaciones dermatológicas y recomendaciones.
- * - Botón "Finalizar Atención": Cambia el estado a ATENDIDA y descuenta el stock del Kárdex.
- * ============================================================================
- */
 export const TherapistAppointmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const citaId = parseInt(id || '0', 10);
@@ -44,22 +35,23 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
   const [serviciosDisponibles, setServiciosDisponibles] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Ficha de Atención Form State
+  // Formulario de ficha de atención estética (tipo de piel, alergias y evolución clínica)
   const [tipoPiel, setTipoPiel] = useState('');
   const [alergias, setAlergias] = useState('');
   const [notas, setNotas] = useState('');
   const [savingFicha, setSavingFicha] = useState(false);
 
-  // Extra Service Modal State
+  // Modal para agregar servicios/tratamientos adicionales en tiempo de atención
   const [extraModalOpen, setExtraModalOpen] = useState(false);
   const [selectedExtraServicioId, setSelectedExtraServicioId] = useState<number | null>(null);
   const [extraCantidad, setExtraCantidad] = useState(1);
   const [addingExtra, setAddingExtra] = useState(false);
 
-  // Complete Appointment Confirmation Modal State
+  // Modal de confirmación para cierre definitivo de la atención
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
 
+  // Carga concurrente de la cita actual y catálogo general de servicios para adicionales
   const fetchDetails = async () => {
     setLoading(true);
     try {
@@ -70,7 +62,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
       setCita(citaData);
       setServiciosDisponibles(servs);
 
-      // Populate clinical sheet fields if already registered
+      // Precarga los campos de anamnesis si la cita ya contaba con ficha previa
       if (citaData.ficha_atencion) {
         setTipoPiel(citaData.ficha_atencion.tipo_piel || '');
         setAlergias(citaData.ficha_atencion.alergias_conocidas || '');
@@ -88,7 +80,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
     fetchDetails();
   }, [citaId]);
 
-  // Save Clinical Sheet
+  // Persiste o actualiza la ficha clínica en la base de datos
   const handleSaveFicha = async () => {
     if (!cita) return;
     setSavingFicha(true);
@@ -116,7 +108,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
     }
   };
 
-  // Add Extra Treatment / Service
+  // Registra un tratamiento adicional y descuenta en backend los insumos correspondientes a su receta
   const handleAddExtraService = async () => {
     if (!selectedExtraServicioId || !cita) return;
     setAddingExtra(true);
@@ -135,7 +127,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
     }
   };
 
-  // Complete Appointment
+  // Cierre de cita: cambia estado a ATENDIDA y descuenta automáticamente los insumos del servicio base
   const handleCompleteAppointment = async () => {
     if (!cita) return;
     setCompleting(true);

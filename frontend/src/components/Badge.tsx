@@ -1,28 +1,18 @@
+// Componente Badge: mapea estados de citas, roles de usuario y semáforo de inventario a tokens cromáticos
+
 import React from 'react';
 
-/**
- * ============================================================================
- * COMPONENTE REUTILIZABLE: BADGE (Insignia de Estado)
- * ============================================================================
- * Mapea automáticamente palabras clave de negocio a estilos visuales:
- * - Verde (Éxito): 'ATENDIDA', 'NORMAL', 'COMPLETADA'
- * - Amarillo (Advertencia): 'PENDIENTE', 'BAJO'
- * - Rojo (Alerta crítica): 'CANCELADA', 'CRITICO', 'CRÍTICO'
- * - Morado / Azul / Rosa (Roles): 'ADMIN', 'RECEPCIONISTA', 'TERAPEUTA'
- * ============================================================================
- */
 interface BadgeProps {
   status: string;
   variant?: 'solid' | 'subtle';
 }
 
 export const Badge: React.FC<BadgeProps> = ({ status, variant = 'subtle' }) => {
+  // Normaliza el texto a mayúsculas para evitar discrepancias entre backend y UI
   const normalized = status.toUpperCase();
 
-  // Color neutro por defecto
   let styles = 'bg-[#EDE5DC] text-[#543F30] border-[#DFD0C0]';
 
-  // Lógica condicional de asignación cromática
   if (normalized === 'PENDIENTE') {
     styles = 'bg-[#FFF9EB] text-[#8C6615] border-[#F2D794]';
   } else if (normalized === 'ATENDIDA' || normalized === 'NORMAL' || normalized === 'COMPLETADA') {

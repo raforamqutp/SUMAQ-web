@@ -1,17 +1,5 @@
-/**
- * ============================================================================
- * MODELOS DE DATOS DEL NEGOCIO (TypeScript Interfaces)
- * ============================================================================
- * Define la estructura y tipado estricto para todas las entidades:
- * - User: Usuarios del sistema interno (Admin, Recepcionista, Terapeuta)
- * - Cliente: Pacientes del spa con DNI, contacto e historial clínico
- * - Cabina: 3 Cabinas temáticas (Holística, Dermoestética, Hidroterapia)
- * - Terapeuta: Especialistas de bienestar asignadas a cabinas
- * - Producto & MovimientoInventario: Kárdex, stock y costos de insumos
- * - Servicio & RecetaServicio: Catálogo de tratamientos y recetas de insumos
- * - Cita: Reservas con horario, cabina, terapeuta, montos y estados
- * ============================================================================
- */
+// Modelos de dominio y contratos TypeScript que mapean las entidades ORM de Django (Sumaq Spa)
+
 export interface User {
   id: number;
   email: string;
@@ -79,6 +67,7 @@ export interface MovimientoInventario {
   descripcion: string;
 }
 
+// Lista de materiales (BOM) asociada a un servicio para descuento automático de stock
 export interface RecetaServicio {
   id: number;
   producto: number;
@@ -120,6 +109,7 @@ export interface ServicioAdicionalAtencion {
   created_at: string;
 }
 
+// Ficha clínica confidencial diligenciada por el terapeuta durante la sesión
 export interface FichaAtencion {
   id: number;
   tipo_piel: string;
@@ -130,6 +120,7 @@ export interface FichaAtencion {
   updated_at: string;
 }
 
+// Entidad central de reserva: coordina cliente, terapeuta, cabina, facturación y ficha médica
 export interface Cita {
   id: number;
   codigo_reserva: string;

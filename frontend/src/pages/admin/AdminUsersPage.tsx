@@ -1,3 +1,5 @@
+// Módulo de administración de usuarios y control de acceso basado en roles (RBAC): cuentas ADMIN, RECEPCIONISTA y TERAPEUTA
+
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { User } from '../../types/models';
@@ -7,22 +9,12 @@ import { Badge } from '../../components/Badge';
 import { useToast } from '../../contexts/ToastContext';
 import { UserCog, Plus, Edit2, Shield, User as UserIcon } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: GESTIÓN DE USUARIOS & ROLES (AdminUsersPage)
- * ============================================================================
- * Control de acceso al sistema y administración de cuentas internas:
- * - Creación de credenciales para Administradores, Recepcionistas y Terapeutas.
- * - Modificación de datos de perfil, correo y contraseñas.
- * - Activación o bloqueo de cuentas de usuario.
- * ============================================================================
- */
 export const AdminUsersPage: React.FC = () => {
   const { toast } = useToast();
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
+  // Formulario modal para creación y edición de credenciales de usuario
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [nombreCompleto, setNombreCompleto] = useState('');
@@ -32,6 +24,7 @@ export const AdminUsersPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Consulta de usuarios registrados en el backend con sus respectivos roles y estados
   const fetchUsers = async () => {
     setLoading(true);
     try {

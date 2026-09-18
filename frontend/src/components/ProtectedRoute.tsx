@@ -1,17 +1,9 @@
+// Guardián de rutas (Route Guard) para control de acceso RBAC y redirección a login o unauthorized
+
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-/**
- * ============================================================================
- * COMPONENTE DE SEGURIDAD: PROTECTED ROUTE (Guardián de Rutas)
- * ============================================================================
- * Protege las vistas privadas del sistema verificando:
- * 1. Si la sesión está cargando -> Muestra spinner elegante de carga.
- * 2. Si el usuario no está autenticado -> Redirige a /login recordando la ruta de origen.
- * 3. Si el rol del usuario no está en allowedRoles -> Redirige a /unauthorized (403).
- * ============================================================================
- */
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles: Array<'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA'>;
@@ -21,6 +13,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
+  // Espera a que el contexto de autenticación concluya la verificación del token en storage
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">

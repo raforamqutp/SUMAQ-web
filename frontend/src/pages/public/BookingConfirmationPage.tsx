@@ -1,3 +1,5 @@
+// Vista de confirmación de reserva web con generación y descarga de comprobante digital en PDF
+
 import React from 'react';
 import { useLocation, Link, Navigate } from 'react-router-dom';
 import { Cita } from '../../types/models';
@@ -15,26 +17,17 @@ import {
 
 import { downloadPdf } from '../../services/api';
 
-/**
- * ============================================================================
- * VISTA: CONFIRMACIÓN DE RESERVA (BookingConfirmationPage)
- * ============================================================================
- * Pantalla final de éxito tras completar el Wizard de reservas:
- * - Muestra el código de seguimiento de la cita (SQ-YYYYMMDD-XXXX).
- * - Resumen de cabina asignada, especialista, fecha, hora y total pagado.
- * - Botón para descargar el comprobante en PDF.
- * ============================================================================
- */
 export const BookingConfirmationPage: React.FC = () => {
   const location = useLocation();
   const cita: Cita = location.state?.cita;
 
+  // Redirección defensiva si el usuario ingresa de forma directa sin estado de reserva previo
   if (!cita) {
     return <Navigate to="/reservar" replace />;
   }
 
+  // Descarga del comprobante en PDF mediante streaming de blob desde el backend
   const handleDownloadPDF = () => {
-    // Download using public endpoint or helper
     if (cita.codigo_reserva) {
       downloadPdf(
         `http://127.0.0.1:8000/api/citas/comprobante-pdf/${cita.codigo_reserva}/`,

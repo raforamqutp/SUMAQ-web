@@ -1,3 +1,5 @@
+// Layout del panel de administración y operaciones: barra lateral colapsable, menú dinámico según rol y topbar de control
+
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,17 +22,6 @@ import {
   DollarSign,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * PLANTILLA MAESTRA DE ADMINISTRACIÓN: ADMIN LAYOUT
- * ============================================================================
- * Estructura visual para el personal administrativo y de recepción:
- * - Sidebar Izquierda: Menú con 11 módulos (Dashboard, Agenda, Caja, Kárdex, etc.).
- * - Filtrado por Rol: Oculta Dashboard y Reportes para el rol 'RECEPCIONISTA'.
- * - Header Superior: Muestra alertas de insumos, usuario activo y botón de cierre de sesión.
- * - Versión Móvil: Menú lateral deslizante con overlay backdrop.
- * ============================================================================
- */
 export const AdminLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -40,7 +31,7 @@ export const AdminLayout: React.FC = () => {
   const isAdmin = user?.rol === 'ADMIN';
   const isRecepcionista = user?.rol === 'RECEPCIONISTA';
 
-  // If recepcionista tries to access dashboard or financial reports directly, redirect to agenda
+  // Redirige al recepcionista a la agenda de cabinas si intenta acceder a dashboards financieros o configuración restringida
   React.useEffect(() => {
     if (isRecepcionista && (location.pathname === '/admin' || location.pathname === '/admin/reportes' || location.pathname === '/admin/usuarios' || location.pathname === '/admin/marketing')) {
       navigate('/admin/agenda', { replace: true });

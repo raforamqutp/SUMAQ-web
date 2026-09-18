@@ -1,3 +1,5 @@
+// Página de inicio / Landing Page: escaparate institucional, catálogo destacado, cabinas, terapeutas y cupones
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -18,22 +20,9 @@ import {
   Star,
   MapPin,
   Phone,
+  CalendarDays,
 } from 'lucide-react';
 
-/**
- * ============================================================================
- * VISTA: PÁGINA PRINCIPAL / LANDING PAGE (LandingPage.tsx)
- * ============================================================================
- * Portada institucional y experiencia de marca de Sumaq Spa:
- * 1. Hero Section: Título editorial, propuesta de valor y CTA de reserva.
- * 2. Presentación & Filosofía: Enfoque holístico, dermoestético e hidroterapia.
- * 3. Catálogo Destacado: Tratamientos más solicitados con precios y duración.
- * 4. Las 3 Cabinas Exclusivas: Recorrido visual de cada ambiente temático.
- * 5. Equipo de Terapeutas: Especialistas de bienestar con fotos y perfiles.
- * 6. Cupones y Promociones Activas: Cupones copiables con un solo clic.
- * 7. Testimonios de Clientes: Valoraciones reales 5 estrellas.
- * ============================================================================
- */
 export const LandingPage: React.FC = () => {
   const { toast } = useToast();
   const [servicios, setServicios] = useState<Servicio[]>([]);
@@ -42,6 +31,7 @@ export const LandingPage: React.FC = () => {
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Hidratación en paralelo mediante Promise.all para minimizar el Time-To-Interactive (TTI)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -64,6 +54,7 @@ export const LandingPage: React.FC = () => {
     fetchData();
   }, []);
 
+  // Copia el código de cupón al portapapeles y notifica mediante Toast
   const copyCoupon = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success('¡Cupón copiado!', `El código "${code}" ha sido copiado al portapapeles.`);
@@ -95,6 +86,11 @@ export const LandingPage: React.FC = () => {
             <Link to="/reservar" className="w-full sm:w-auto">
               <Button variant="primary" size="lg" className="w-full sm:w-auto" icon={<Calendar className="w-5 h-5" />}>
                 Reservar Cita Online
+              </Button>
+            </Link>
+            <Link to="/mis-citas" className="w-full sm:w-auto">
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto" icon={<CalendarDays className="w-4 h-4" />}>
+                Ver / Gestionar Mi Cita
               </Button>
             </Link>
             <Link to="/servicios" className="w-full sm:w-auto">

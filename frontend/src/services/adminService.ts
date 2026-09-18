@@ -1,3 +1,5 @@
+// Servicio de administración y operaciones: KPIs financieros, agenda global, kárdex, recetas BOM y caja
+
 import { apiClient } from './api';
 import { ApiResponse, ApiPaginatedData } from '../types/api';
 import {
@@ -16,21 +18,8 @@ import {
 } from '../types/models';
 import { mockStore } from './mockData';
 
-/**
- * ============================================================================
- * SERVICIO DE ADMINISTRACIÓN (adminService.ts)
- * ============================================================================
- * Proporciona métodos CRUD para todos los módulos operativos y financieros:
- * - getDashboard(): KPIs financieros, ocupación de cabinas y alertas.
- * - getCitas(), updateCitaEstado(), reprogramarCita(): Gestión de agenda.
- * - getInventario(), registrarMovimiento(): Almacén y Kárdex.
- * - getCabinas(), getTerapeutas(), getServicios(), getUsuarios(): Mantenimientos.
- * - getCajaHoy(), registrarMovimientoCaja(): Flujo de caja POS.
- * Cada método cuenta con fallback automático hacia mockStore.
- * ============================================================================
- */
 export const adminService = {
-  // Dashboard & Analytics
+  // Resumen ejecutivo de métricas financieras, tasa de ocupación diaria y alertas de stock
   getDashboard: async (): Promise<DashboardData> => {
     try {
       const response = await apiClient.get<ApiResponse<DashboardData>>('/admin/dashboard/');
@@ -205,6 +194,7 @@ export const adminService = {
     }
   },
 
+  // Movimientos de inventario: registro de entradas por compra y ajustes físicos
   getMovimientosInventario: async (productoId?: number): Promise<MovimientoInventario[]> => {
     try {
       const params = productoId ? `?producto_id=${productoId}` : '';
@@ -221,6 +211,7 @@ export const adminService = {
     }
   },
 
+  // Registra asiento manual en el kárdex actualizando el stock disponible del insumo
   registrarMovimientoManual: async (payload: {
     producto_id: number;
     tipo: string;
@@ -312,7 +303,7 @@ export const adminService = {
     }
   },
 
-  // Servicios & Recetas (BOM)
+  // Gestión de servicios y fórmulas de insumos (Bill of Materials / BOM)
   getServicios: async (): Promise<Servicio[]> => {
     try {
       const response = await apiClient.get<any>('/admin/servicios/');
@@ -366,6 +357,7 @@ export const adminService = {
     }
   },
 
+  // Vincula un insumo y su cantidad requerida a la receta del servicio
   addRecetaItem: async (
     servicioId: number,
     payload: { producto_id: number; cantidad_requerida: number }
