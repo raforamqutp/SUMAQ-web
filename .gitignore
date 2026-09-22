@@ -16,3 +16,8 @@ ENV/
 
 # Reference repository
 final/
+
+# Base de datos y backups locales
+*.backup
+backend/admin_tools/backups/*.sql
+!backend/admin_tools/backups/.gitkeep

@@ -3,11 +3,24 @@ REM ============================================================================
 REM SCRIPT DE BACKUP AUTOMATIZADO DE BASE DE DATOS - SUMAQ SPA (WINDOWS / XAMPP)
 REM ==============================================================================
 
+REM 1. Configuracion por defecto (XAMPP / estandar)
 set DB_NAME=sumaq_spa
 set DB_USER=root
-set DB_PASS=admin123
+set DB_PASS=
 set DB_HOST=127.0.0.1
 set DB_PORT=3306
+
+REM 2. Cargar variables dinamicamente desde backend/.env si existe
+set ENV_FILE=%~dp0..\.env
+if exist "%ENV_FILE%" (
+    for /f "usebackq tokens=1* delims==" %%A in ("%ENV_FILE%") do (
+        if "%%A"=="DB_NAME" set DB_NAME=%%B
+        if "%%A"=="DB_USER" set DB_USER=%%B
+        if "%%A"=="DB_PASSWORD" set DB_PASS=%%B
+        if "%%A"=="DB_HOST" set DB_HOST=%%B
+        if "%%A"=="DB_PORT" set DB_PORT=%%B
+    )
+)
 
 set MYSQLDUMP="C:\xampp\mysql\bin\mysqldump.exe"
 if not exist %MYSQLDUMP% set MYSQLDUMP="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe"
@@ -35,3 +48,6 @@ if %ERRORLEVEL% equ 0 (
 ) else (
     echo [ERROR] Ocurrio un error al generar la copia de seguridad.
 )
+
+echo.
+pause
