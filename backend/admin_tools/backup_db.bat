@@ -5,7 +5,7 @@ REM ============================================================================
 
 set DB_NAME=sumaq_spa
 set DB_USER=root
-set DB_PASS=
+set DB_PASS=admin123
 set DB_HOST=127.0.0.1
 set DB_PORT=3306
 
@@ -16,8 +16,7 @@ if not exist %MYSQLDUMP% set MYSQLDUMP=mysqldump
 set BACKUP_DIR=%~dp0backups
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 
-for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set dt=%%I
-set TIMESTAMP=%dt:~0,8%_%dt:~8,6%
+for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set TIMESTAMP=%%I
 set BACKUP_FILE=%BACKUP_DIR%\sumaq_spa_backup_%TIMESTAMP%.sql
 
 echo ========================================================

@@ -6,7 +6,7 @@ REM ============================================================================
 
 set DB_NAME=sumaq_spa
 set DB_USER=root
-set DB_PASS=
+set DB_PASS=admin123
 set DB_HOST=127.0.0.1
 set DB_PORT=3306
 
@@ -14,13 +14,19 @@ set MYSQL="C:\xampp\mysql\bin\mysql.exe"
 if not exist %MYSQL% set MYSQL="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 if not exist %MYSQL% set MYSQL=mysql
 
-if "%~1"=="" (
-    echo [ERROR] Debe especificar el archivo SQL de respaldo a restaurar.
-    echo Ejemplo: restore_db.bat backups\sumaq_spa_backup_20260426_120000.sql
+set BACKUP_FILE=%~1
+if "%BACKUP_FILE%"=="" (
+    for /f "delims=" %%F in ('dir /b /o:-d "%~dp0backups\*.sql" 2^>nul') do (
+        set BACKUP_FILE=%~dp0backups\%%F
+        goto :found_backup
+    )
+)
+:found_backup
+
+if "%BACKUP_FILE%"=="" (
+    echo [ERROR] No se encontro ningun archivo SQL de respaldo en la carpeta backups.
     exit /b 1
 )
-
-set BACKUP_FILE=%~1
 
 if not exist "%BACKUP_FILE%" (
     echo [ERROR] El archivo especificado no existe: %BACKUP_FILE%
