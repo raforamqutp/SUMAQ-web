@@ -11,6 +11,7 @@ set DB_HOST=127.0.0.1
 set DB_PORT=3306
 
 set MYSQL="C:\xampp\mysql\bin\mysql.exe"
+if not exist %MYSQL% set MYSQL="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 if not exist %MYSQL% set MYSQL=mysql
 
 if "%~1"=="" (

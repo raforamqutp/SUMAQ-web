@@ -10,6 +10,7 @@ set DB_HOST=127.0.0.1
 set DB_PORT=3306
 
 set MYSQLDUMP="C:\xampp\mysql\bin\mysqldump.exe"
+if not exist %MYSQLDUMP% set MYSQLDUMP="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe"
 if not exist %MYSQLDUMP% set MYSQLDUMP=mysqldump
 
 set BACKUP_DIR=%~dp0backups
