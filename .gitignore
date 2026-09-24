@@ -34,5 +34,7 @@ Thumbs.db
 admin_tools/backups/*.sql
 backend/admin_tools/backups/*.sql
 
-# Reference repository
+# Reference repository & internal files
 final/
+docs-other/
+PROMPT_*.md
