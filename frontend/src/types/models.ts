@@ -1,5 +1,3 @@
-// Modelos de dominio y contratos TypeScript que mapean las entidades ORM de Django (Sumaq Spa)
-
 export interface User {
   id: number;
   email: string;
@@ -67,7 +65,7 @@ export interface MovimientoInventario {
   descripcion: string;
 }
 
-// Lista de materiales (BOM) asociada a un servicio para descuento automático de stock
+// Insumos requeridos por servicio
 export interface RecetaServicio {
   id: number;
   producto: number;
@@ -109,7 +107,7 @@ export interface ServicioAdicionalAtencion {
   created_at: string;
 }
 
-// Ficha clínica confidencial diligenciada por el terapeuta durante la sesión
+// Ficha clínica de atención
 export interface FichaAtencion {
   id: number;
   tipo_piel: string;
@@ -120,7 +118,6 @@ export interface FichaAtencion {
   updated_at: string;
 }
 
-// Entidad central de reserva: coordina cliente, terapeuta, cabina, facturación y ficha médica
 export interface Cita {
   id: number;
   codigo_reserva: string;

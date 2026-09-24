@@ -1,5 +1,3 @@
-// Vista de error 404: recurso o ruta no encontrada en el enrutador cliente
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowLeft } from 'lucide-react';

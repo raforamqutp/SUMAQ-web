@@ -1,5 +1,3 @@
-// Catálogo de servicios y recetas de insumos (BOM): definición de precios, duración y fórmula de descuento de insumos por sesión
-
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { Servicio, Producto } from '../../types/models';
@@ -14,7 +12,7 @@ export const AdminServicesPage: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Formulario modal para creación y edición de servicios y su receta (BOM)
+  // Modal de servicio y receta (BOM)
   const [modalOpen, setModalOpen] = useState(false);
   const [editingServicio, setEditingServicio] = useState<Servicio | null>(null);
   const [nombre, setNombre] = useState('');
@@ -24,11 +22,11 @@ export const AdminServicesPage: React.FC = () => {
   const [imagenUrl, setImagenUrl] = useState('');
   const [activo, setActivo] = useState(true);
 
-  // Lista dinámica de insumos requeridos por el servicio (RecetaServicio)
+  // Insumos de la receta
   const [recetasItems, setRecetasItems] = useState<Array<{ producto_id: number; cantidad_requerida: number }>>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Carga concurrente del catálogo de servicios y productos disponibles para recetas
+  // Carga de servicios y productos para recetas
   const fetchData = async () => {
     setLoading(true);
     try {

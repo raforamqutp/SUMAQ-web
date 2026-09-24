@@ -4,10 +4,7 @@ color 0F
 chcp 65001 >nul
 cd /d "%~dp0frontend"
 
-echo ======================================================================
-echo             SUMAQ SPA ^& CENTRO DE BIENESTAR - SPRINT S04
-echo                      Lanzador del Prototipo Frontend
-echo ======================================================================
+echo Iniciando servidor Frontend Vite (React 19 + TypeScript)...
 echo.
 
 where node >nul 2>nul

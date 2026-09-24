@@ -1,5 +1,3 @@
-// Portal público de autogestión de citas para el cliente: consulta por Código + DNI, descarga de comprobante, cancelación y reprogramación con regla de 24 horas
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -33,23 +31,23 @@ import {
 export const ManageAppointmentPage: React.FC = () => {
   const { toast } = useToast();
 
-  // Estados del formulario de búsqueda
+  // Búsqueda
   const [codigoReserva, setCodigoReserva] = useState('');
   const [dni, setDni] = useState('');
   const [searching, setSearching] = useState(false);
 
-  // Estados de la cita consultada
+  // Cita consultada
   const [cita, setCita] = useState<Cita | null>(null);
   const [horasRestantes, setHorasRestantes] = useState<number>(0);
   const [puedeModificar, setPuedeModificar] = useState<boolean>(false);
   const [motivoBloqueo, setMotivoBloqueo] = useState<string | null>(null);
 
-  // Estados para modal de cancelación
+  // Cancelación
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
   const [canceling, setCanceling] = useState(false);
 
-  // Estados para modal de reprogramación
+  // Reprogramación
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const tomorrowStr = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const [nuevaFecha, setNuevaFecha] = useState(tomorrowStr);
@@ -58,7 +56,7 @@ export const ManageAppointmentPage: React.FC = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
 
-  // Consulta la cita por Código + DNI
+  // Búsqueda por código y DNI
   const handleSearchAppointment = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -89,12 +87,11 @@ export const ManageAppointmentPage: React.FC = () => {
     }
   };
 
-  // Carga de ejemplo rápido para sustentación en vivo
+  // Carga rápida con datos demo
   const handleLoadDemo = () => {
     setCodigoReserva('SQ-20260825-7281');
     setDni('72345678');
     setTimeout(() => {
-      // Simula búsqueda inmediata
       publicService
         .consultarCita('SQ-20260825-7281', '72345678')
         .then((res) => {
@@ -110,7 +107,7 @@ export const ManageAppointmentPage: React.FC = () => {
     }, 100);
   };
 
-  // Descarga del comprobante en PDF oficial
+  // Descarga de comprobante PDF
   const handleDownloadPdf = () => {
     if (!cita) return;
     if (cita.codigo_reserva) {
@@ -121,7 +118,7 @@ export const ManageAppointmentPage: React.FC = () => {
     }
   };
 
-  // Abre el modal de reprogramación y consulta slots en tiempo real
+  // Apertura del modal de reprogramación
   const handleOpenReschedule = async () => {
     if (!cita || !puedeModificar) return;
     setRescheduleModalOpen(true);
@@ -129,7 +126,7 @@ export const ManageAppointmentPage: React.FC = () => {
     fetchSlotsForDate(nuevaFecha);
   };
 
-  // Consulta slots disponibles en la fecha seleccionada para la terapeuta y cabina de la cita
+  // Consulta turnos para la fecha seleccionada
   const fetchSlotsForDate = async (targetDate: string) => {
     if (!cita) return;
     setLoadingSlots(true);
@@ -148,7 +145,7 @@ export const ManageAppointmentPage: React.FC = () => {
     }
   };
 
-  // Confirma la reprogramación de fecha y hora
+  // Confirmar reprogramación
   const handleConfirmReschedule = async () => {
     if (!cita || !selectedSlot) {
       toast.error('Horario requerido', 'Seleccione un turno disponible de la lista.');
@@ -170,7 +167,7 @@ export const ManageAppointmentPage: React.FC = () => {
       );
       setRescheduleModalOpen(false);
 
-      // Recalcular estado de modificación
+      // Actualizar estado de modificación
       const res = await publicService.consultarCita(updatedCita.codigo_reserva, updatedCita.cliente.dni);
       setHorasRestantes(res.horas_restantes);
       setPuedeModificar(res.puede_modificar);
@@ -183,7 +180,7 @@ export const ManageAppointmentPage: React.FC = () => {
     }
   };
 
-  // Confirma la cancelación definitiva de la cita
+  // Confirmar cancelación
   const handleConfirmCancellation = async () => {
     if (!cita || !puedeModificar) return;
 

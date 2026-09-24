@@ -1,5 +1,3 @@
-// Wizard de reserva web en 4 pasos: validación de cliente, selección de ritual/cabina, cálculo de slots en tiempo real y pasarelas de pago
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -28,40 +26,40 @@ export const BookingWizardPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Control de estado del stepper (Pasos 1 a 4)
+  // Control del stepper
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
-  // Catálogos cargados desde la API
+  // Catálogos
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [terapeutas, setTerapeutas] = useState<Terapeuta[]>([]);
   const [cabinas, setCabinas] = useState<Cabina[]>([]);
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [slotsDisponibles, setSlotsDisponibles] = useState<SlotDisponibilidad[]>([]);
 
-  // Paso 1: Datos de identificación del cliente (DNI, Nombres, Teléfono, Email)
+  // Paso 1: Datos del cliente
   const [dni, setDni] = useState('');
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
 
-  // Paso 2: Selección de servicio, terapeuta y cabina sincronizada
+  // Paso 2: Servicio, terapeuta y cabina
   const [selectedServicioId, setSelectedServicioId] = useState<number | null>(null);
   const [selectedTerapeutaId, setSelectedTerapeutaId] = useState<number | null>(null);
   const [selectedCabinaId, setSelectedCabinaId] = useState<number | null>(null);
 
-  // Paso 3: Selección de fecha y turno horario disponible
+  // Paso 3: Fecha y turno
   const todayStr = new Date().toISOString().split('T')[0];
   const [fecha, setFecha] = useState(todayStr);
   const [selectedSlot, setSelectedSlot] = useState<SlotDisponibilidad | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Paso 4: Método de pago, cupón promocional y totales
+  // Paso 4: Pago y cupón
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TARJETA' | 'YAPE' | 'PLIN'>('TARJETA');
   const [codigoCupon, setCodigoCupon] = useState('');
   const [descuentoPorcentaje, setDescuentoPorcentaje] = useState(0);
   const [cuponValido, setCuponValido] = useState<boolean | null>(null);
 
-  // Estado de pasarela de tarjeta: 4 bloques numéricos con auto-enfoque al completar 4 dígitos
+  // Inputs de tarjeta (bloques de 4 dígitos)
   const [cardChunk0, setCardChunk0] = useState('4557');
   const [cardChunk1, setCardChunk1] = useState('8901');
   const [cardChunk2, setCardChunk2] = useState('2345');
@@ -70,18 +68,17 @@ export const BookingWizardPage: React.FC = () => {
   const [cardExp, setCardExp] = useState('12/28');
   const [cardCvv, setCardCvv] = useState('789');
 
-  // Estado de pasarela Yape: validación de código de aprobación OTP de 6 dígitos
+  // Pasarelas Yape / Plin
   const [yapePhone, setYapePhone] = useState('987654321');
   const [yapeOtp, setYapeOtp] = useState('136441');
   const [yapeVerified, setYapeVerified] = useState(false);
 
-  // Estado de pasarela Plin: verificación dinámica de transferencia por QR
   const [plinVerified, setPlinVerified] = useState(false);
   const [plinChecking, setPlinChecking] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Formatea bloques de 4 dígitos para números de tarjeta y transfiere el foco al siguiente input
+  // Auto-avance al completar 4 dígitos por bloque
   const handleChunkChange = (
     _index: number,
     val: string,
@@ -95,7 +92,7 @@ export const BookingWizardPage: React.FC = () => {
     }
   };
 
-  // Maneja retroceso (Backspace) para regresar el foco al input anterior si el actual está vacío
+  // Retroceso con Backspace entre bloques
   const handleChunkKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
     currentVal: string,
@@ -109,7 +106,7 @@ export const BookingWizardPage: React.FC = () => {
     }
   };
 
-  // Carga inicial de catálogos y lectura de preselecciones desde URL query params
+  // Carga de catálogos y lectura de query params
   useEffect(() => {
     const init = async () => {
       try {
@@ -124,7 +121,7 @@ export const BookingWizardPage: React.FC = () => {
         setCabinas(cabs);
         setPromociones(promos);
 
-        // Preselecciona servicio o terapeuta desde los parámetros de URL si existen
+        // Preselección por parámetros de URL
         const urlServicio = searchParams.get('servicio_id');
         if (urlServicio) {
           const sId = parseInt(urlServicio, 10);
@@ -150,7 +147,7 @@ export const BookingWizardPage: React.FC = () => {
     init();
   }, [searchParams]);
 
-  // Consulta al backend los slots horarios libres según fecha, servicio, terapeuta y cabina
+  // Consulta de turnos disponibles
   useEffect(() => {
     const fetchSlots = async () => {
       if (!fecha) return;
@@ -172,7 +169,7 @@ export const BookingWizardPage: React.FC = () => {
     fetchSlots();
   }, [fecha, selectedServicioId, selectedTerapeutaId, selectedCabinaId]);
 
-  // Sincroniza la cabina fija asociada a la terapeuta seleccionada y reinicia el slot horario
+  // Sincronizar cabina con la terapeuta seleccionada
   const handleSelectTerapeuta = (tId: number) => {
     setSelectedTerapeutaId(tId);
     const tObj = terapeutas.find((t) => t.id === tId);
@@ -182,7 +179,7 @@ export const BookingWizardPage: React.FC = () => {
     setSelectedSlot(null);
   };
 
-  // Valida el cupón contra el catálogo de promociones activas y calcula el porcentaje de descuento
+  // Validación de cupón de descuento
   const handleApplyCoupon = () => {
     if (!codigoCupon.trim()) {
       setDescuentoPorcentaje(0);
@@ -203,7 +200,7 @@ export const BookingWizardPage: React.FC = () => {
     }
   };
 
-  // Validación de identificación del cliente: DNI mínimo 8 dígitos, nombres y teléfono
+  // Validaciones por paso
   const validateStep1 = () => {
     if (!dni.trim() || dni.trim().length < 8) {
       toast.error('DNI inválido', 'Por favor ingrese un número de DNI o documento válido (mínimo 8 dígitos).');
@@ -220,7 +217,6 @@ export const BookingWizardPage: React.FC = () => {
     return true;
   };
 
-  // Validación de selección obligatoria de ritual/servicio, terapeuta y cabina asignada
   const validateStep2 = () => {
     if (!selectedServicioId) {
       toast.error('Servicio requerido', 'Seleccione un servicio para continuar.');
@@ -233,7 +229,6 @@ export const BookingWizardPage: React.FC = () => {
     return true;
   };
 
-  // Validación de selección de franja horaria disponible
   const validateStep3 = () => {
     if (!selectedSlot) {
       toast.error('Horario requerido', 'Por favor elija un horario disponible de la lista.');
@@ -242,7 +237,7 @@ export const BookingWizardPage: React.FC = () => {
     return true;
   };
 
-  // Cálculo financiero: subtotal base, descuento porcentual aplicado y monto neto a pagar
+  // Totales de la reserva
   const selectedServicio = servicios.find((s) => s.id === selectedServicioId);
   const selectedTerapeuta = terapeutas.find((t) => t.id === selectedTerapeutaId);
   const selectedCabina = cabinas.find((c) => c.id === selectedCabinaId);
@@ -251,7 +246,7 @@ export const BookingWizardPage: React.FC = () => {
   const descuento = subtotal * (descuentoPorcentaje / 100);
   const montoTotal = Math.max(0, subtotal - descuento);
 
-  // Envío del payload transaccional para registrar la cita y redirigir al voucher de confirmación
+  // Registro de cita
   const handleFinalBooking = async () => {
     if (!validateStep1() || !validateStep2() || !validateStep3()) return;
     setSubmitting(true);
@@ -265,7 +260,10 @@ export const BookingWizardPage: React.FC = () => {
         terapeuta_id: selectedTerapeutaId!,
         cabina_id: selectedCabinaId!,
         fecha,
-        hora_inicio: selectedSlot!.hora_inicio + ':00',
+        hora_inicio:
+          selectedSlot!.hora_inicio.length === 5
+            ? `${selectedSlot!.hora_inicio}:00`
+            : selectedSlot!.hora_inicio,
         metodo_pago: metodoPago,
         codigo_cupon: cuponValido ? codigoCupon.trim() : undefined,
       };

@@ -1,5 +1,3 @@
-// Módulo de inventario y kárdex: control de existencias, valuación de stock, semáforo de reposición y registro manual de compras/mermas
-
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { Producto, MovimientoInventario } from '../../types/models';
@@ -24,7 +22,7 @@ export const AdminInventoryPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estado del formulario modal para registro manual de movimientos de inventario
+  // Modal de movimiento de inventario
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProductoId, setSelectedProductoId] = useState<number | null>(null);
   const [tipoMovimiento, setTipoMovimiento] = useState<string>('ENTRADA_COMPRA');
@@ -33,7 +31,7 @@ export const AdminInventoryPage: React.FC = () => {
   const [descripcion, setDescripcion] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Consulta concurrente de productos actuales y asientos históricos del kárdex
+  // Carga de stock y kardex
   const fetchInventory = async () => {
     setLoading(true);
     try {
@@ -54,7 +52,7 @@ export const AdminInventoryPage: React.FC = () => {
     fetchInventory();
   }, []);
 
-  // Apertura del modal de ajuste precargando los datos del insumo seleccionado
+  // Modal con producto precargado
   const handleOpenMovementModal = (producto?: Producto) => {
     if (producto) {
       setSelectedProductoId(producto.id);
@@ -66,7 +64,7 @@ export const AdminInventoryPage: React.FC = () => {
     setModalOpen(true);
   };
 
-  // Envío del movimiento manual (compra, merma o ajuste) con validación transaccional
+  // Registro de movimiento en kardex
   const handleSubmitMovement = async () => {
     if (!selectedProductoId || cantidad <= 0) {
       toast.error('Datos inválidos', 'Seleccione un insumo y una cantidad mayor a cero.');

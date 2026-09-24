@@ -1,5 +1,3 @@
-// Consulta de insumos de cabina para terapeutas: supervisión de niveles de stock y alertas de reposición
-
 import React, { useEffect, useState } from 'react';
 import { therapistService } from '../../services/therapistService';
 import { Producto } from '../../types/models';
@@ -10,7 +8,7 @@ export const TherapistInventoryPage: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Consulta de catálogo de productos/insumos con su estado de stock calculado en backend
+  // Insumos y stock actual
   useEffect(() => {
     const fetchInventory = async () => {
       try {

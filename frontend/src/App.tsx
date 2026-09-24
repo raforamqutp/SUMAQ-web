@@ -1,34 +1,32 @@
-// Enrutador central de la SPA: división de rutas (públicas, autenticación, terapeuta y admin) con carga diferida (lazy loading) para optimización de rendimiento
-
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
-// Layouts estructurados por contexto de usuario
+// Layouts
 import { PublicLayout } from './layouts/PublicLayout';
 import { TherapistLayout } from './layouts/TherapistLayout';
 import { AdminLayout } from './layouts/AdminLayout';
 
-// Vistas públicas con code-splitting dinámico para optimizar el First Contentful Paint (FCP)
+// Vistas públicas
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })));
 const ServicesCatalogPage = lazy(() => import('./pages/public/ServicesCatalogPage').then(m => ({ default: m.ServicesCatalogPage })));
 const BookingWizardPage = lazy(() => import('./pages/public/BookingWizardPage').then(m => ({ default: m.BookingWizardPage })));
 const BookingConfirmationPage = lazy(() => import('./pages/public/BookingConfirmationPage').then(m => ({ default: m.BookingConfirmationPage })));
 const ManageAppointmentPage = lazy(() => import('./pages/public/ManageAppointmentPage').then(m => ({ default: m.ManageAppointmentPage })));
 
-// Vistas de autenticación y control de errores
+// Auth y errores
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const UnauthorizedPage = lazy(() => import('./pages/auth/UnauthorizedPage').then(m => ({ default: m.UnauthorizedPage })));
 const NotFoundPage = lazy(() => import('./pages/auth/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
-// Vistas del portal clínico de terapeutas
+// Portal terapeuta
 const TherapistAgendaPage = lazy(() => import('./pages/therapist/TherapistAgendaPage').then(m => ({ default: m.TherapistAgendaPage })));
 const TherapistAppointmentDetailPage = lazy(() => import('./pages/therapist/TherapistAppointmentDetailPage').then(m => ({ default: m.TherapistAppointmentDetailPage })));
 const TherapistInventoryPage = lazy(() => import('./pages/therapist/TherapistInventoryPage').then(m => ({ default: m.TherapistInventoryPage })));
 
-// Vistas del módulo administrativo y de gestión operativa
+// Módulo admin
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
 const GlobalAgendaPage = lazy(() => import('./pages/admin/GlobalAgendaPage').then(m => ({ default: m.GlobalAgendaPage })));
 const AdminAppointmentsPage = lazy(() => import('./pages/admin/AdminAppointmentsPage').then(m => ({ default: m.AdminAppointmentsPage })));
@@ -41,7 +39,7 @@ const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m 
 const AdminReportsPage = lazy(() => import('./pages/admin/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
 const AdminCashRegisterPage = lazy(() => import('./pages/admin/AdminCashRegisterPage').then(m => ({ default: m.AdminCashRegisterPage })));
 
-// Spinner de fallback durante la resolución de chunks asíncronos de React.lazy
+// Fallback de carga para Suspense
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
     <div className="w-10 h-10 border-4 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>

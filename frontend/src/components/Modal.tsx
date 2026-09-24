@@ -1,5 +1,3 @@
-// Diálogo modal accesible con backdrop blur, bloqueo de scroll corporal y cierre por tecla Escape
-
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
@@ -20,7 +18,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md',
 }) => {
-  // Maneja el listener global de teclado para tecla Escape y desactiva el scroll del body
+  // Cierre con Escape y bloqueo de scroll
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
