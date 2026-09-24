@@ -1,4 +1,4 @@
-# GUÍA DE INSTALACIÓN, CONFIGURACIÓN Y DESPLIEGUE - SUMAQ SPA
+# MANUAL DE INSTALACIÓN, CONFIGURACIÓN Y DESPLIEGUE - SUMAQ SPA
 
 Esta guía detalla los pasos para levantar el entorno de desarrollo local de forma homogénea para todo el equipo, soportando **XAMPP**, **MySQL Workbench / Server standalone** y **SQLite**.
 
@@ -12,6 +12,8 @@ Esta guía detalla los pasos para levantar el entorno de desarrollo local de for
 | **Python** | 3.10+ | Python 3.12+ o 3.13 |
 | **Node.js** | 18+ LTS | Node.js 20 LTS o superior |
 | **Base de Datos** | MySQL 8.0, MariaDB 10.4 o SQLite | XAMPP 8.2, MySQL Workbench / Server 8.0 o SQLite |
+| **Memoria RAM** | 2 GB | 4 GB o superior |
+| **Espacio en Disco** | 500 MB libres | 2 GB libres |
 
 ---
 
@@ -27,12 +29,25 @@ Abre `backend/.env` y ajusta según tu entorno local:
 ### Opción A: Desarrolladores con XAMPP (por defecto)
 XAMPP por defecto utiliza el usuario `root` sin contraseña en el puerto `3306`:
 ```env
+# Configuración Django
+SECRET_KEY=sumaq-spa-insecure-secret-key-development-2026-prod-ready
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+
+# Conexión MySQL XAMPP
 DB_ENGINE=mysql
 DB_NAME=sumaq_spa
 DB_USER=root
 DB_PASSWORD=
 DB_HOST=127.0.0.1
 DB_PORT=3306
+
+# Integración Frontend CORS
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000
+
+# Tokens JWT
+JWT_ACCESS_MINUTES=120
+JWT_REFRESH_DAYS=7
 ```
 
 ### Opción B: Desarrolladores con MySQL Workbench / MySQL Server standalone
@@ -54,7 +69,7 @@ DB_ENGINE=sqlite
 
 ---
 
-## 3. Formas de Lanzamiento
+## 3. Formas de Lanzamiento Rápido (Windows)
 
 ### Método 1: Lanzador Integral (Frontend + Backend + DB)
 Ejecuta en la raíz del proyecto:
@@ -86,17 +101,39 @@ ejecutar_frontend.bat
 
 ---
 
-## 4. Inicialización Manual de Base de Datos
+## 4. Instalación y Ejecución Manual
 
-Si prefieres ejecutar los comandos de Django manualmente en terminal:
-```bash
-# Activar entorno virtual
+### Paso 1: Dependencias de Backend
+```cmd
+cd backend
+python -m venv .venv
 .venv\Scripts\activate
-
-# Inicializar base de datos y semilla oficial
-python backend/init_db.py
+pip install -r requirements.txt
 ```
-El script creará automáticamente la base de datos `sumaq_spa` si no existe, aplicará las migraciones y cargará los catálogos y usuarios iniciales.
+
+### Paso 2: Inicialización de Base de Datos y Catálogos
+```cmd
+python init_db.py
+```
+El script creará automáticamente la base de datos `sumaq_spa` si no existe, aplicará las migraciones (`makemigrations` y `migrate`) y cargará la semilla inicial completa (usuarios, cabinas, terapeutas, productos, servicios y citas de prueba).
+
+### Paso 3: Iniciar Servidor Backend
+```cmd
+python manage.py runserver 127.0.0.1:8000
+```
+La API estará disponible en `http://127.0.0.1:8000/api/`.
+
+Comprobar el estado del servicio:
+```cmd
+curl http://127.0.0.1:8000/api/health/
+```
+
+### Paso 4: Iniciar Servidor Frontend
+```cmd
+cd ../frontend
+npm install
+npm run dev
+```
 
 ---
 
@@ -106,7 +143,9 @@ El script creará automáticamente la base de datos `sumaq_spa` si no existe, ap
 |---|---|---|
 | **Administrador** | `admin@sumaqspa.pe` | `AdminSumaq2026!` |
 | **Recepcionista** | `recepcion@sumaqspa.pe` | `Sumaq2026!` |
-| **Terapeuta** | `elena.morales@sumaqspa.pe` | `Sumaq2026!` |
+| **Terapeuta 1** | `elena.morales@sumaqspa.pe` | `Sumaq2026!` |
+| **Terapeuta 2** | `camila.vega@sumaqspa.pe` | `Sumaq2026!` |
+| **Terapeuta 3** | `lucia.ramos@sumaqspa.pe` | `Sumaq2026!` |
 
 ---
 
@@ -114,6 +153,22 @@ El script creará automáticamente la base de datos `sumaq_spa` si no existe, ap
 
 Para validar la integridad de la API y lógica de negocio:
 ```bash
-pytest
+pytest backend/tests/ -v
 ```
-Todas las pruebas (concurrencia, kárdex, RBAC y generación de comprobantes PDF) deben finalizar con estado **PASSED**.
+Todas las 18 pruebas unitarias, de concurrencia (`test_concurrency.py`), kárdex (`test_inventory_attention.py`), RBAC (`test_rbac_security.py`) y generación PDF (`test_pdf.py`) deben finalizar con estado **PASSED**.
+
+---
+
+## 7. Solución de Problemas Frecuentes (Troubleshooting)
+
+### Error: `Can't connect to MySQL server on '127.0.0.1'`
+- **Causa:** El servicio MySQL de XAMPP no está encendido o el puerto 3306 está bloqueado por otro servicio.
+- **Solución:** Iniciar MySQL en XAMPP Control Panel, ejecutar `ejecutar_todo.bat` o cambiar a `DB_ENGINE=sqlite` en `backend/.env`.
+
+### Error: `Access denied for user 'root'@'localhost'`
+- **Causa:** MySQL tiene contraseña configurada para el usuario root (MySQL Workbench / Server standalone).
+- **Solución:** Actualizar `DB_PASSWORD=su_contraseña` en el archivo `backend/.env`.
+
+### Error: `CORS request blocked`
+- **Causa:** El frontend corre en un puerto distinto al configurado en `CORS_ALLOWED_ORIGINS`.
+- **Solución:** Agregar el origen en `.env` (ej: `http://localhost:5174`) o mantener `CORS_ALLOW_ALL_ORIGINS=True`.

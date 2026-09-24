@@ -5,6 +5,7 @@ dist/
 */.venv/
 venv/
 env/
+ENV/
 __pycache__/
 */__pycache__/
 */**/__pycache__/
@@ -33,3 +34,5 @@ Thumbs.db
 admin_tools/backups/*.sql
 backend/admin_tools/backups/*.sql
 
+# Reference repository
+final/
