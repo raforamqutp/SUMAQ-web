@@ -1,9 +1,6 @@
-// Servicio de autenticación JWT: gestiona inicio de sesión, persistencia de tokens y roles de usuario
-
 import { apiClient } from './api';
 import { ApiResponse } from '../types/api';
 import { User } from '../types/models';
-import { MOCK_USERS } from './mockData';
 
 export interface LoginResponseData {
   user: User;
@@ -13,14 +10,16 @@ export interface LoginResponseData {
 }
 
 export const authService = {
-  // Autentica credenciales contra el backend Django; en caso de indisponibilidad conmuta a mock data
   login: async (email: string, password: string): Promise<LoginResponseData> => {
     try {
       const response = await apiClient.post<ApiResponse<LoginResponseData>>('/auth/login/', {
         email,
         password,
       });
-      const data = response.data.data;
+      const data = response.data?.data || (response.data as any);
+      if (!data?.access) {
+        throw new Error('Respuesta inválida del servidor de autenticación.');
+      }
       localStorage.setItem('sumaq_access_token', data.access);
       localStorage.setItem('sumaq_refresh_token', data.refresh);
       localStorage.setItem('sumaq_user', JSON.stringify(data.user));
@@ -29,61 +28,27 @@ export const authService = {
       } else {
         localStorage.removeItem('sumaq_terapeuta_id');
       }
+      // Limpiar mocks residuales de pruebas locales
+      localStorage.removeItem('sumaq_mock_citas');
+      localStorage.removeItem('sumaq_mock_productos');
+
       return data;
-    } catch {
-      // Fallback local autónomo para demostraciones y sustentaciones offline
-      const normalizedEmail = email.trim().toLowerCase();
-      let matchedUser = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail);
-      let terapeutaId: number | null = null;
-
-      if (normalizedEmail.includes('recepcion')) {
-        matchedUser = MOCK_USERS.find((u) => u.rol === 'RECEPCIONISTA') || MOCK_USERS[1];
-      } else if (normalizedEmail.includes('elena')) {
-        terapeutaId = 1;
-        matchedUser = MOCK_USERS.find((u) => u.email.includes('elena')) || MOCK_USERS[2];
-      } else if (normalizedEmail.includes('camila')) {
-        terapeutaId = 2;
-        matchedUser = MOCK_USERS.find((u) => u.email.includes('camila')) || MOCK_USERS[3];
-      } else if (normalizedEmail.includes('lucia')) {
-        terapeutaId = 3;
-        matchedUser = MOCK_USERS.find((u) => u.email.includes('lucia')) || MOCK_USERS[4];
-      } else if (!matchedUser) {
-        // Default to Admin
-        matchedUser = MOCK_USERS[0];
-      }
-
-      const mockData: LoginResponseData = {
-        user: matchedUser || MOCK_USERS[0],
-        terapeuta_id: terapeutaId,
-        access: `mock-jwt-access-${Date.now()}`,
-        refresh: `mock-jwt-refresh-${Date.now()}`,
-      };
-
-      localStorage.setItem('sumaq_access_token', mockData.access);
-      localStorage.setItem('sumaq_refresh_token', mockData.refresh);
-      localStorage.setItem('sumaq_user', JSON.stringify(mockData.user));
-      if (terapeutaId) {
-        localStorage.setItem('sumaq_terapeuta_id', terapeutaId.toString());
-      } else {
-        localStorage.removeItem('sumaq_terapeuta_id');
-      }
-
-      return mockData;
+    } catch (err: any) {
+      const serverMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.detail ||
+        (err.response?.data?.non_field_errors && err.response.data.non_field_errors[0]) ||
+        err.message ||
+        'Error de conexión o credenciales incorrectas.';
+      throw new Error(serverMsg);
     }
   },
 
   getCurrentUser: async (): Promise<{ user: User; terapeuta_id?: number | null }> => {
-    try {
-      const response = await apiClient.get<ApiResponse<{ user: User; terapeuta_id?: number | null }>>('/auth/me/');
-      if (response.data?.data) return response.data.data;
-      const stored = authService.getStoredUser();
-      const tId = authService.getStoredTherapistId();
-      return { user: stored || MOCK_USERS[0], terapeuta_id: tId };
-    } catch {
-      const stored = authService.getStoredUser();
-      const tId = authService.getStoredTherapistId();
-      return { user: stored || MOCK_USERS[0], terapeuta_id: tId };
-    }
+    const response = await apiClient.get<ApiResponse<{ user: User; terapeuta_id?: number | null }>>('/auth/me/');
+    if (response.data?.data) return response.data.data;
+    if ((response.data as any)?.user) return response.data as any;
+    throw new Error('No se pudo validar la sesión actual.');
   },
 
   logout: () => {

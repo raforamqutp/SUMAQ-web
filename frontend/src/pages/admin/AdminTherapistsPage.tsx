@@ -1,5 +1,3 @@
-// Gestión del equipo de especialistas: asignación de cabinas físicas, perfiles profesionales y vinculación con cuentas de usuario
-
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { Terapeuta, Cabina, User } from '../../types/models';
@@ -15,7 +13,7 @@ export const AdminTherapistsPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Formulario modal para perfil y asignación de terapeuta
+  // Modal de terapeuta
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTerapeuta, setEditingTerapeuta] = useState<Terapeuta | null>(null);
   const [usuarioId, setUsuarioId] = useState<number | null>(null);
@@ -25,7 +23,7 @@ export const AdminTherapistsPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Carga concurrente de terapeutas, cabinas y usuarios con rol TERAPEUTA
+  // Carga de terapeutas, cabinas y usuarios
   const fetchData = async () => {
     setLoading(true);
     try {

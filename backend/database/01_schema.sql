@@ -1,8 +1,5 @@
--- ============================================================================
--- ESQUEMA DDL DE BASE DE DATOS: SUMAQ SPA & CENTRO DE BIENESTAR
--- Motor: MySQL 8.0 / MariaDB 10.4 (InnoDB)
--- Codificación: utf8mb4 / Collation: utf8mb4_unicode_ci
--- ============================================================================
+-- Esquema DDL: sumaq_spa
+-- MySQL 8.0 / MariaDB 10.4 (InnoDB, utf8mb4)
 
 CREATE DATABASE IF NOT EXISTS `sumaq_spa` 
   CHARACTER SET utf8mb4 

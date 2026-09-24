@@ -1,5 +1,3 @@
-// Layout del panel de administración y operaciones: barra lateral colapsable, menú dinámico según rol y topbar de control
-
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,7 +29,7 @@ export const AdminLayout: React.FC = () => {
   const isAdmin = user?.rol === 'ADMIN';
   const isRecepcionista = user?.rol === 'RECEPCIONISTA';
 
-  // Redirige al recepcionista a la agenda de cabinas si intenta acceder a dashboards financieros o configuración restringida
+  // Recepción solo accede a la agenda y módulos permitidos
   React.useEffect(() => {
     if (isRecepcionista && (location.pathname === '/admin' || location.pathname === '/admin/reportes' || location.pathname === '/admin/usuarios' || location.pathname === '/admin/marketing')) {
       navigate('/admin/agenda', { replace: true });

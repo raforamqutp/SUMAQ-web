@@ -1,4 +1,3 @@
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -9,9 +8,10 @@ from apps.services.serializers import (
     RecetaItemInputSerializer
 )
 from apps.common.permissions import IsAdminUserRole
+from apps.common.viewsets import WrappedModelViewSet
 
 
-class ServicioViewSet(ModelViewSet):
+class ServicioViewSet(WrappedModelViewSet):
     queryset = Servicio.objects.prefetch_related('recetas__producto').all().order_by('id')
     serializer_class = ServicioSerializer
 

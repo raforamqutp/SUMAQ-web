@@ -1,5 +1,4 @@
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
@@ -7,9 +6,10 @@ from django.utils import timezone
 from apps.therapists.models import Terapeuta
 from apps.therapists.serializers import TerapeutaSerializer, TerapeutaCreateUpdateSerializer
 from apps.common.permissions import IsAdminUserRole, IsTherapistUserRole
+from apps.common.viewsets import WrappedModelViewSet
 
 
-class TerapeutaViewSet(ModelViewSet):
+class TerapeutaViewSet(WrappedModelViewSet):
     queryset = Terapeuta.objects.select_related('usuario', 'cabina').all().order_by('id')
 
     def get_serializer_class(self):
@@ -29,6 +29,28 @@ class TerapeutaViewSet(ModelViewSet):
 
         serializer = TerapeutaSerializer(queryset, many=True)
         return Response({'success': True, 'data': serializer.data})
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return Response({
+            'success': True,
+            'message': 'Terapeuta registrado con éxito.',
+            'data': TerapeutaSerializer(instance).data
+        }, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return Response({
+            'success': True,
+            'message': 'Terapeuta actualizado con éxito.',
+            'data': TerapeutaSerializer(instance).data
+        }, status=status.HTTP_200_OK)
 
 
 class TerapeutaMiAgendaView(APIView):

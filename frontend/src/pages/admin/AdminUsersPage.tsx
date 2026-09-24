@@ -1,5 +1,3 @@
-// Módulo de administración de usuarios y control de acceso basado en roles (RBAC): cuentas ADMIN, RECEPCIONISTA y TERAPEUTA
-
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
 import { User } from '../../types/models';
@@ -14,7 +12,7 @@ export const AdminUsersPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Formulario modal para creación y edición de credenciales de usuario
+  // Modal de usuario
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [nombreCompleto, setNombreCompleto] = useState('');
@@ -24,7 +22,7 @@ export const AdminUsersPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Consulta de usuarios registrados en el backend con sus respectivos roles y estados
+  // Carga de usuarios
   const fetchUsers = async () => {
     setLoading(true);
     try {

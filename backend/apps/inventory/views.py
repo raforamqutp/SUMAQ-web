@@ -1,6 +1,5 @@
 from decimal import Decimal
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
@@ -12,9 +11,10 @@ from apps.inventory.serializers import (
     MovimientoManualInputSerializer
 )
 from apps.common.permissions import IsAdminUserRole, IsTherapistUserRole
+from apps.common.viewsets import WrappedModelViewSet
 
 
-class ProductoAdminViewSet(ModelViewSet):
+class ProductoAdminViewSet(WrappedModelViewSet):
     queryset = Producto.objects.all().order_by('id')
     serializer_class = ProductoSerializer
     permission_classes = [IsAdminUserRole]
@@ -36,7 +36,7 @@ class ProductoAdminViewSet(ModelViewSet):
         return Response({'success': True, 'data': serializer.data})
 
 
-class MovimientoInventarioViewSet(ModelViewSet):
+class MovimientoInventarioViewSet(WrappedModelViewSet):
     queryset = MovimientoInventario.objects.select_related('producto').all().order_by('-fecha_registro', '-id')
     serializer_class = MovimientoInventarioSerializer
     permission_classes = [IsAdminUserRole]

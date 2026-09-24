@@ -1,5 +1,3 @@
-// Punto de venta (POS) y caja chica: liquidación en recepción, desglose de IGV 18%, cupones promocionales y cálculo de cambio en efectivo
-
 import React, { useState } from 'react';
 import { 
   DollarSign, 
@@ -29,33 +27,33 @@ interface CartItem {
 export const AdminCashRegisterPage: React.FC = () => {
   const { toast } = useToast();
   
-  // Identificación del turno de caja y recepcionista responsable
+  // Turno de caja
   const [shift] = useState('Turno: Mañana (08:00 - 14:00)');
   const [cashier] = useState('Recepcionista: Elena Morales');
   
-  // Identificación del cliente y vinculación con su historia clínica
+  // Cliente
   const [clientDni, setClientDni] = useState('72345678');
   const [clientName, setClientName] = useState('María García Ramos');
   const [historyCode] = useState('HC-0042');
   
-  // Carrito transaccional de servicios base y productos/insumos extras
+  // Carrito de cobro
   const [cart, setCart] = useState<CartItem[]>([
     { id: '1', name: 'Masaje Relajante con Aromaterapia (60 min)', type: 'SERVICIO', price: 160.00, quantity: 1 },
     { id: '2', name: 'Aceite Esencial de Lavanda 30ml (Extra)', type: 'PRODUCTO', price: 45.00, quantity: 1 },
     { id: '3', name: 'Crema Hidratante Facial Dermo (Extra)', type: 'PRODUCTO', price: 40.00, quantity: 1 }
   ]);
 
-  // Motor de descuentos por cupón promocional
+  // Cupón
   const [couponCode, setCouponCode] = useState('SUMAQBIENVENIDA');
   const [discountPercent, setDiscountPercent] = useState<number>(20);
   const [couponApplied, setCouponApplied] = useState<boolean>(true);
 
-  // Parámetros de cobro y pasarelas de pago
+  // Método de pago
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'YAPE' | 'PLIN'>('EFECTIVO');
   const [amountReceived, setAmountReceived] = useState<number>(250);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
-  // Cálculos financieros: subtotal bruto, deducción porcentual, base imponible, IGV (18%) y vuelto
+  // Desglose de totales e impuestos
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount = couponApplied ? (subtotal * discountPercent) / 100 : 0;
   const taxableBase = subtotal - discountAmount;

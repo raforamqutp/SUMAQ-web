@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# SCRIPT DE RESTAURACIÓN DE BASE DE DATOS - SUMAQ SPA (LINUX / UNIX)
+# Restauración de base de datos sumaq_spa (Linux/Unix)
 # Uso: ./restore_db.sh <ruta_archivo_sql_o_sql_gz>
-# ==============================================================================
 
 DB_NAME="${DB_NAME:-sumaq_spa}"
 DB_USER="${DB_USER:-root}"
@@ -23,10 +21,8 @@ if [ ! -f "${BACKUP_FILE}" ]; then
     exit 1
 fi
 
-echo "========================================================"
-echo "  RESTAURANDO BASE DE DATOS: ${DB_NAME}"
-echo "  Desde: ${BACKUP_FILE}"
-echo "========================================================"
+echo "Restaurando base de datos: ${DB_NAME}"
+echo "Desde: ${BACKUP_FILE}"
 
 AUTH_FLAG=""
 if [ -n "${DB_PASS}" ]; then

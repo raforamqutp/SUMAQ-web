@@ -15,9 +15,7 @@ import {
   FichaAtencion
 } from '../types/models';
 
-// Semilla de datos iniciales y almacén reactivo en memoria para fallback autónomo y testing
-
-// Cabinas temáticas predeterminadas del centro de bienestar
+// Datos iniciales de prueba y fallback offline
 export const MOCK_CABINAS: Cabina[] = [
   {
     id: 1,
@@ -443,7 +441,7 @@ export const MOCK_MOVIMIENTOS_CAJA: MovimientoCaja[] = [
   },
 ];
 
-// Store en memoria para gestión de estado local con persistencia en Web Storage
+// Store local en memoria/localStorage para desarrollo y fallback offline
 class LocalMockStore {
   servicios = [...MOCK_SERVICIOS];
   cabinas = [...MOCK_CABINAS];
@@ -484,7 +482,7 @@ class LocalMockStore {
     }
   }
 
-  // Genera matriz de 9 slots de 60 min (08:00 a 17:00) verificando solapamiento contra citas existentes
+  // Genera slots de 08:00 a 17:00 validando cruces
   getDisponibilidad(fecha: string, _servicioId?: number, terapeutaId?: number, cabinaId?: number) {
     const hours = [
       { start: '08:00:00', end: '09:00:00' },
@@ -502,7 +500,7 @@ class LocalMockStore {
     const cabina = this.cabinas.find((c) => c.id === (cabinaId || terapeuta.cabina_id)) || this.cabinas[0];
 
     const slots: SlotDisponibilidad[] = hours.map((h) => {
-      // Comprueba si el slot ya está ocupado por una cita activa (no cancelada)
+      // Verificar colisión con citas activas
       const occupied = this.citas.some(
         (c) =>
           c.fecha === fecha &&
@@ -527,7 +525,7 @@ class LocalMockStore {
     return { fecha, slots };
   }
 
-  // Motor de creación de reserva con deduplicación de cliente por DNI y cálculo de cupón
+  // Reserva con alta de cliente y descuento
   reservarWeb(payload: any): Cita {
     let cliente = this.clientes.find((c) => c.dni === payload.dni);
     if (!cliente) {
@@ -584,7 +582,7 @@ class LocalMockStore {
     return newCita;
   }
 
-  // Genera métricas financieras consolidadas y agregación de reservas
+  // Resumen de dashboard
   getDashboard(): DashboardData {
     const revenue = this.citas
       .filter((c) => c.estado === 'ATENDIDA')
@@ -631,7 +629,7 @@ class LocalMockStore {
     };
   }
 
-  // Consulta pública de cita para el cliente mediante Código de Reserva + DNI con cálculo de regla 24h
+  // Consulta de cita y validación de regla 24h
   consultarCita(codigo: string, dni: string): {
     cita: Cita;
     horas_restantes: number;
@@ -669,7 +667,7 @@ class LocalMockStore {
     };
   }
 
-  // Cancelación de reserva por parte del cliente con validación de la regla de 24 horas
+  // Cancelar cita respetando ventana de 24h
   cancelarCitaWeb(codigo: string, dni: string, _motivo?: string): Cita {
     const info = this.consultarCita(codigo, dni);
     if (!info.puede_modificar) {
@@ -681,7 +679,7 @@ class LocalMockStore {
     return info.cita;
   }
 
-  // Reprogramación de fecha y hora de la cita con validación de 24 horas
+  // Reprogramar fecha/hora respetando ventana de 24h
   reprogramarCitaWeb(codigo: string, dni: string, nuevaFecha: string, nuevaHora: string): Cita {
     const info = this.consultarCita(codigo, dni);
     if (!info.puede_modificar) {

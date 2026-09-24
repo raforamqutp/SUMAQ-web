@@ -1,5 +1,3 @@
-// Layout para páginas públicas (Landing, Catálogo, Wizard de Reservas y Confirmación)
-
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
