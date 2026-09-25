@@ -1,65 +1,113 @@
 @echo off
-:: Restauración de base de datos sumaq_spa (Windows)
-:: Uso: restore_db.bat <ruta_archivo_sql>
+title SUMAQ SPA - Restaurador de Base de Datos MySQL
+color 0B
+chcp 65001 >nul
+cd /d "%~dp0..\.."
 
-REM 1. Configuracion por defecto (XAMPP / estandar)
-set DB_NAME=sumaq_spa
-set DB_USER=root
-set DB_PASS=
-set DB_HOST=127.0.0.1
-set DB_PORT=3306
+echo =======================================================
+echo   SUMAQ SPA - RESTAURADOR DE BASE DE DATOS
+echo =======================================================
+echo.
 
-REM 2. Cargar variables dinamicamente desde backend/.env si existe
-set ENV_FILE=%~dp0..\.env
-if exist "%ENV_FILE%" (
-    for /f "usebackq tokens=1* delims==" %%A in ("%ENV_FILE%") do (
-        if "%%A"=="DB_NAME" set DB_NAME=%%B
-        if "%%A"=="DB_USER" set DB_USER=%%B
-        if "%%A"=="DB_PASSWORD" set DB_PASS=%%B
-        if "%%A"=="DB_HOST" set DB_HOST=%%B
-        if "%%A"=="DB_PORT" set DB_PORT=%%B
+set SQL_TARGET=%~1
+
+if not "%SQL_TARGET%"=="" (
+    set SQL_TARGET=%SQL_TARGET:"=%
+    goto :execute_restore
+)
+
+echo Seleccione el origen de datos para restaurar:
+echo.
+echo   [1] Restaurar el ÚLTIMO BACKUP generado en admin_tools/backups/
+echo   [2] Restaurar el DUMP OFICIAL del sistema (database/03_sumaq_spa_full_dump.sql)
+echo   [3] Restaurar solo el ESQUEMA inicial (database/01_schema.sql)
+echo   [4] Ingresar una ruta personalizada de archivo .sql
+echo.
+set /p OPCION="Ingrese una opción [1-4] (por defecto 1): "
+
+if "%OPCION%"=="" set OPCION=1
+if "%OPCION%"=="1" goto :opt_last_backup
+if "%OPCION%"=="2" goto :opt_dump_full
+if "%OPCION%"=="3" goto :opt_schema
+if "%OPCION%"=="4" goto :opt_custom
+
+echo.
+echo [AVISO] Opción no válida, usando la opción 1 por defecto...
+goto :opt_last_backup
+
+:opt_last_backup
+set SQL_TARGET=
+for /f "delims=" %%F in ('dir /b /o:-d "admin_tools\backups\*.sql" 2^>nul') do (
+    if not "%%F"=="" (
+        set SQL_TARGET=admin_tools\backups\%%F
+        goto :execute_restore
     )
 )
-
-set MYSQL="C:\xampp\mysql\bin\mysql.exe"
-if not exist %MYSQL% set MYSQL="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
-if not exist %MYSQL% set MYSQL=mysql
-
-set BACKUP_FILE=%~1
-if "%BACKUP_FILE%"=="" (
-    for /f "delims=" %%F in ('dir /b /o:-d "%~dp0backups\*.sql" 2^>nul') do (
-        set BACKUP_FILE=%~dp0backups\%%F
-        goto :found_backup
+for /f "delims=" %%F in ('dir /b /o:-d "backend\admin_tools\backups\*.sql" 2^>nul') do (
+    if not "%%F"=="" (
+        set SQL_TARGET=backend\admin_tools\backups\%%F
+        goto :execute_restore
     )
 )
-:found_backup
+if "%SQL_TARGET%"=="" (
+    echo [AVISO] No se encontraron archivos en la carpeta de backups.
+    echo         Usando el dump oficial del sistema...
+    set SQL_TARGET=database\03_sumaq_spa_full_dump.sql
+)
+goto :execute_restore
 
-if "%BACKUP_FILE%"=="" (
-    echo [ERROR] No se encontro ningun archivo SQL de respaldo en la carpeta backups.
+:opt_dump_full
+set SQL_TARGET=database\03_sumaq_spa_full_dump.sql
+goto :execute_restore
+
+:opt_schema
+set SQL_TARGET=database\01_schema.sql
+goto :execute_restore
+
+:opt_custom
+echo.
+set /p SQL_TARGET="Arrastre el archivo .sql aquí o escriba su ruta: "
+set SQL_TARGET=%SQL_TARGET:"=%
+if "%SQL_TARGET%"=="" (
+    echo [ERROR] No ingresó ninguna ruta válida.
+    pause
     exit /b 1
 )
+goto :execute_restore
 
-if not exist "%BACKUP_FILE%" (
-    echo [ERROR] El archivo especificado no existe: %BACKUP_FILE%
+:execute_restore
+if not exist "%SQL_TARGET%" (
+    echo.
+    echo =======================================================
+    echo   [ERROR] El archivo '%SQL_TARGET%' no existe.
+    echo =======================================================
+    echo.
+    pause
     exit /b 1
-)
-
-echo Restaurando base de datos: %DB_NAME%
-echo Desde: %BACKUP_FILE%
-
-if "%DB_PASS%"=="" (
-    %MYSQL% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% -e "CREATE DATABASE IF NOT EXISTS %DB_NAME% CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    %MYSQL% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% %DB_NAME% < "%BACKUP_FILE%"
-) else (
-    %MYSQL% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% -p%DB_PASS% -e "CREATE DATABASE IF NOT EXISTS %DB_NAME% CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    %MYSQL% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% -p%DB_PASS% %DB_NAME% < "%BACKUP_FILE%"
-)
-
-if %ERRORLEVEL% equ 0 (
-    echo [OK] Restauracion completada exitosamente.
-) else (
-    echo [ERROR] Ocurrio un error durante la restauracion.
 )
 
 echo.
+echo Iniciando proceso de restauración con motor Python/MySQL...
+echo.
+
+python admin_tools\restore_db.py "%SQL_TARGET%"
+
+if %ERRORLEVEL% equ 0 (
+    color 0A
+    echo.
+    echo =======================================================
+    echo   [EXITO] ¡Restauración finalizada correctamente!
+    echo =======================================================
+    echo.
+) else (
+    color 0C
+    echo.
+    echo =======================================================
+    echo   [FALLO] Ocurrió un error durante la restauración.
+    echo   Verifique que MySQL esté encendido y la contraseña
+    echo   esté configurada en backend/.env (DB_PASSWORD).
+    echo =======================================================
+    echo.
+)
+
 pause
