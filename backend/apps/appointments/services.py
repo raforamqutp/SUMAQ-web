@@ -49,10 +49,21 @@ class DisponibilidadService:
         citas_list = list(citas_existentes)
         slots_resultado = []
 
+        now_local = timezone.localtime()
+        today_local = now_local.date()
+        time_local = now_local.time()
+
         for hora_ini in HORAS_INICIO:
             dt_inicio = datetime.combine(fecha, hora_ini)
             dt_fin = dt_inicio + timedelta(minutes=duracion_min)
             hora_fin_slot = dt_fin.time()
+
+            # Validación de fecha u horario pasado
+            es_pasado = False
+            if fecha < today_local:
+                es_pasado = True
+            elif fecha == today_local and hora_ini <= time_local:
+                es_pasado = True
 
             for terapeuta in terapeutas_qs:
                 cabina_terapeuta = terapeuta.cabina
@@ -74,12 +85,22 @@ class DisponibilidadService:
                     for c in citas_list
                 )
 
-                disponible = not terapeuta_ocupado and not cabina_ocupada
+                if es_pasado:
+                    disponible = False
+                    motivo = 'Cerrado'
+                elif terapeuta_ocupado or cabina_ocupada:
+                    disponible = False
+                    motivo = 'Ocupado'
+                else:
+                    disponible = True
+                    motivo = 'Disponible'
 
                 slots_resultado.append({
                     'hora_inicio': hora_ini.strftime('%H:%M:%S'),
                     'hora_fin': hora_fin_slot.strftime('%H:%M:%S'),
                     'disponible': disponible,
+                    'motivo': motivo,
+                    'pasado': es_pasado,
                     'terapeuta_id': terapeuta.id,
                     'terapeuta_nombre': terapeuta.usuario.nombre_completo,
                     'especialidad': terapeuta.especialidad,
@@ -111,6 +132,16 @@ class ReservaService:
         hora_inicio = data['hora_inicio']
         metodo_pago = data.get('metodo_pago', Cita.MetodosPago.EFECTIVO)
         codigo_cupon = data.get('codigo_cupon', '').strip()
+
+        now_local = timezone.localtime()
+        today_local = now_local.date()
+        time_local = now_local.time()
+
+        if fecha < today_local or (fecha == today_local and hora_inicio <= time_local):
+            raise BusinessLogicError(
+                "No es posible reservar citas en fechas u horarios pasados. Por favor seleccione un turno disponible.",
+                code="PAST_SLOT_NOT_ALLOWED"
+            )
 
         with transaction.atomic():
             # 1. Bloqueo pesimista sobre terapeuta y cabina para garantizar serialización
@@ -316,6 +347,16 @@ class ReservaService:
             )
 
         cita = info['cita']
+
+        now_local = timezone.localtime()
+        today_local = now_local.date()
+        time_local = now_local.time()
+
+        if nueva_fecha < today_local or (nueva_fecha == today_local and nueva_hora_inicio <= time_local):
+            raise BusinessLogicError(
+                "No es posible reprogramar citas hacia fechas u horarios pasados. Seleccione un turno disponible futuro.",
+                code="PAST_SLOT_NOT_ALLOWED"
+            )
 
         with transaction.atomic():
             cita_lock = Cita.objects.select_for_update().get(id=cita.id)

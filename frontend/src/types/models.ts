@@ -153,6 +153,8 @@ export interface SlotDisponibilidad {
   hora_inicio: string;
   hora_fin: string;
   disponible: boolean;
+  motivo?: string;
+  pasado?: boolean;
   terapeuta_id: number;
   terapeuta_nombre: string;
   especialidad: string;

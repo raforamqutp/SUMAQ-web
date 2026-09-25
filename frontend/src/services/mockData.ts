@@ -498,8 +498,12 @@ class LocalMockStore {
 
     const terapeuta = this.terapeutas.find((t) => t.id === terapeutaId) || this.terapeutas[0];
     const cabina = this.cabinas.find((c) => c.id === (cabinaId || terapeuta.cabina_id)) || this.cabinas[0];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
     const slots: SlotDisponibilidad[] = hours.map((h) => {
+      const isPast = fecha < todayStr || (fecha === todayStr && h.start <= currentTimeStr);
       // Verificar colisión con citas activas
       const occupied = this.citas.some(
         (c) =>
@@ -509,10 +513,15 @@ class LocalMockStore {
           c.estado !== 'CANCELADA'
       );
 
+      const disponible = !isPast && !occupied;
+      const motivo = isPast ? 'Cerrado' : (occupied ? 'Ocupado' : 'Disponible');
+
       return {
         hora_inicio: h.start,
         hora_fin: h.end,
-        disponible: !occupied,
+        disponible,
+        motivo,
+        pasado: isPast,
         terapeuta_id: terapeuta.id,
         terapeuta_nombre: terapeuta.nombre_completo,
         especialidad: terapeuta.especialidad,

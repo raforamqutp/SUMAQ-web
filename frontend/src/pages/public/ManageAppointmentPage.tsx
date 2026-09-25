@@ -550,9 +550,9 @@ export const ManageAppointmentPage: React.FC = () => {
                         : 'bg-white border-[#DFD0C0] text-[#3D2D22] hover:border-[#8C6F55]'
                     }`}
                   >
-                    <div className="text-xs">{slot.hora_inicio} - {slot.hora_fin}</div>
+                    <div className="text-xs">{slot.hora_inicio.slice(0, 5)} - {slot.hora_fin.slice(0, 5)}</div>
                     <span className="text-[10px] block opacity-80">
-                      {slot.disponible ? 'Disponible' : 'Ocupado'}
+                      {slot.disponible ? 'Disponible' : (slot.motivo || (slot.pasado ? 'Cerrado' : 'Ocupado'))}
                     </span>
                   </button>
                 ))}

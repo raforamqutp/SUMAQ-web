@@ -552,29 +552,39 @@ export const BookingWizardPage: React.FC = () => {
               ) : slotsDisponibles.length === 0 ? (
                 <p className="text-xs text-[#8C6F55] italic">No hay slots configurados para esta fecha.</p>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {slotsDisponibles.map((slot, idx) => (
-                    <button
-                      key={idx}
-                      disabled={!slot.disponible}
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                        !slot.disponible
-                          ? 'bg-[#F6F2EC]/60 border-[#EDE5DC] text-[#A88B71] opacity-50 cursor-not-allowed line-through'
-                          : selectedSlot?.hora_inicio === slot.hora_inicio
-                          ? 'bg-[#8C6F55] text-white border-[#8C6F55] shadow-md'
-                          : 'bg-white border-[#DFD0C0] text-[#3D2D22] hover:border-[#8C6F55]'
-                      }`}
-                    >
-                      <div className="text-sm font-bold">
-                        {slot.hora_inicio} - {slot.hora_fin}
-                      </div>
-                      <p className={`text-[10px] mt-0.5 ${selectedSlot?.hora_inicio === slot.hora_inicio ? 'text-[#FAF8F5]' : 'text-[#8C6F55]'}`}>
-                        {slot.disponible ? 'Disponible' : 'Ocupado'}
-                      </p>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  {slotsDisponibles.every((s) => !s.disponible) && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center gap-2">
+                      <Clock className="w-4 h-4 shrink-0 text-amber-600" />
+                      <span>
+                        No hay turnos disponibles para esta fecha (el horario de atención ha finalizado o todos los turnos están ocupados). Por favor, selecciona una fecha posterior en el calendario.
+                      </span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {slotsDisponibles.map((slot, idx) => (
+                      <button
+                        key={idx}
+                        disabled={!slot.disponible}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                          !slot.disponible
+                            ? 'bg-[#F6F2EC]/60 border-[#EDE5DC] text-[#A88B71] opacity-50 cursor-not-allowed line-through'
+                            : selectedSlot?.hora_inicio === slot.hora_inicio
+                            ? 'bg-[#8C6F55] text-white border-[#8C6F55] shadow-md'
+                            : 'bg-white border-[#DFD0C0] text-[#3D2D22] hover:border-[#8C6F55]'
+                        }`}
+                      >
+                        <div className="text-sm font-bold">
+                          {slot.hora_inicio.slice(0, 5)} - {slot.hora_fin.slice(0, 5)}
+                        </div>
+                        <p className={`text-[10px] mt-0.5 ${selectedSlot?.hora_inicio === slot.hora_inicio ? 'text-[#FAF8F5]' : 'text-[#8C6F55]'}`}>
+                          {slot.disponible ? 'Disponible' : (slot.motivo || (slot.pasado ? 'Cerrado' : 'Ocupado'))}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
