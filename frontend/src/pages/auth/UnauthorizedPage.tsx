@@ -1,5 +1,3 @@
-// Vista de acceso no autorizado (HTTP 403 / RBAC): mostrada cuando el usuario no cuenta con el rol requerido
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';

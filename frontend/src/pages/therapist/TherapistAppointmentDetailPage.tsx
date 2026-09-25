@@ -1,5 +1,3 @@
-// Detalle de atención clínica del terapeuta: edición de anamnesis, adición de tratamientos y cierre con descuento atómico de insumos
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { therapistService } from '../../services/therapistService';
@@ -35,23 +33,23 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
   const [serviciosDisponibles, setServiciosDisponibles] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Formulario de ficha de atención estética (tipo de piel, alergias y evolución clínica)
+  // Ficha de atención (anamnesis y notas)
   const [tipoPiel, setTipoPiel] = useState('');
   const [alergias, setAlergias] = useState('');
   const [notas, setNotas] = useState('');
   const [savingFicha, setSavingFicha] = useState(false);
 
-  // Modal para agregar servicios/tratamientos adicionales en tiempo de atención
+  // Modal de servicios adicionales
   const [extraModalOpen, setExtraModalOpen] = useState(false);
   const [selectedExtraServicioId, setSelectedExtraServicioId] = useState<number | null>(null);
   const [extraCantidad, setExtraCantidad] = useState(1);
   const [addingExtra, setAddingExtra] = useState(false);
 
-  // Modal de confirmación para cierre definitivo de la atención
+  // Modal de cierre de atención
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  // Carga concurrente de la cita actual y catálogo general de servicios para adicionales
+  // Carga de cita y servicios adicionales disponibles
   const fetchDetails = async () => {
     setLoading(true);
     try {
@@ -62,7 +60,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
       setCita(citaData);
       setServiciosDisponibles(servs);
 
-      // Precarga los campos de anamnesis si la cita ya contaba con ficha previa
+      // Precargar ficha existente si aplica
       if (citaData.ficha_atencion) {
         setTipoPiel(citaData.ficha_atencion.tipo_piel || '');
         setAlergias(citaData.ficha_atencion.alergias_conocidas || '');
@@ -80,7 +78,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
     fetchDetails();
   }, [citaId]);
 
-  // Persiste o actualiza la ficha clínica en la base de datos
+  // Guardar ficha clínica
   const handleSaveFicha = async () => {
     if (!cita) return;
     setSavingFicha(true);
@@ -108,7 +106,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
     }
   };
 
-  // Registra un tratamiento adicional y descuenta en backend los insumos correspondientes a su receta
+  // Agregar tratamiento adicional
   const handleAddExtraService = async () => {
     if (!selectedExtraServicioId || !cita) return;
     setAddingExtra(true);
@@ -127,7 +125,7 @@ export const TherapistAppointmentDetailPage: React.FC = () => {
     }
   };
 
-  // Cierre de cita: cambia estado a ATENDIDA y descuenta automáticamente los insumos del servicio base
+  // Cierre de atención: descuenta insumos de la receta base
   const handleCompleteAppointment = async () => {
     if (!cita) return;
     setCompleting(true);

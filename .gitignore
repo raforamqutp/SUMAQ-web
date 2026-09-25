@@ -1,23 +1,46 @@
+# Dependencies & Environments
 node_modules/
 dist/
-.env
-.DS_Store
-*.log
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.sqlite3
-.pytest_cache/
+.venv/
+*/.venv/
 venv/
 env/
 ENV/
+__pycache__/
+*/__pycache__/
+*/**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*/.pytest_cache/
 
-# Reference repository
+# Environment variables & local credentials
+.env
+*.env
+*.env.local
+!*.env.example
+
+# Local SQLite databases & static media
+*.sqlite3
+staticfiles/
+media/
+
+# Logs & OS artifacts
+*.log
+.DS_Store
+Thumbs.db
+
+# Backup outputs (exclude generated SQL dumps, keep structure)
+admin_tools/backups/*.sql
+backend/admin_tools/backups/*.sql
+
+# Reference repository & internal files
 final/
+docs-other/
+PROMPT_*.md
 
 # Base de datos y backups locales
 *.backup
-backend/admin_tools/backups/*.sql
+!admin_tools/backups/.gitkeep
 !backend/admin_tools/backups/.gitkeep
+

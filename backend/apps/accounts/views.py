@@ -1,5 +1,4 @@
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
@@ -10,6 +9,7 @@ from apps.accounts.serializers import (
     LoginSerializer
 )
 from apps.common.permissions import IsAdminUserRole
+from apps.common.viewsets import WrappedModelViewSet
 
 
 class LoginView(APIView):
@@ -43,7 +43,7 @@ class CurrentUserView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class UserAdminViewSet(ModelViewSet):
+class UserAdminViewSet(WrappedModelViewSet):
     queryset = User.objects.all().order_by('id')
     permission_classes = [IsAdminUserRole]
 

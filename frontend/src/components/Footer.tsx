@@ -1,5 +1,3 @@
-// Pie de página institucional con enlaces de navegación, horarios comerciales y datos de contacto
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, MapPin, Phone, Mail, Clock, ShieldCheck, Heart } from 'lucide-react';

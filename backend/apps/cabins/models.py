@@ -7,6 +7,8 @@ class Cabina(models.Model):
     descripcion = models.TextField('Descripción', blank=True, default='')
     activa = models.BooleanField('Activa', default=True)
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'cabinas'
         verbose_name = 'Cabina'

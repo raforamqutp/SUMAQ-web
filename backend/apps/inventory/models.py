@@ -33,6 +33,8 @@ class Producto(models.Model):
     created_at = models.DateTimeField('Fecha de Registro', auto_now_add=True)
     updated_at = models.DateTimeField('Última Actualización', auto_now=True)
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'productos'
         verbose_name = 'Producto / Insumo'
@@ -75,6 +77,8 @@ class MovimientoInventario(models.Model):
     referencia_id = models.PositiveIntegerField('ID Referencia', null=True, blank=True)
     fecha_registro = models.DateTimeField('Fecha de Registro', auto_now_add=True)
     descripcion = models.TextField('Descripción / Glosa', blank=True, default='')
+
+    objects = models.Manager()
 
     class Meta:
         db_table = 'movimientos_inventario'

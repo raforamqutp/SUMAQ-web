@@ -16,6 +16,8 @@ class Promocion(models.Model):
     fecha_fin = models.DateField('Fecha de Fin')
     activo = models.BooleanField('Activo', default=True)
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'promociones'
         verbose_name = 'Promoción / Cupón'

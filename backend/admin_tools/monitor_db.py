@@ -13,25 +13,22 @@ from apps.appointments.models import Cita
 
 
 def run_diagnostics():
-    print("==================================================================")
-    print("  MONITOR DE ESTADO, SALUD Y MANTENIMIENTO DE BASE DE DATOS")
-    print("  SUMAQ SPA & CENTRO DE BIENESTAR")
-    print("==================================================================")
+    print("Diagnóstico de base de datos — SUMAQ SPA\n")
 
-    # 1. Latencia de conexión
+    # Latencia de conexión
     start = time.time()
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
         latency = round((time.time() - start) * 1000, 2)
-        print(f"\n[+] ESTADO CONEXIÓN: OK (Latencia: {latency} ms)")
+        print(f"[ok] Conexión establecida ({latency} ms)")
     except Exception as e:
-        print(f"\n[-] ERROR CONEXIÓN: {e}")
+        print(f"[error] Error de conexión: {e}")
         return
 
-    # 2. Métricas del Motor MySQL
-    print("\n--- MÉTRICAS DEL MOTOR MYSQL ---")
+    # Métricas del motor MySQL
+    print("\nMétricas del motor:")
     metrics_query = """
         SHOW GLOBAL STATUS WHERE Variable_name IN (
             'Threads_connected', 'Threads_running', 'Max_used_connections',
@@ -44,12 +41,12 @@ def run_diagnostics():
             cursor.execute(metrics_query)
             rows = cursor.fetchall()
             for var_name, val in rows:
-                print(f"  • {var_name:<35}: {val}")
+                print(f"  {var_name:<35}: {val}")
     except Exception as e:
         print(f"  (Métricas no disponibles: {e})")
 
-    # 3. Tamaño y Conteo de Tablas del Esquema
-    print("\n--- INVENTARIO DE TABLAS RELACIONALES (sumaq_spa) ---")
+    # Tablas del esquema y tamaño
+    print("\nTablas y almacenamiento:")
     tables_query = """
         SELECT 
             table_name,
@@ -63,15 +60,15 @@ def run_diagnostics():
         with connection.cursor() as cursor:
             cursor.execute(tables_query)
             tables = cursor.fetchall()
-            print(f"  {'Tabla':<32} | {'Filas (Est.)':<12} | {'Tamaño (KB)':<10}")
+            print(f"  {'Tabla':<32} | {'Filas (est.)':<12} | {'Tamaño (KB)':<10}")
             print("  " + "-" * 60)
             for t_name, rows_count, size_kb in tables:
                 print(f"  {t_name:<32} | {str(rows_count or 0):<12} | {str(size_kb or 0):<10}")
     except Exception as e:
         print(f"  (Información de esquema no disponible: {e})")
 
-    # 4. Chequeo de Integridad de Tablas
-    print("\n--- CHEQUEO DE INTEGRIDAD (CHECK TABLE) ---")
+    # Verificación de integridad estructural
+    print("\nIntegridad de tablas (CHECK TABLE):")
     tablas_check = [
         'usuarios', 'clientes', 'cabinas', 'terapeutas', 'servicios',
         'productos', 'recetas_servicio', 'promociones', 'citas',
@@ -84,28 +81,25 @@ def run_diagnostics():
                     cursor.execute(f"CHECK TABLE `{tbl}`;")
                     res = cursor.fetchall()
                     msg = res[-1][3] if res else "OK"
-                    print(f"  • {tbl:<32}: {msg}")
+                    print(f"  {tbl:<32}: {msg}")
                 except Exception:
                     pass
     except Exception as e:
         print(f"  (Chequeo omitido: {e})")
 
-    # 5. Diagnóstico de Negocio
-    print("\n--- RESUMEN DE NEGOCIO EN TIEMPO REAL ---")
+    # Resumen de citas e inventario
+    print("\nResumen operativo:")
     total_citas = Cita.objects.count()
     citas_pendientes = Cita.objects.filter(estado=Cita.Estados.PENDIENTE).count()
     citas_atendidas = Cita.objects.filter(estado=Cita.Estados.ATENDIDA).count()
     insumos_criticos = Producto.objects.filter(stock_actual__lte=2.0)
 
-    print(f"  • Total Citas Registradas: {total_citas}")
-    print(f"  • Citas Pendientes: {citas_pendientes} | Atendidas: {citas_atendidas}")
-    print(f"  • Insumos en Estado Crítico: {insumos_criticos.count()}")
+    print(f"  Total citas: {total_citas} (pendientes: {citas_pendientes}, atendidas: {citas_atendidas})")
+    print(f"  Insumos con stock bajo: {insumos_criticos.count()}")
     for item in insumos_criticos:
-        print(f"    - ALERTA: {item.nombre} (Stock: {item.stock_actual} {item.unidad_medida})")
+        print(f"    - Alerta: {item.nombre} (stock: {item.stock_actual} {item.unidad_medida})")
 
-    print("\n==================================================================")
-    print("  DIAGNÓSTICO FINALIZADO CORRECTAMENTE")
-    print("==================================================================")
+    print("\nDiagnóstico finalizado.")
 
 
 if __name__ == '__main__':

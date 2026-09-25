@@ -1,5 +1,3 @@
-// Gestión de marketing y fidelización: CRUD de cupones de descuento, control de vigencia y activación comercial
-
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,7 +14,7 @@ export const AdminMarketingPage: React.FC = () => {
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Formulario modal para creación y edición de cupones
+  // Modal de cupón
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promocion | null>(null);
   const [titulo, setTitulo] = useState('');
@@ -28,12 +26,12 @@ export const AdminMarketingPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Redirección de seguridad: solo administradores tienen acceso a la configuración de descuentos
+  // Solo administradores
   if (user?.rol === 'RECEPCIONISTA') {
     return <Navigate to="/admin/agenda" replace />;
   }
 
-  // Carga de la lista completa de cupones y campañas promocionales
+  // Carga de cupones
   const fetchPromociones = async () => {
     setLoading(true);
     try {
