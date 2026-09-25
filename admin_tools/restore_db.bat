@@ -4,6 +4,7 @@ color 0B
 chcp 65001 >nul
 cd /d "%~dp0.."
 
+:: ### RIESGO: Script de restauración rápida ante desastres
 echo ===================================================
 echo     SUMAQ SPA - RESTAURADOR DE BASE DE DATOS
 echo ===================================================

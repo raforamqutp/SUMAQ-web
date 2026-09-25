@@ -13,6 +13,7 @@ DB_USER = os.environ.get('DB_USER', 'root')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
 DB_NAME = os.environ.get('DB_NAME', 'sumaq_spa')
 
+### RIESGO: Script de telemetría y diagnóstico en vivo de la base de datos
 def run_db_monitor():
     print(f"Diagnóstico de base de datos ({DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME})\n")
 
@@ -42,6 +43,7 @@ def run_db_monitor():
 
     with conn.cursor() as cursor:
         # Métricas de rendimiento InnoDB
+        ### RIESGO: Monitoreo del ratio de aciertos de memoria InnoDB (meta > 97%)
         print("Métricas InnoDB:")
         cursor.execute("SHOW GLOBAL STATUS WHERE Variable_name IN ('Innodb_buffer_pool_read_requests', 'Innodb_buffer_pool_reads', 'Uptime', 'Threads_connected');")
         status_rows = {row['Variable_name']: row['Value'] for row in cursor.fetchall()}
@@ -87,6 +89,7 @@ def run_db_monitor():
         print(f"  Total: {len(tables)} tablas | ~{total_rows} filas | {round(total_size_kb, 2)} KB\n")
 
         # Verificación de integridad estructural
+        ### RIESGO: Verificación periódica de integridad física (CHECK TABLE)
         print("Integridad estructural (CHECK TABLE):")
         key_tables = ['citas', 'fichas_atencion', 'movimientos_inventario', 'movimientos_caja', 'usuarios']
         for kt in key_tables:
@@ -96,6 +99,7 @@ def run_db_monitor():
             print(f"  {kt}: {status}")
 
         # Alertas de stock crítico
+        ### RIESGO: Alerta temprana de quiebre de stock (< 5 unidades)
         print("\nAlertas de stock:")
         cursor.execute("SELECT nombre, stock_actual, stock_minimo_alerta, unidad_medida FROM productos WHERE stock_actual <= stock_minimo_alerta AND activo = 1;")
         criticos = cursor.fetchall()

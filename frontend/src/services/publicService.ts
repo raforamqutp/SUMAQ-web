@@ -1,6 +1,5 @@
 import { apiClient } from './api';
 import { Servicio, Cabina, Terapeuta, Promocion, SlotDisponibilidad, Cita } from '../types/models';
-import { mockStore } from './mockData';
 
 export interface ReservaPayload {
   dni: string;
@@ -18,58 +17,42 @@ export interface ReservaPayload {
 
 export const publicService = {
   getServicios: async (): Promise<Servicio[]> => {
-    try {
-      const response = await apiClient.get<any>('/servicios/');
-      const data = response.data?.data || response.data;
-      if (Array.isArray(data) && data.length > 0) return data;
-      return mockStore.servicios;
-    } catch {
-      return mockStore.servicios;
-    }
+    const response = await apiClient.get<any>('/servicios/');
+    const data = response.data?.data || response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   getServicioById: async (id: number): Promise<Servicio> => {
-    try {
-      const response = await apiClient.get<any>(`/servicios/${id}/`);
-      const data = response.data?.data || response.data;
-      if (data?.id) return data;
-      return mockStore.servicios.find((s) => s.id === id) || mockStore.servicios[0];
-    } catch {
-      return mockStore.servicios.find((s) => s.id === id) || mockStore.servicios[0];
-    }
+    const response = await apiClient.get<any>(`/servicios/${id}/`);
+    const data = response.data?.data || response.data;
+    if (data?.id) return data;
+    throw new Error('No se encontró el servicio solicitado.');
   },
 
   getCabinas: async (): Promise<Cabina[]> => {
-    try {
-      const response = await apiClient.get<any>('/cabinas/');
-      const data = response.data?.data || response.data;
-      if (Array.isArray(data) && data.length > 0) return data;
-      return mockStore.cabinas;
-    } catch {
-      return mockStore.cabinas;
-    }
+    const response = await apiClient.get<any>(`/cabinas/`);
+    const data = response.data?.data || response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   getTerapeutas: async (): Promise<Terapeuta[]> => {
-    try {
-      const response = await apiClient.get<any>('/terapeutas/');
-      const data = response.data?.data || response.data;
-      if (Array.isArray(data) && data.length > 0) return data;
-      return mockStore.terapeutas;
-    } catch {
-      return mockStore.terapeutas;
-    }
+    const response = await apiClient.get<any>('/terapeutas/');
+    const data = response.data?.data || response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   getPromocionesActivas: async (): Promise<Promocion[]> => {
-    try {
-      const response = await apiClient.get<any>('/promociones/activas/');
-      const data = response.data?.data || response.data;
-      if (Array.isArray(data)) return data;
-      return mockStore.promociones;
-    } catch {
-      return mockStore.promociones;
-    }
+    const response = await apiClient.get<any>('/promociones/activas/');
+    const data = response.data?.data || response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   // Disponibilidad horaria por fecha y filtros opcionales
@@ -79,20 +62,16 @@ export const publicService = {
     terapeutaId?: number,
     cabinaId?: number
   ): Promise<{ fecha: string; slots: SlotDisponibilidad[] }> => {
-    try {
-      const params = new URLSearchParams();
-      params.append('fecha', fecha);
-      if (servicioId) params.append('servicio_id', servicioId.toString());
-      if (terapeutaId) params.append('terapeuta_id', terapeutaId.toString());
-      if (cabinaId) params.append('cabina_id', cabinaId.toString());
+    const params = new URLSearchParams();
+    params.append('fecha', fecha);
+    if (servicioId) params.append('servicio_id', servicioId.toString());
+    if (terapeutaId) params.append('terapeuta_id', terapeutaId.toString());
+    if (cabinaId) params.append('cabina_id', cabinaId.toString());
 
-      const response = await apiClient.get<any>(`/disponibilidad/?${params.toString()}`);
-      const data = response.data?.data || response.data;
-      if (data?.slots) return data;
-      return mockStore.getDisponibilidad(fecha, servicioId, terapeutaId, cabinaId);
-    } catch {
-      return mockStore.getDisponibilidad(fecha, servicioId, terapeutaId, cabinaId);
-    }
+    const response = await apiClient.get<any>(`/disponibilidad/?${params.toString()}`);
+    const data = response.data?.data || response.data;
+    if (data?.slots) return data;
+    throw new Error('No se pudo obtener la disponibilidad horaria.');
   },
 
   reservarWeb: async (payload: ReservaPayload): Promise<Cita> => {
@@ -150,5 +129,3 @@ export const publicService = {
     throw new Error('No fue posible procesar la reprogramación.');
   },
 };
-
-

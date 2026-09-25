@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { ApiResponse, ApiPaginatedData } from '../types/api';
+import { ApiPaginatedData } from '../types/api';
 import {
   DashboardData,
   ReporteData,
@@ -14,9 +14,8 @@ import {
   Cliente,
   MovimientoCaja,
 } from '../types/models';
-import { mockStore } from './mockData';
 
-// Helper para extraer datos de la respuesta
+// Helper para extraer datos de la respuesta estándar del backend
 function extractData<T>(response: any): T {
   if (response?.data?.data !== undefined) return response.data.data;
   if (response?.data?.results !== undefined) return response.data.results;
@@ -27,58 +26,20 @@ function extractData<T>(response: any): T {
 export const adminService = {
   // Dashboard
   getDashboard: async (): Promise<DashboardData> => {
-    try {
-      const response = await apiClient.get<any>('/admin/dashboard/');
-      const data = extractData<DashboardData>(response);
-      if (data?.resumen_financiero) return data;
-      return mockStore.getDashboard();
-    } catch {
-      return mockStore.getDashboard();
-    }
+    const response = await apiClient.get<any>('/admin/dashboard/');
+    const data = extractData<DashboardData>(response);
+    if (data?.resumen_financiero) return data;
+    throw new Error('No se pudo cargar el dashboard administrativo.');
   },
 
   getReportes: async (fechaInicio?: string, fechaFin?: string): Promise<ReporteData> => {
-    try {
-      const params = new URLSearchParams();
-      if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-      if (fechaFin) params.append('fecha_fin', fechaFin);
-      const response = await apiClient.get<any>(`/admin/reportes/?${params.toString()}`);
-      const data = extractData<ReporteData>(response);
-      if (data?.periodo) return data;
-      throw new Error('No se recibieron datos del reporte.');
-    } catch {
-      return {
-        periodo: {
-          fecha_inicio: fechaInicio || '2026-04-01',
-          fecha_fin: fechaFin || '2026-04-30',
-        },
-        total_citas: 28,
-        citas_atendidas: 24,
-        ingresos: 3840.0,
-        costo_insumos: 312.0,
-        ganancia_operativa: 3528.0,
-        desglose_terapeutas: [
-          {
-            terapeuta__usuario__nombre_completo: 'Elena Morales',
-            terapeuta__especialidad: 'Terapias Holísticas y Masajes',
-            citas_count: 11,
-            ingresos: 1420.0,
-          },
-          {
-            terapeuta__usuario__nombre_completo: 'Camila Vega',
-            terapeuta__especialidad: 'Dermoestética Facial',
-            citas_count: 10,
-            ingresos: 1350.0,
-          },
-          {
-            terapeuta__usuario__nombre_completo: 'Lucía Ramos',
-            terapeuta__especialidad: 'Hidroterapia y Exfoliaciones',
-            citas_count: 7,
-            ingresos: 1070.0,
-          },
-        ],
-      };
-    }
+    const params = new URLSearchParams();
+    if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+    if (fechaFin) params.append('fecha_fin', fechaFin);
+    const response = await apiClient.get<any>(`/admin/reportes/?${params.toString()}`);
+    const data = extractData<ReporteData>(response);
+    if (data?.periodo) return data;
+    throw new Error('No se recibieron datos del reporte.');
   },
 
   // Citas Global
@@ -90,45 +51,19 @@ export const adminService = {
     search?: string;
     page?: number;
   }): Promise<Cita[] | ApiPaginatedData<Cita>> => {
-    try {
-      const params = new URLSearchParams();
-      if (filters?.fecha) params.append('fecha', filters.fecha);
-      if (filters?.estado) params.append('estado', filters.estado);
-      if (filters?.terapeuta_id) params.append('terapeuta_id', filters.terapeuta_id.toString());
-      if (filters?.cabina_id) params.append('cabina_id', filters.cabina_id.toString());
-      if (filters?.search) params.append('search', filters.search);
-      if (filters?.page) params.append('page', filters.page.toString());
+    const params = new URLSearchParams();
+    if (filters?.fecha) params.append('fecha', filters.fecha);
+    if (filters?.estado) params.append('estado', filters.estado);
+    if (filters?.terapeuta_id) params.append('terapeuta_id', filters.terapeuta_id.toString());
+    if (filters?.cabina_id) params.append('cabina_id', filters.cabina_id.toString());
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
 
-      const response = await apiClient.get<any>(`/admin/citas/?${params.toString()}`);
-      const data = extractData<any>(response);
-      const results = data?.results || (Array.isArray(data) ? data : null);
-      if (results) return results;
-      throw new Error('Fallback needed');
-    } catch {
-      let filtered = [...mockStore.citas];
-      if (filters?.fecha) {
-        filtered = filtered.filter((c) => c.fecha === filters.fecha);
-      }
-      if (filters?.estado) {
-        filtered = filtered.filter((c) => c.estado === filters.estado);
-      }
-      if (filters?.terapeuta_id) {
-        filtered = filtered.filter((c) => c.terapeuta.id === filters.terapeuta_id);
-      }
-      if (filters?.cabina_id) {
-        filtered = filtered.filter((c) => c.cabina.id === filters.cabina_id);
-      }
-      if (filters?.search) {
-        const q = filters.search.toLowerCase();
-        filtered = filtered.filter(
-          (c) =>
-            c.cliente.nombre_completo.toLowerCase().includes(q) ||
-            c.cliente.dni.includes(q) ||
-            c.codigo_reserva.toLowerCase().includes(q)
-        );
-      }
-      return filtered;
-    }
+    const response = await apiClient.get<any>(`/admin/citas/?${params.toString()}`);
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (data?.results && Array.isArray(data.results)) return data;
+    return [];
   },
 
   updateCitaEstado: async (id: number, estado: 'PENDIENTE' | 'ATENDIDA' | 'CANCELADA'): Promise<Cita> => {
@@ -140,19 +75,12 @@ export const adminService = {
 
   // Inventario
   getProductos: async (estado?: 'NORMAL' | 'BAJO' | 'CRITICO'): Promise<Producto[]> => {
-    try {
-      const params = estado ? `?estado=${estado}` : '';
-      const response = await apiClient.get<any>(`/admin/inventario/${params}`);
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      if (estado) {
-        return mockStore.productos.filter((p) => p.estado_stock === estado);
-      }
-      return mockStore.productos;
-    }
+    const params = estado ? `?estado=${estado}` : '';
+    const response = await apiClient.get<any>(`/admin/inventario/${params}`);
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createProducto: async (payload: Partial<Producto>): Promise<Producto> => {
@@ -175,19 +103,12 @@ export const adminService = {
 
   // Movimientos de inventario
   getMovimientosInventario: async (productoId?: number): Promise<MovimientoInventario[]> => {
-    try {
-      const params = productoId ? `?producto_id=${productoId}` : '';
-      const response = await apiClient.get<any>(`/admin/inventario/movimientos/${params}`);
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      if (productoId) {
-        return mockStore.movimientosInventario.filter((m) => m.producto === productoId);
-      }
-      return mockStore.movimientosInventario;
-    }
+    const params = productoId ? `?producto_id=${productoId}` : '';
+    const response = await apiClient.get<any>(`/admin/inventario/movimientos/${params}`);
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   // Asiento manual de kardex
@@ -206,15 +127,11 @@ export const adminService = {
 
   // Promociones y cupones
   getPromociones: async (): Promise<Promocion[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/marketing/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.promociones;
-    }
+    const response = await apiClient.get<any>('/admin/marketing/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createPromocion: async (payload: Partial<Promocion>): Promise<Promocion> => {
@@ -237,15 +154,11 @@ export const adminService = {
 
   // Servicios y recetas (BOM)
   getServicios: async (): Promise<Servicio[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/servicios/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.servicios;
-    }
+    const response = await apiClient.get<any>('/admin/servicios/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createServicio: async (payload: Partial<Servicio>): Promise<Servicio> => {
@@ -291,15 +204,11 @@ export const adminService = {
 
   // Terapeutas
   getTerapeutas: async (): Promise<Terapeuta[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/terapeutas/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.terapeutas;
-    }
+    const response = await apiClient.get<any>('/admin/terapeutas/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createTerapeuta: async (payload: Partial<Terapeuta>): Promise<Terapeuta> => {
@@ -318,15 +227,11 @@ export const adminService = {
 
   // Cabinas
   getCabinas: async (): Promise<Cabina[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/cabinas/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.cabinas;
-    }
+    const response = await apiClient.get<any>('/admin/cabinas/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createCabina: async (payload: Partial<Cabina>): Promise<Cabina> => {
@@ -345,15 +250,11 @@ export const adminService = {
 
   // Usuarios
   getUsuarios: async (): Promise<User[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/usuarios/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.users;
-    }
+    const response = await apiClient.get<any>('/admin/usuarios/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createUsuario: async (payload: {
@@ -377,28 +278,20 @@ export const adminService = {
 
   // Clientes
   getClientes: async (): Promise<Cliente[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/clientes/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.clientes;
-    }
+    const response = await apiClient.get<any>('/admin/clientes/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   // Caja
   getCajaMovimientos: async (): Promise<MovimientoCaja[]> => {
-    try {
-      const response = await apiClient.get<any>('/admin/caja/');
-      const data = extractData<any>(response);
-      const list = data?.results || (Array.isArray(data) ? data : null);
-      if (list) return list;
-      throw new Error('Fallback needed');
-    } catch {
-      return mockStore.movimientosCaja;
-    }
+    const response = await apiClient.get<any>('/admin/caja/');
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   createCajaMovimiento: async (payload: {

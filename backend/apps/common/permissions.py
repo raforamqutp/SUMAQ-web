@@ -1,6 +1,7 @@
 from rest_framework.permissions import BasePermission
 
 
+### RIESGO: RBAC estricto con ProtectedRoute y permisos por rol en Django
 class IsAdminUserRole(BasePermission):
     """
     Permite acceso únicamente a usuarios con rol ADMIN.

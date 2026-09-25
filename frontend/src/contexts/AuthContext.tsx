@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
   };
 
-  // Temporizador de inactividad de 5 minutos (RH03 - Control Preventivo de Sesión Desatendida)
+  // ### RIESGO: Control de inactividad: auto-logout a los 5 minutos en React (RH03 - Control Preventivo de Sesión Desatendida)
   useEffect(() => {
     if (!token || !user) return;
 

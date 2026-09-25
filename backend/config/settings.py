@@ -118,6 +118,7 @@ else:
 
 AUTH_USER_MODEL = 'accounts.User'
 
+### RIESGO: Autenticación Stateless JWT + Hashing PBKDF2-SHA256
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
@@ -149,6 +150,7 @@ MAX_FAILED_LOGIN_ATTEMPTS = 5
 ACCOUNT_LOCKOUT_DURATION_SECONDS = 15 * 60  # 15 minutos
 
 # REST Framework
+### RIESGO: Throttling de tasa: 30 peticiones/min (anónimos) y 120 (autenticados)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -172,6 +174,7 @@ REST_FRAMEWORK = {
 }
 
 # Simple JWT
+### RIESGO: Autenticación Stateless JWT + Hashing PBKDF2-SHA256 (600,000 iteraciones)
 JWT_ACCESS_MINUTES = int(os.environ.get('JWT_ACCESS_MINUTES', 120))
 JWT_REFRESH_DAYS = int(os.environ.get('JWT_REFRESH_DAYS', 7))
 

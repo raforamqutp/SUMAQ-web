@@ -39,7 +39,8 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-
+### RIESGO: Autenticación Stateless JWT + Hashing PBKDF2-SHA256
+### RIESGO: Consultas preparadas y parametrizadas vía ORM (sin raw SQL)
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)

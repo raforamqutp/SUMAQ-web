@@ -1,6 +1,5 @@
 import { apiClient } from './api';
 import { Cita, FichaAtencion, Producto, Terapeuta } from '../types/models';
-import { mockStore } from './mockData';
 
 export interface FichaAtencionPayload {
   cita_id?: number;
@@ -13,24 +12,11 @@ export const therapistService = {
   getMiAgenda: async (
     fecha?: string
   ): Promise<{ fecha: string; terapeuta: Terapeuta; total_citas: number; citas: Cita[] }> => {
-    try {
-      const url = fecha ? `/terapeuta/mi-agenda/?fecha=${fecha}` : '/terapeuta/mi-agenda/';
-      const response = await apiClient.get<any>(url);
-      const data = response.data?.data || response.data;
-      if (data?.terapeuta && Array.isArray(data?.citas)) return data;
-      throw new Error('Respuesta inválida del servidor.');
-    } catch (err: any) {
-      const targetFecha = fecha || new Date().toISOString().split('T')[0];
-      const tId = Number(localStorage.getItem('sumaq_terapeuta_id') || '1');
-      const terapeuta = mockStore.terapeutas.find((t) => t.id === tId) || mockStore.terapeutas[0];
-      const citas = mockStore.citas.filter((c) => c.fecha === targetFecha && c.terapeuta.id === terapeuta.id);
-      return {
-        fecha: targetFecha,
-        terapeuta,
-        total_citas: citas.length,
-        citas: citas.length > 0 ? citas : mockStore.citas.filter((c) => c.terapeuta.id === terapeuta.id),
-      };
-    }
+    const url = fecha ? `/terapeuta/mi-agenda/?fecha=${fecha}` : '/terapeuta/mi-agenda/';
+    const response = await apiClient.get<any>(url);
+    const data = response.data?.data || response.data;
+    if (data?.terapeuta && Array.isArray(data?.citas)) return data;
+    throw new Error('No se pudo obtener la agenda del servidor.');
   },
 
   getCitaDetail: async (id: number): Promise<Cita> => {
@@ -73,14 +59,11 @@ export const therapistService = {
   },
 
   getInventario: async (): Promise<Producto[]> => {
-    try {
-      const response = await apiClient.get<any>('/terapeuta/inventario/');
-      const data = response.data?.data || response.data;
-      if (Array.isArray(data)) return data;
-      return mockStore.productos;
-    } catch {
-      return mockStore.productos;
-    }
+    const response = await apiClient.get<any>('/terapeuta/inventario/');
+    const data = response.data?.data || response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
   },
 
   getComprobantePDFUrl: (citaId: number): string => {
@@ -90,4 +73,3 @@ export const therapistService = {
       : `http://127.0.0.1:8000/api/terapeuta/citas/${citaId}/pdf/`;
   },
 };
-

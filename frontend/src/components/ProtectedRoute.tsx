@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
   allowedRoles: Array<'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA'>;
 }
 
+// ### RIESGO: RBAC estricto con ProtectedRoute y permisos por rol en Django
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();

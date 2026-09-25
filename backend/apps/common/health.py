@@ -7,6 +7,7 @@ from django.db import connection
 from django.utils import timezone
 
 
+### RIESGO: Endpoint de salud para balanceadores de carga
 class HealthCheckView(APIView):
     permission_classes = [AllowAny]
 
