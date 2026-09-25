@@ -210,19 +210,31 @@
 
 ---
 
-### 12. Fuerza Bruta / Claves Débiles (RH01)
-* **Archivo:** [`backend/config/settings.py`](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/backend/config/settings.py#L121-L126)
-* **Líneas exactas:** Líneas 121 a 126
+### 12. Fuerza Bruta / Claves Débiles / Bloqueo de Cuenta (RH01)
+* **Archivos:** [`backend/apps/accounts/serializers.py`](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/backend/apps/accounts/serializers.py#L48-L82) y [`backend/config/settings.py`](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/backend/config/settings.py#L141-L149)
+* **Líneas exactas:** Líneas 48 a 82 en `serializers.py`
 * **Fragmento de código implementado:**
   ```python
-  AUTH_PASSWORD_VALIDATORS = [
-      {
-          'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-          'OPTIONS': {'min_length': 6},
-      },
-  ]
+  # Control de Intentos Fallidos y Bloqueo Temporal (Account Lockout)
+  attempts = cache.get(attempts_key, 0) + 1
+  if attempts >= 5:
+      # Bloqueo estricto por 15 minutos (900 seg)
+      cache.set(lockout_key, True, timeout=15 * 60)
+      cache.delete(attempts_key)
+      raise serializers.ValidationError({
+          'code': 'ACCOUNT_LOCKED',
+          'message': 'Demasiados intentos fallidos (5 de 5). Su cuenta ha sido bloqueada temporalmente por 15 minutos por seguridad.'
+      })
+  else:
+      cache.set(attempts_key, attempts, timeout=15 * 60)
+      restantes = 5 - attempts
+      raise serializers.ValidationError({
+          'code': 'INVALID_CREDENTIALS',
+          'message': f'Credenciales incorrectas. Le quedan {restantes} intento(s) antes del bloqueo temporal de 15 minutos.'
+      })
   ```
-* **Mecanismo criptográfico:** Django aplica por defecto **`PBKDF2_SHA256` con 600,000 iteraciones** criptográficas en `django.contrib.auth.hashers`, haciendo imposible el ataque de diccionario offline.
+* **Mecanismos adicionales:** Hashing de contraseñas con **`PBKDF2_SHA256` (600,000 iteraciones)** y Throttling global por IP de 30 req/min.
+* **Explicación al docente:** *"Implementamos una doble defensa: 1) Si alguien intenta adivinar la clave 5 veces seguidas, el sistema bloquea la cuenta automáticamente por 15 minutos informando al usuario cuántos intentos le quedan en cada error; y 2) Si usa un script automatizado a alta velocidad, el Throttling frena la IP con error 429."*
 
 ---
 

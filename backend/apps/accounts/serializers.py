@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
 from apps.accounts.models import User
 
@@ -47,12 +48,39 @@ class LoginSerializer(serializers.Serializer):
         email = attrs.get('email', '').strip().lower()
         password = attrs.get('password')
 
+        lockout_key = f"login_lockout_{email}"
+        attempts_key = f"login_attempts_{email}"
+
+        # 1. Comprobar si la cuenta está bloqueada temporalmente por intentos fallidos
+        if cache.get(lockout_key):
+            raise serializers.ValidationError({
+                'code': 'ACCOUNT_LOCKED',
+                'message': 'Cuenta bloqueada temporalmente por exceso de intentos fallidos. Intente nuevamente en 15 minutos.'
+            })
+
         user = User.objects.filter(email__iexact=email).first()
         if not user or not user.check_password(password):
-            raise serializers.ValidationError({
-                'code': 'INVALID_CREDENTIALS',
-                'message': 'Credenciales incorrectas. Verifique su correo y contraseña.'
-            })
+            # Incrementar contador de intentos fallidos (duración de la ventana: 15 minutos)
+            attempts = cache.get(attempts_key, 0) + 1
+            if attempts >= 5:
+                # Bloquear la cuenta por 15 minutos
+                cache.set(lockout_key, True, timeout=15 * 60)
+                cache.delete(attempts_key)
+                raise serializers.ValidationError({
+                    'code': 'ACCOUNT_LOCKED',
+                    'message': 'Demasiados intentos fallidos (5 de 5). Su cuenta ha sido bloqueada temporalmente por 15 minutos por seguridad.'
+                })
+            else:
+                cache.set(attempts_key, attempts, timeout=15 * 60)
+                restantes = 5 - attempts
+                raise serializers.ValidationError({
+                    'code': 'INVALID_CREDENTIALS',
+                    'message': f'Credenciales incorrectas. Le quedan {restantes} intento(s) antes del bloqueo temporal de 15 minutos.'
+                })
+
+        # Si el inicio de sesión es exitoso, resetear intentos fallidos
+        cache.delete(attempts_key)
+        cache.delete(lockout_key)
 
         if not user.activo:
             raise serializers.ValidationError({

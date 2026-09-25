@@ -62,8 +62,15 @@ def custom_exception_handler(exc, context):
                 'details': response.data
             }
         }
-        if isinstance(response.data, dict) and 'detail' in response.data:
-            custom_data['error']['message'] = str(response.data['detail'])
+        if isinstance(response.data, dict):
+            if 'message' in response.data:
+                custom_data['error']['message'] = str(response.data['message'])
+            elif 'detail' in response.data:
+                custom_data['error']['message'] = str(response.data['detail'])
+            elif 'non_field_errors' in response.data and response.data['non_field_errors']:
+                custom_data['error']['message'] = str(response.data['non_field_errors'][0])
+            if 'code' in response.data:
+                custom_data['error']['code'] = str(response.data['code'])
 
         response.data = custom_data
 

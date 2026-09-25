@@ -58,3 +58,41 @@ def test_login_inactive_user_rejected():
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.data['success'] is False
+
+
+@pytest.mark.django_db
+def test_account_lockout_after_five_failed_attempts():
+    from django.core.cache import cache
+    cache.clear()
+
+    User.objects.create_user(
+        email='bloqueo.test@sumaqspa.pe',
+        password='Password2026!',
+        nombre_completo='Usuario Bloqueo'
+    )
+    client = APIClient()
+
+    # Primeros 4 intentos fallidos: avisa intentos restantes
+    for i in range(1, 5):
+        resp = client.post('/api/auth/login/', {
+            'email': 'bloqueo.test@sumaqspa.pe',
+            'password': f'ClaveErronea{i}'
+        })
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'le quedan' in resp.data['error']['message'].lower()
+
+    # 5to intento fallido: Bloquea la cuenta
+    resp_5 = client.post('/api/auth/login/', {
+        'email': 'bloqueo.test@sumaqspa.pe',
+        'password': 'ClaveErronea5'
+    })
+    assert resp_5.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'bloqueada temporalmente' in resp_5.data['error']['message'].lower()
+
+    # 6to intento (incluso con la contraseña correcta): Rechaza por estar bloqueada
+    resp_bloqueado = client.post('/api/auth/login/', {
+        'email': 'bloqueo.test@sumaqspa.pe',
+        'password': 'Password2026!'
+    })
+    assert resp_bloqueado.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'bloqueada temporalmente' in resp_bloqueado.data['error']['message'].lower()
