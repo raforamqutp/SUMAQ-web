@@ -536,9 +536,14 @@ export const ManageAppointmentPage: React.FC = () => {
               <p className="text-xs text-[#8C6F55] italic">No hay turnos disponibles para esta fecha.</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto p-1">
-                {slotsDisponibles.map((slot, idx) => (
+                {slotsDisponibles
+                  .filter(
+                    (slot, index, self) =>
+                      index === self.findIndex((s) => s.hora_inicio.slice(0, 5) === slot.hora_inicio.slice(0, 5))
+                  )
+                  .map((slot, idx) => (
                   <button
-                    key={idx}
+                    key={`${slot.hora_inicio}-${idx}`}
                     type="button"
                     disabled={!slot.disponible}
                     onClick={() => setSelectedSlot(slot)}

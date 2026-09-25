@@ -149,24 +149,44 @@ export const BookingWizardPage: React.FC = () => {
 
   // Consulta de turnos disponibles
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchSlots = async () => {
-      if (!fecha) return;
+      if (!fecha || !selectedTerapeutaId) {
+        setSlotsDisponibles([]);
+        return;
+      }
       setLoadingSlots(true);
       try {
         const res = await publicService.getDisponibilidad(
           fecha,
           selectedServicioId || undefined,
-          selectedTerapeutaId || undefined,
+          selectedTerapeutaId,
           selectedCabinaId || undefined
         );
-        setSlotsDisponibles(res.slots);
+        if (!isCancelled) {
+          // Filtrar por terapeuta_id para garantizar correspondencia con la especialista elegida
+          const filtered = (res.slots || []).filter(
+            (s) => !s.terapeuta_id || s.terapeuta_id === selectedTerapeutaId
+          );
+          setSlotsDisponibles(filtered);
+        }
       } catch (err) {
-        console.error("Error fetching availability slots:", err);
+        if (!isCancelled) {
+          console.error("Error fetching availability slots:", err);
+        }
       } finally {
-        setLoadingSlots(false);
+        if (!isCancelled) {
+          setLoadingSlots(false);
+        }
       }
     };
+
     fetchSlots();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [fecha, selectedServicioId, selectedTerapeutaId, selectedCabinaId]);
 
   // Sincronizar cabina con la terapeuta seleccionada
@@ -562,9 +582,14 @@ export const BookingWizardPage: React.FC = () => {
                     </div>
                   )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {slotsDisponibles.map((slot, idx) => (
+                    {slotsDisponibles
+                      .filter(
+                        (slot, index, self) =>
+                          index === self.findIndex((s) => s.hora_inicio.slice(0, 5) === slot.hora_inicio.slice(0, 5))
+                      )
+                      .map((slot, idx) => (
                       <button
-                        key={idx}
+                        key={`${slot.hora_inicio}-${idx}`}
                         disabled={!slot.disponible}
                         onClick={() => setSelectedSlot(slot)}
                         className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${

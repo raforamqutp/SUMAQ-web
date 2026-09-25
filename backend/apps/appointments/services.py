@@ -65,35 +65,87 @@ class DisponibilidadService:
             elif fecha == today_local and hora_ini <= time_local:
                 es_pasado = True
 
-            for terapeuta in terapeutas_qs:
-                cabina_terapeuta = terapeuta.cabina
-                if not cabina_terapeuta or not cabina_terapeuta.activa:
-                    continue
+            if terapeuta_id:
+                for terapeuta in terapeutas_qs:
+                    cabina_terapeuta = terapeuta.cabina
+                    if not cabina_terapeuta or not cabina_terapeuta.activa:
+                        continue
 
-                if cabina_id and cabina_terapeuta.id != cabina_id:
-                    continue
+                    if cabina_id and cabina_terapeuta.id != cabina_id:
+                        continue
 
-                terapeuta_ocupado = any(
-                    c['terapeuta_id'] == terapeuta.id and
-                    (hora_ini < c['hora_fin'] and hora_fin_slot > c['hora_inicio'])
-                    for c in citas_list
-                )
+                    terapeuta_ocupado = any(
+                        c['terapeuta_id'] == terapeuta.id and
+                        (hora_ini < c['hora_fin'] and hora_fin_slot > c['hora_inicio'])
+                        for c in citas_list
+                    )
 
-                cabina_ocupada = any(
-                    c['cabina_id'] == cabina_terapeuta.id and
-                    (hora_ini < c['hora_fin'] and hora_fin_slot > c['hora_inicio'])
-                    for c in citas_list
-                )
+                    cabina_ocupada = any(
+                        c['cabina_id'] == cabina_terapeuta.id and
+                        (hora_ini < c['hora_fin'] and hora_fin_slot > c['hora_inicio'])
+                        for c in citas_list
+                    )
+
+                    if es_pasado:
+                        disponible = False
+                        motivo = 'Cerrado'
+                    elif terapeuta_ocupado or cabina_ocupada:
+                        disponible = False
+                        motivo = 'Ocupado'
+                    else:
+                        disponible = True
+                        motivo = 'Disponible'
+
+                    slots_resultado.append({
+                        'hora_inicio': hora_ini.strftime('%H:%M:%S'),
+                        'hora_fin': hora_fin_slot.strftime('%H:%M:%S'),
+                        'disponible': disponible,
+                        'motivo': motivo,
+                        'pasado': es_pasado,
+                        'terapeuta_id': terapeuta.id,
+                        'terapeuta_nombre': terapeuta.usuario.nombre_completo,
+                        'especialidad': terapeuta.especialidad,
+                        'cabina_id': cabina_terapeuta.id,
+                        'cabina_nombre': cabina_terapeuta.nombre,
+                        'cabina_tipo': cabina_terapeuta.tipo
+                    })
+            else:
+                # Si no se especifica terapeuta_id, consolidar a 1 solo slot por horario (evita triplicación)
+                terapeuta_libre_encontrado = None
+                for terapeuta in terapeutas_qs:
+                    cabina_terapeuta = terapeuta.cabina
+                    if not cabina_terapeuta or not cabina_terapeuta.activa:
+                        continue
+                    if cabina_id and cabina_terapeuta.id != cabina_id:
+                        continue
+
+                    terapeuta_ocupado = any(
+                        c['terapeuta_id'] == terapeuta.id and
+                        (hora_ini < c['hora_fin'] and hora_fin_slot > c['hora_inicio'])
+                        for c in citas_list
+                    )
+                    cabina_ocupada = any(
+                        c['cabina_id'] == cabina_terapeuta.id and
+                        (hora_ini < c['hora_fin'] and hora_fin_slot > c['hora_inicio'])
+                        for c in citas_list
+                    )
+
+                    if not terapeuta_ocupado and not cabina_ocupada:
+                        terapeuta_libre_encontrado = (terapeuta, cabina_terapeuta)
+                        break
 
                 if es_pasado:
                     disponible = False
                     motivo = 'Cerrado'
-                elif terapeuta_ocupado or cabina_ocupada:
-                    disponible = False
-                    motivo = 'Ocupado'
-                else:
+                elif terapeuta_libre_encontrado:
                     disponible = True
                     motivo = 'Disponible'
+                else:
+                    disponible = False
+                    motivo = 'Ocupado'
+
+                primer_t = terapeuta_libre_encontrado[0] if terapeuta_libre_encontrado else terapeutas_qs.first()
+                primer_c = terapeuta_libre_encontrado[1] if terapeuta_libre_encontrado else (primer_t.cabina if primer_t else None)
 
                 slots_resultado.append({
                     'hora_inicio': hora_ini.strftime('%H:%M:%S'),
@@ -101,12 +153,12 @@ class DisponibilidadService:
                     'disponible': disponible,
                     'motivo': motivo,
                     'pasado': es_pasado,
-                    'terapeuta_id': terapeuta.id,
-                    'terapeuta_nombre': terapeuta.usuario.nombre_completo,
-                    'especialidad': terapeuta.especialidad,
-                    'cabina_id': cabina_terapeuta.id,
-                    'cabina_nombre': cabina_terapeuta.nombre,
-                    'cabina_tipo': cabina_terapeuta.tipo
+                    'terapeuta_id': primer_t.id if primer_t else None,
+                    'terapeuta_nombre': primer_t.usuario.nombre_completo if primer_t else '',
+                    'especialidad': primer_t.especialidad if primer_t else '',
+                    'cabina_id': primer_c.id if primer_c else None,
+                    'cabina_nombre': primer_c.nombre if primer_c else '',
+                    'cabina_tipo': primer_c.tipo if primer_c else ''
                 })
 
         return slots_resultado
