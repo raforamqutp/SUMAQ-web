@@ -1,8 +1,6 @@
 @echo off
-REM ==============================================================================
-REM SCRIPT DE RESTAURACIÓN DE BASE DE DATOS - SUMAQ SPA (WINDOWS / XAMPP)
-REM Uso: restore_db.bat <ruta_archivo_sql>
-REM ==============================================================================
+:: Restauración de base de datos sumaq_spa (Windows)
+:: Uso: restore_db.bat <ruta_archivo_sql>
 
 REM 1. Configuracion por defecto (XAMPP / estandar)
 set DB_NAME=sumaq_spa
@@ -46,10 +44,8 @@ if not exist "%BACKUP_FILE%" (
     exit /b 1
 )
 
-echo ========================================================
-echo   RESTAURANDO BASE DE DATOS: %DB_NAME%
-echo   Desde: %BACKUP_FILE%
-echo ========================================================
+echo Restaurando base de datos: %DB_NAME%
+echo Desde: %BACKUP_FILE%
 
 if "%DB_PASS%"=="" (
     %MYSQL% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% -e "CREATE DATABASE IF NOT EXISTS %DB_NAME% CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"

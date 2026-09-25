@@ -15,6 +15,9 @@ class Servicio(models.Model):
     imagen_url = models.CharField('URL de Imagen', max_length=500, blank=True, default='')
     activo = models.BooleanField('Activo', default=True)
 
+    objects = models.Manager()
+    DoesNotExist: type[Exception]
+
     class Meta:
         db_table = 'servicios'
         verbose_name = 'Servicio / Tratamiento'
@@ -44,6 +47,9 @@ class RecetaServicio(models.Model):
         decimal_places=2,
         default=Decimal('1.00')
     )
+
+    objects = models.Manager()
+    DoesNotExist: type[Exception]
 
     class Meta:
         db_table = 'recetas_servicio'

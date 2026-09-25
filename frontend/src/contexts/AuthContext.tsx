@@ -1,5 +1,3 @@
-// Contexto global de autenticación y autorización basada en roles (RBAC) para Sumaq Spa
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types/models';
 import { authService, LoginResponseData } from '../services/authService';
@@ -24,7 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('sumaq_access_token'));
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Inicializa la sesión validando el token persistido contra el endpoint /auth/me/
+  // Validar sesión al montar el contexto
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('sumaq_access_token');

@@ -1,5 +1,3 @@
-// Sistema de notificaciones contextuales tipo Toast con auto-cierre temporizado y estilos según severidad
-
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
@@ -26,7 +24,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Encola un nuevo toast con identificador único y programa su auto-destrucción a los 4.5 segundos
+  // Despacha toast con auto-cierre a los 4.5s
   const addToast = useCallback((type: ToastType, title: string, message?: string) => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, title, message }]);

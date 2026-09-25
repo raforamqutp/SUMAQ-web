@@ -20,6 +20,8 @@ class Terapeuta(models.Model):
     foto_url = models.CharField('URL de Fotografía', max_length=500, blank=True, default='')
     activo = models.BooleanField('Activo', default=True)
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'terapeutas'
         verbose_name = 'Terapeuta'

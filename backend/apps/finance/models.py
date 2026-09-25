@@ -33,6 +33,8 @@ class MovimientoCaja(models.Model):
     fecha_registro = models.DateTimeField('Fecha de Registro', auto_now_add=True)
     descripcion = models.TextField('Descripción / Glosa', blank=True, default='')
 
+    objects = models.Manager()
+
     class Meta:
         db_table = 'movimientos_caja'
         verbose_name = 'Movimiento de Caja'

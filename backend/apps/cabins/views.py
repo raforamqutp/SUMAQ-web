@@ -1,12 +1,12 @@
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from apps.cabins.models import Cabina
 from apps.cabins.serializers import CabinaSerializer
 from apps.common.permissions import IsAdminUserRole
+from apps.common.viewsets import WrappedModelViewSet
 
 
-class CabinaViewSet(ModelViewSet):
+class CabinaViewSet(WrappedModelViewSet):
     queryset = Cabina.objects.all().order_by('id')
     serializer_class = CabinaSerializer
 

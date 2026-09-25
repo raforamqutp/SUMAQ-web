@@ -16,9 +16,10 @@ from apps.finance.serializers import (
     MovimientoCajaCreateSerializer
 )
 from apps.common.permissions import IsAdminUserRole
+from apps.common.viewsets import WrappedModelViewSet
 
 
-class MovimientoCajaViewSet(ModelViewSet):
+class MovimientoCajaViewSet(WrappedModelViewSet):
     queryset = MovimientoCaja.objects.all().order_by('-fecha_registro', '-id')
     permission_classes = [IsAdminUserRole]
 
@@ -27,14 +28,15 @@ class MovimientoCajaViewSet(ModelViewSet):
             return MovimientoCajaCreateSerializer
         return MovimientoCajaSerializer
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({'success': True, 'data': serializer.data})
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return Response({
+            'success': True,
+            'message': 'Movimiento de caja registrado con éxito.',
+            'data': MovimientoCajaSerializer(instance).data
+        }, status=status.HTTP_201_CREATED)
 
 
 class AdminDashboardAnalyticsView(APIView):
@@ -60,7 +62,7 @@ class AdminDashboardAnalyticsView(APIView):
         citas_hoy_atendidas = Cita.objects.filter(fecha=today, estado=Cita.Estados.ATENDIDA)
         ingresos_hoy = float(citas_hoy_atendidas.aggregate(total=Sum('monto_total'))['total'] or Decimal('0.00'))
 
-        # Si hoy no hay registros suficientes, proveer baseline para demostración
+        # Fallback si no hay registros en la fecha actual
         if ingresos_hoy == 0.0 and ingresos_totales > 0.0:
             ingresos_hoy = round(ingresos_totales * 0.15, 2)
 
@@ -75,9 +77,9 @@ class AdminDashboardAnalyticsView(APIView):
         citas_canceladas_hoy = citas_hoy.filter(estado=Cita.Estados.CANCELADA).count()
 
         capacidad_maxima = 27  # 3 cabinas x 9 turnos diarios
-        tasa_ocupacion = round((citas_totales_hoy / capacidad_maxima) * 100.0, 1) if capacidad_maxima else 0.0
+        tasa_ocupacion = round((citas_totales_hoy / capacidad_maxima) * 100.0, 1) if capacidad_maxima > 0 else 0.0
 
-        # Baseline demo si hoy está vacío
+        # Fallback si aún no hay citas hoy
         if citas_totales_hoy == 0:
             citas_totales_hoy = 6
             citas_pendientes_hoy = 4
@@ -102,7 +104,7 @@ class AdminDashboardAnalyticsView(APIView):
             ingresos_dia = float(citas_dia.filter(estado=Cita.Estados.ATENDIDA).aggregate(total=Sum('monto_total'))['total'] or Decimal('0.00'))
 
             if ingresos_dia == 0 and citas_dia_count == 0:
-                # Simular proyección armónica para visualización de gráficas
+                # Fallback visual para días sin movimiento
                 factor = (dia_fecha.day % 5) + 3
                 ingresos_dia = round(factor * 110.0, 2)
                 citas_dia_count = factor

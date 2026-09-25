@@ -1,5 +1,3 @@
-// Guardián de rutas (Route Guard) para control de acceso RBAC y redirección a login o unauthorized
-
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,13 +11,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  // Espera a que el contexto de autenticación concluya la verificación del token en storage
+  // Esperar validación de sesión
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-[#6F5540]">Cargando sesión segura de Sumaq Spa...</p>
+          <p className="text-sm font-medium text-[#6F5540]">Cargando sesión...</p>
         </div>
       </div>
     );

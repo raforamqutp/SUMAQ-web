@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# SCRIPT DE BACKUP AUTOMATIZADO DE BASE DE DATOS - SUMAQ SPA (LINUX / UNIX)
-# ==============================================================================
+# Backup de base de datos sumaq_spa (Linux/Unix)
 
 DB_NAME="${DB_NAME:-sumaq_spa}"
 DB_USER="${DB_USER:-root}"
@@ -16,10 +14,8 @@ mkdir -p "${BACKUP_DIR}"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_FILE="${BACKUP_DIR}/sumaq_spa_backup_${TIMESTAMP}.sql.gz"
 
-echo "========================================================"
-echo "  GENERANDO COPIA DE SEGURIDAD: ${DB_NAME}"
-echo "  Destino: ${BACKUP_FILE}"
-echo "========================================================"
+echo "Generando copia de seguridad: ${DB_NAME}"
+echo "Destino: ${BACKUP_FILE}"
 
 if [ -z "${DB_PASS}" ]; then
     mysqldump -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" \

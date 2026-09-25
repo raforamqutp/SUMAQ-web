@@ -1,5 +1,3 @@
-// Página de inicio / Landing Page: escaparate institucional, catálogo destacado, cabinas, terapeutas y cupones
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { publicService } from '../../services/publicService';
@@ -31,7 +29,7 @@ export const LandingPage: React.FC = () => {
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Hidratación en paralelo mediante Promise.all para minimizar el Time-To-Interactive (TTI)
+  // Carga inicial de catálogos
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -54,7 +52,7 @@ export const LandingPage: React.FC = () => {
     fetchData();
   }, []);
 
-  // Copia el código de cupón al portapapeles y notifica mediante Toast
+  // Copiar código de cupón
   const copyCoupon = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success('¡Cupón copiado!', `El código "${code}" ha sido copiado al portapapeles.`);

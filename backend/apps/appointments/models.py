@@ -95,6 +95,9 @@ class Cita(models.Model):
     created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
     updated_at = models.DateTimeField('Última Actualización', auto_now=True)
 
+    objects = models.Manager()
+    DoesNotExist: type[Exception]
+
     class Meta:
         db_table = 'citas'
         verbose_name = 'Cita / Reserva'

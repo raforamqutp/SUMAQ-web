@@ -1,5 +1,4 @@
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
@@ -17,6 +16,7 @@ from apps.appointments.services import DisponibilidadService, ReservaService
 from apps.common.permissions import IsAdminUserRole, IsAssignedTherapistOrAdmin
 from apps.common.authentication import QueryParamJWTAuthentication
 from apps.common.pdf import generar_comprobante_pdf
+from apps.common.viewsets import WrappedModelViewSet
 
 
 class DisponibilidadPublicView(APIView):
@@ -127,7 +127,7 @@ class ReprogramarCitaWebPublicView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class CitaAdminViewSet(ModelViewSet):
+class CitaAdminViewSet(WrappedModelViewSet):
     queryset = Cita.objects.select_related(
         'cliente', 'servicio', 'terapeuta__usuario', 'cabina'
     ).prefetch_related(

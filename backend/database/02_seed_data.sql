@@ -1,7 +1,4 @@
--- ============================================================================
--- DATOS INICIALES (SEED DATA) PARA SUMAQ SPA & CENTRO DE BIENESTAR
--- Sincronizados con la versión definitiva del frontend
--- ============================================================================
+-- Datos iniciales (seed data): sumaq_spa
 
 USE `sumaq_spa`;
 

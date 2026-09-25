@@ -1,9 +1,6 @@
--- ==============================================================================
--- SCRIPT DE CONFIGURACIÓN DE USUARIO Y PRIVILEGIOS DE REPLICACIÓN
--- Ejecutar en el Servidor Master (Source)
--- ==============================================================================
+-- Configuración de usuario y privilegios de replicación (ejecutar en Master)
 
--- 1. Crear usuario dedicado exclusivamente para la sincronización de réplicas
+-- 1. Crear usuario dedicado para la sincronización de réplicas
 CREATE USER IF NOT EXISTS 'repl_user'@'%' IDENTIFIED BY 'ReplSumaq2026Secure!';
 
 -- 2. Otorgar privilegios mínimos requeridos por MySQL
@@ -15,10 +12,8 @@ FLUSH PRIVILEGES;
 -- 4. Comando para consultar posición del log binario en Master:
 -- SHOW MASTER STATUS;
 
--- ==============================================================================
--- COMANDOS PARA EJECUTAR EN EL SERVIDOR RÉPLICA (SLAVE)
--- Reemplazar MASTER_LOG_FILE y MASTER_LOG_POS con los valores obtenidos de SHOW MASTER STATUS
--- ==============================================================================
+-- Comandos para el servidor réplica (Slave)
+-- Reemplazar MASTER_LOG_FILE y MASTER_LOG_POS con los valores de SHOW MASTER STATUS
 
 /*
 CHANGE MASTER TO
