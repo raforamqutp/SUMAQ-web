@@ -118,6 +118,7 @@ else:
 
 AUTH_USER_MODEL = 'accounts.User'
 
+### RIESGO: Autenticación Stateless JWT + Hashing PBKDF2-SHA256
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
@@ -138,7 +139,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+is_testing = 'pytest' in sys.modules or 'test' in sys.argv
+
 # REST Framework
+### RIESGO: Throttling de tasa: 30 peticiones/min (anónimos) y 120 (autenticados)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -146,12 +150,23 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        () if is_testing else (
+            'rest_framework.throttling.AnonRateThrottle',
+            'rest_framework.throttling.UserRateThrottle',
+        )
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/minute',
+        'user': '120/minute',
+    },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'EXCEPTION_HANDLER': 'apps.common.exceptions.custom_exception_handler',
 }
 
 # Simple JWT
+### RIESGO: Autenticación Stateless JWT + Hashing PBKDF2-SHA256 (600,000 iteraciones)
 JWT_ACCESS_MINUTES = int(os.environ.get('JWT_ACCESS_MINUTES', 120))
 JWT_REFRESH_DAYS = int(os.environ.get('JWT_REFRESH_DAYS', 7))
 

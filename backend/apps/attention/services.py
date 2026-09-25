@@ -51,6 +51,7 @@ class AtencionService:
 
     @classmethod
     def completar_cita(cls, cita):
+        ### RIESGO: Rollback transaccional atómico ante falta de stock
         with transaction.atomic():
             cita_lock = Cita.objects.select_for_update().get(id=cita.id)
             if cita_lock.estado == Cita.Estados.ATENDIDA:

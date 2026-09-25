@@ -72,3 +72,22 @@ Para entornos de producción se definen los siguientes perfiles de usuario en My
 - En el motor de reservas (`/api/citas/reservar-web/`) y en la finalización de citas con descuento de inventario (`/api/terapeuta/citas/<id>/completar/`), se utiliza:
   - `@transaction.atomic` para garantizar atomicidad ACID.
   - Bloqueo pesimista `select_for_update()` a nivel de fila en la tabla `citas` y `productos`, impidiendo sobre-agendamientos simultáneos en la misma cabina/horario (Anti-Double Booking) y saldos negativos de inventario.
+
+---
+
+## 4. Replicación Master-Slave y Monitoreo en Tiempo Real (Puertos 3306 y 3307)
+
+### A. Arquitectura
+- **Nodo Master (Source):** `127.0.0.1:3306` (Server-ID: 1, `read_only = OFF`). Procesa todas las transacciones `INSERT/UPDATE/DELETE` y escribe en el Binary Log (`ROW`).
+- **Nodo Slave (Replica):** `127.0.0.1:3307` (Server-ID: 2, `read_only = ON`). Recibe los eventos del Binlog mediante el hilo I/O y los aplica con el hilo SQL en el Relay Log, absorbiendo consultas de lectura `SELECT`.
+
+### B. Herramientas de Monitoreo y Demostración en Terminal
+- **Script Principal:** [admin_tools/monitor_replication.py](file:///d:/Projects/SUMAQ/admin_tools/monitor_replication.py)
+- **Lanzador Directo:** [admin_tools/monitor_replicacion.bat](file:///d:/Projects/SUMAQ/admin_tools/monitor_replicacion.bat)
+
+#### Modos de Demostración:
+1. **`python admin_tools/monitor_replication.py --live`** (o tecla `[1]`): Tablero de telemetría en tiempo real que refresca cada 1 segundo mostrando estado de sockets, QPS de Master vs Slave, hilos I/O y SQL (`Yes/Yes`), lag de sincronización (0s) y procesos activos.
+2. **`python admin_tools/monitor_replication.py --demo`** (o tecla `[2]`): Demostración transaccional que inserta un registro en el Master (3306), muestra el avance del Binlog y comprueba la replicación instantánea (< 2ms) en el Slave (3307).
+3. **`python admin_tools/monitor_replication.py --split`** (o tecla `[3]`): Simulación de enrutamiento de carga (Read/Write Splitting).
+4. **`python admin_tools/monitor_replication.py --check`** (o tecla `[4]`): Diagnóstico rápido de conectividad y estado de replicación.
+

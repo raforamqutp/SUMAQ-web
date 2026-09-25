@@ -64,6 +64,7 @@ echo.
 echo Procediendo a restaurar desde: %SQL_FILE%
 echo.
 
+:: ### RIESGO: Script de restauración rápida ante desastres
 if "%DB_PASS%"=="" (
     %MYSQL_CMD% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% -e "CREATE DATABASE IF NOT EXISTS %DB_NAME% CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     %MYSQL_CMD% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% %DB_NAME% < "%SQL_FILE%"

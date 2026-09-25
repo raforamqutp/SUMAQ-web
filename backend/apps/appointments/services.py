@@ -113,6 +113,7 @@ class ReservaService:
         codigo_cupon = data.get('codigo_cupon', '').strip()
 
         with transaction.atomic():
+            ### RIESGO: Bloqueo pesimista select_for_update() en reservas atómicas
             # 1. Bloqueo pesimista sobre terapeuta y cabina para garantizar serialización
             try:
                 terapeuta = Terapeuta.objects.select_for_update().select_related('usuario').get(id=terapeuta_id, activo=True)
@@ -227,6 +228,7 @@ class ReservaService:
             )
 
             # 6. Asiento contable de ingreso en Caja
+            ### RIESGO: Registro de bitácora y logs de auditoría por usuario
             MovimientoCaja.objects.create(
                 cita=cita,
                 tipo=MovimientoCaja.Tipos.INGRESO_CITA,
@@ -282,6 +284,7 @@ class ReservaService:
         }
 
     @classmethod
+    ### RIESGO: Regla de negocio: 24h mínimas para modificar o cancelar
     def cancelar_cita_web(cls, codigo_reserva, dni, motivo=None):
         info = cls.consultar_cita_web(codigo_reserva, dni)
         if not info['puede_modificar']:
@@ -307,6 +310,7 @@ class ReservaService:
             return cita_lock
 
     @classmethod
+    ### RIESGO: Reasignación automática de slots horarios ante colisión
     def reprogramar_cita_web(cls, codigo_reserva, dni, nueva_fecha, nueva_hora_inicio):
         info = cls.consultar_cita_web(codigo_reserva, dni)
         if not info['puede_modificar']:

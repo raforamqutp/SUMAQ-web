@@ -62,6 +62,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
   };
 
+  // ### RIESGO: Control de inactividad: auto-logout a los 5 minutos en React
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 minutos
+    let timer: any = null;
+
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        console.warn("[Seguridad] Sesión cerrada automáticamente tras 5 minutos de inactividad.");
+        logout();
+      }, INACTIVITY_LIMIT_MS);
+    };
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
+    resetTimer();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [token, user]);
+
   const isAuthenticated = !!user && !!token;
   const isAdmin = user?.rol === 'ADMIN';
   const isTherapist = user?.rol === 'TERAPEUTA';
