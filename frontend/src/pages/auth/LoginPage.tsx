@@ -142,7 +142,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('recepcion@sumaqspa.pe', 'Recepcion2026!')}
+                onClick={() => handleQuickLogin('recepcion@sumaqspa.pe', 'Sumaq2026!')}
                 className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#0077B6]">
@@ -154,7 +154,7 @@ export const LoginPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('elena.morales@sumaqspa.pe', 'Terapeuta2026!')}
+                onClick={() => handleQuickLogin('elena.morales@sumaqspa.pe', 'Sumaq2026!')}
                 className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8A3648]">
