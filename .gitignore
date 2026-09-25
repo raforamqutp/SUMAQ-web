@@ -31,8 +31,10 @@ media/
 Thumbs.db
 
 # Backup outputs (exclude generated SQL dumps, keep structure)
+*.backup
 admin_tools/backups/*.sql
 backend/admin_tools/backups/*.sql
+!admin_tools/backups/.gitkeep
 !backend/admin_tools/backups/.gitkeep
 
 # Reference repository & internal files

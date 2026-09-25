@@ -1,7 +1,7 @@
 @echo off
 :: Backup de base de datos sumaq_spa (Windows)
 
-:: 1. Configuracion por defecto
+:: 1. Configuracion por defecto (XAMPP / MySQL Server)
 set DB_NAME=sumaq_spa
 set DB_USER=root
 set DB_PASS=
