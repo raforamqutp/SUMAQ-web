@@ -56,6 +56,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [2/3] Generando respaldo transaccional (InnoDB)...
+:: ### RIESGO: Rutina de respaldo transaccional diario
 if "%DB_PASS%"=="" (
     %MYSQLDUMP_CMD% -h %DB_HOST% -P %DB_PORT% -u %DB_USER% --single-transaction --quick --routines --triggers --hex-blob %DB_NAME% > "%BACKUP_FILE%"
 ) else (
@@ -73,6 +74,7 @@ echo      %BACKUP_FILE%
 echo.
 
 echo [3/3] Aplicando politica de retencion (conservar ultimos 7 dias)...
+:: ### RIESGO: Purga automática de historiales y logs corruptos
 forfiles /p "%BACKUP_DIR%" /s /m *.sql /d -7 /c "cmd /c del @path" 2>nul
 echo [ok] Politica de retencion finalizada.
 echo.

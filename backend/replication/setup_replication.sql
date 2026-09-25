@@ -1,6 +1,7 @@
 -- Configuración de usuario y privilegios de replicación (ejecutar en Master)
 
 -- 1. Crear usuario dedicado para la sincronización de réplicas
+-- ### RIESGO: Replicación Master-Slave asíncrona (puertos 3306 / 3307)
 CREATE USER IF NOT EXISTS 'repl_user'@'%' IDENTIFIED BY 'ReplSumaq2026Secure!';
 
 -- 2. Otorgar privilegios mínimos requeridos por MySQL

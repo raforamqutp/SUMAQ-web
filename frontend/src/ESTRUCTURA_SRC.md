@@ -10,7 +10,7 @@ La carpeta `src` (`frontend/src`) contiene el núcleo de la aplicación Frontend
 - **Flujo Público:** Experiencia del cliente final (navegación de servicios, cabinas, promociones y wizard de reserva en 4 pasos con cupón).
 - **Flujo Terapeuta:** Gestión operativa del profesional (agenda personal, registro de ficha clínica del cliente, adición de consumos extras y cierre de sesión con descarga de comprobante).
 - **Flujo Administrativo & Recepción:** Panel de control integral (KPIs y dashboard financiero, agenda global simultánea para 3 cabinas, gestión de citas, caja/POS con cálculo de IGV, inventario con Kardex y recetas técnicas BOM, promociones y usuarios).
-- **Mecanismo Híbrido API/Mock:** Los servicios enlazan con el backend Django REST (`http://127.0.0.1:8000/api`), pero cuentan con un motor in-memory (`mockStore`) que garantiza funcionalidad completa autónoma (standalone fallback).
+- **Integración 100% en Vivo con API / MySQL:** Todos los servicios (`publicService`, `therapistService`, `adminService`, `authService`) se comunican de forma directa y exclusiva con la API Django REST (`/api`) y la base de datos MySQL `sumaq_spa`. Se ha eliminado cualquier lectura o fallback hacia datos simulados/mockup.
 
 ---
 
@@ -185,7 +185,7 @@ frontend/src/
 - **`publicService.ts`**: Métodos de acceso público para obtener listas de servicios, terapeutas, cabinas, promociones activas, verificar slots de disponibilidad horaria por fecha (`getDisponibilidad`) y crear citas vía web (`reservarWeb`).
 - **`therapistService.ts`**: Métodos para el portal del terapeuta: consulta de agenda diaria (`getMiAgenda`), detalle de cita (`getCitaDetail`), guardado/actualización de la ficha de atención (`saveFichaAtencion`), adición de servicios extra y cierre de cita con descuento de stock (`completarCita`).
 - **`adminService.ts`**: Centralización de todas las operaciones administrativas (CRUD completo de productos, servicios y recetas BOM, promociones, terapeutas, cabinas, usuarios, reporte de caja y reportes financieros por rango).
-- **`mockData.ts`**: Base de datos en memoria (`mockStore`) y datos semilla (*seed data*) con cabinas, terapeutas, productos, recetas, citas y usuarios. Permite que toda la interfaz funcione de manera interactiva sin depender obligatoriamente de una base de datos externa activa.
+- **`mockData.ts`**: Archivo desactivado y deprecado permanentemente. La aplicación garantiza cero lecturas de datos estáticos simulados.
 
 ---
 
