@@ -8,16 +8,18 @@
 ## 📌 ÍNDICE GENERAL
 1. [¿Qué es Docker y por qué todo el mundo lo usa? (Explicado con Manzanas)](#1-qué-es-docker-y-por-qué-todo-el-mundo-lo-usa-explicado-con-manzanas)
 2. [Los 5 Conceptos Clave de Docker](#2-los-5-conceptos-clave-de-docker)
-3. [¿Qué se implementó exactamente en SUMAQ SPA?](#3-qué-se-implementó-exactamente-en-sumaq-spa)
-4. [Radiografía Completa de Archivos, Carpetas y Código](#4-radiografía-completa-de-archivos-carpetas-y-código)
+3. [¿Por qué ya NO tienes que abrir terminales en Windows? (Gestión Autónoma de Docker)](#3-por-qué-ya-no-tienes-que-abrir-terminales-en-windows-gestión-autónoma-de-docker)
+4. [¿Qué se implementó exactamente en SUMAQ SPA?](#4-qué-se-implementó-exactamente-en-sumaq-spa)
+5. [Radiografía Completa de Archivos, Carpetas y Código](#5-radiografía-completa-de-archivos-carpetas-y-código)
    - [A. El Orquestador: `docker-compose.yml`](#a-el-orquestador-docker-composeyml)
    - [B. El Backend: `backend/Dockerfile` y `entrypoint.sh`](#b-el-backend-backenddockerfile-y-entrypointsh)
    - [C. El Frontend: `frontend/Dockerfile` y `nginx.conf`](#c-el-frontend-frontenddockerfile-y-nginxconf)
    - [D. Los Filtros de Seguridad: `.dockerignore`](#d-los-filtros-de-seguridad-dockerignore)
    - [E. Las Herramientas de Control: Scripts en `admin_tools/`](#e-las-herramientas-de-control-scripts-en-admin_tools)
-5. [Manual Práctico de Operación (Paso a Paso sin Complicaciones)](#5-manual-práctico-de-operación-paso-a-paso-sin-complicaciones)
-6. [Cómo Demostrar la Replicación y el Sistema ante el Profesor](#6-cómo-demostrar-la-replicación-y-el-sistema-ante-el-profesor)
-7. [Preguntas Frecuentes y Guion para la Sustentación](#7-preguntas-frecuentes-y-guion-para-la-sustentación)
+6. [Manual Práctico de Operación (Paso a Paso sin Complicaciones)](#6-manual-práctico-de-operación-paso-a-paso-sin-complicaciones)
+7. [Cómo hacer Consultas SQL a la Base de Datos en Docker (4 Métodos Prácticos)](#7-cómo-hacer-consultas-sql-a-la-base-de-datos-en-docker-4-métodos-prácticos)
+8. [Cómo Demostrar la Replicación y el Sistema ante el Profesor](#8-cómo-demostrar-la-replicación-y-el-sistema-ante-el-profesor)
+9. [Preguntas Frecuentes y Guion para la Sustentación](#9-preguntas-frecuentes-y-guion-para-la-sustentación)
 
 ---
 
@@ -90,7 +92,33 @@ Para entender cualquier conversación sobre Docker, solo necesitas dominar estos
 
 ---
 
-# 3. ¿Qué se implementó exactamente en SUMAQ SPA?
+# 3. ¿Por qué ya NO tienes que abrir terminales en Windows? (Gestión Autónoma de Docker)
+
+¡Exactamente! Esta es una de las mayores ventajas prácticas de Docker:
+
+### El Calvario de "Antes" (Sin Docker):
+Para hacer funcionar el Spa en tu laptop antes de Docker, tenías que tener **4 ventanas negras de consola abiertas al mismo tiempo**:
+1. **Ventana 1:** Iniciando MySQL Server local en Windows (Puerto 3307).
+2. **Ventana 2:** Ejecutando el comando del MySQL Slave (esclavo en el puerto 3306).
+3. **Ventana 3:** Abriendo la carpeta `backend`, activando el entorno virtual `.venv` y corriendo `python manage.py runserver 8000`.
+4. **Ventana 4:** Abriendo la carpeta `frontend` y corriendo `npm run dev` para Vite.
+
+*El gran riesgo de esto:* Si por descuido cerrabas una sola ventana negra, si tu laptop entraba en reposo o si salía un error de versiones en Windows, **todo el sistema se caía y dejaba de funcionar**.
+
+---
+
+### La Paz Mental de "Ahora" (Con Docker):
+**Ya no tienes que ejecutar nada manualmente desde la terminal de tu Windows.**
+
+Docker Desktop actúa como un **director de operaciones autónomo en segundo plano**:
+* **Ejecución en segundo plano (Modo Daemon `-d`):** Todos los servicios corren en silencio dentro de Docker sin ensuciar tu pantalla con consolas abiertas. Tu barra de tareas queda completamente libre.
+* **Supervisión constante (`restart: always`):** Si algún contenedor tiene un error imprevisto o se cae, Docker lo detecta y lo vuelve a levantar automáticamente en 1 segundo.
+* **Comprobación de salud inteligente (`healthcheck`):** Docker sabe cuándo MySQL terminó de inicializar para recién ahí arrancar Django, evitando los clásicos errores de *"No se pudo conectar a la base de datos"*.
+* **Todo en 1 clic:** Con solo darle doble clic a `admin_tools/iniciar_docker.bat`, Docker se encarga de encender, conectar, sincronizar la réplica y mantener vivos los 4 servicios.
+
+---
+
+# 4. ¿Qué se implementó exactamente en SUMAQ SPA?
 
 En el proyecto SUMAQ SPA hemos diseñado una arquitectura profesional desacoplada de **4 Contenedores** que trabajan en equipo:
 
@@ -137,7 +165,7 @@ En tu laptop ya tenías instalado MySQL Server en Windows escuchando en el puert
 
 ---
 
-# 4. Radiografía Completa de Archivos, Carpetas y Código
+# 5. Radiografía Completa de Archivos, Carpetas y Código
 
 A continuación se explica qué hace cada archivo creado en el proyecto:
 
@@ -315,7 +343,7 @@ Hemos creado accesos directos por lotes (`.bat`) para que puedas controlar todo 
 
 ---
 
-# 5. Manual Práctico de Operación (Paso a Paso sin Complicaciones)
+# 6. Manual Práctico de Operación (Paso a Paso sin Complicaciones)
 
 ### Paso 1: Asegurarte de que Docker Desktop esté abierto
 En la barra de tareas de Windows (cerca del reloj), busca el ícono de la **ballenita de Docker**. Debe decir *"Docker Desktop is running"*.
@@ -340,27 +368,121 @@ Abre Google Chrome o tu navegador favorito y visita:
 * **Diagnóstico del Backend:** [http://localhost/api/health/](http://localhost/api/health/) (verás un JSON que dice `status: healthy, database: healthy`).
 * **Panel de Administración:** [http://localhost/admin/](http://localhost/admin/) (acceso para administradores del Spa).
 
-### Paso 4: Conectar MySQL Workbench a los Contenedores
-Para que veas las tablas y los datos directamente en Workbench:
+---
+
+# 7. Cómo hacer Consultas SQL a la Base de Datos en Docker (4 Métodos Prácticos)
+
+Una pregunta habitual es: *"Si la base de datos ahora vive adentro de una caja de Docker, ¿cómo hago consultas `SELECT`, `INSERT` o reviso las tablas?"*
+
+Tienes **4 métodos sencillos**, elige el que te resulte más cómodo:
+
+---
+
+### Método 1: Desde MySQL Workbench (El más cómodo y visual)
+Aunque MySQL viva dentro de Docker, como expusimos los puertos **`3308`** (Master) y **`3309`** (Slave), puedes usar **MySQL Workbench exactamente igual que siempre**:
 
 1. Abre **MySQL Workbench**.
 2. Dale clic al signo **`+`** para crear una nueva conexión.
 3. **Para ver el Master:**
-   * Connection Name: `Docker - Master 3308`
-   * Hostname: `127.0.0.1`
-   * Port: `3308`
-   * Username: `root`
-   * Password: Dale a *Store in Vault* y pon `123456`.
+   * **Connection Name:** `Docker - Master 3308`
+   * **Hostname:** `127.0.0.1`
+   * **Port:** `3308`
+   * **Username:** `root`
+   * **Password:** Dale a *Store in Vault* y pon `123456`.
 4. **Para ver el Slave:**
-   * Connection Name: `Docker - Slave 3309`
-   * Hostname: `127.0.0.1`
-   * Port: `3309`
-   * Username: `root`
-   * Password: Dale a *Store in Vault* y pon `123456`.
+   * **Connection Name:** `Docker - Slave 3309`
+   * **Hostname:** `127.0.0.1`
+   * **Port:** `3309`
+   * **Username:** `root`
+   * **Password:** Dale a *Store in Vault* y pon `123456`.
+
+5. Abre un Query Tab y escribe tus consultas normales:
+   ```sql
+   USE sumaq_spa;
+   
+   -- Ver las citas registradas en el sistema
+   SELECT id, codigo_reserva, fecha_cita, hora_inicio, estado FROM appointments_cita;
+   
+   -- Ver los servicios disponibles en catálogo
+   SELECT id, nombre, precio, duracion_minutos FROM services_servicio;
+   
+   -- Ver el inventario de insumos
+   SELECT id, nombre, stock_actual, stock_minimo FROM inventory_producto;
+   ```
+6. Si quieres ver la réplica, abre la conexión **`Docker - Slave 3309`** y haz tus `SELECT` allí para verificar que todo lo del Master se refleja en el Slave.
 
 ---
 
-# 6. Cómo Demostrar la Replicación y el Sistema ante el Profesor
+### Método 2: Desde la Terminal Interactiva de Docker (`docker exec`)
+Si prefieres ver la consola directa de MySQL dentro del contenedor sin abrir Workbench:
+
+* **Para consultar el Master:**
+  Abre PowerShell o CMD y escribe:
+  ```bash
+  docker exec -it sumaq-mysql-master mysql -u root -p123456 sumaq_spa
+  ```
+  *(Verás la clásica consola `mysql>`, donde puedes escribir `SHOW TABLES;`, `SELECT * FROM ...;`, etc. Para salir, solo escribe `exit`)*.
+
+* **Para consultar el Slave (Réplica):**
+  ```bash
+  docker exec -it sumaq-mysql-slave mysql -u root -p123456 sumaq_spa
+  ```
+  *(Dentro del Slave puedes comprobar el estado de la réplica escribiendo `SHOW REPLICA STATUS\G;`)*.
+
+---
+
+### Método 3: Desde la Interfaz Gráfica de Docker Desktop
+Si no quieres escribir comandos de terminal:
+1. Abre el programa **Docker Desktop** en tu Windows.
+2. Ve a la sección **Containers** (menú izquierdo).
+3. Verás la lista de tus 4 contenedores (`sumaq-frontend`, `sumaq-backend`, `sumaq-mysql-master`, `sumaq-mysql-slave`).
+4. Haz clic en **`sumaq-mysql-master`**.
+5. Ve a la pestaña **"Exec"** (o **"Terminal"**).
+6. Escribe directamente:
+   ```bash
+   mysql -u root -p123456 sumaq_spa
+   ```
+   ¡Y listo! Tienes una consola interactiva de base de datos incrustada en la misma ventana de Docker Desktop.
+
+---
+
+### Método 4: Consultas Rápidas de 1 Línea desde PowerShell
+Si solo quieres saber un dato rápido sin entrar a ninguna consola interactiva:
+
+```powershell
+# Contar cuántas citas hay en el Master:
+docker exec -i sumaq-mysql-master mysql -u root -p123456 sumaq_spa -e "SELECT count(*) AS total_citas FROM appointments_cita;"
+
+# Comprobar el estado de salud de los hilos de réplica en el Slave:
+docker exec -i sumaq-mysql-slave mysql -u root -p123456 -e "SHOW REPLICA STATUS\G"
+```
+
+---
+
+### 🧪 Prueba de Fuego: Comprobar la Replicación con Consultas
+Para demostrarle al profesor cómo viaja un dato entre contenedores:
+
+1. **Inserta una prueba en el Master (3308):**
+   ```sql
+   INSERT INTO sumaq_spa._test_replication_proof (token, mensaje, servidor_origen)
+   VALUES ('PRUEBA-DOCENTE', 'Insertado desde Master', 'MASTER-3308');
+   ```
+2. **Consulta en el Slave (3309):**
+   ```sql
+   SELECT * FROM sumaq_spa._test_replication_proof WHERE token = 'PRUEBA-DOCENTE';
+   ```
+3. El dato aparecerá en milisegundos en el Slave.
+4. **Intenta insertar directamente en el Slave (3309):**
+   ```sql
+   INSERT INTO sumaq_spa._test_replication_proof (token, mensaje) VALUES ('FALLO', 'Error');
+   ```
+   MySQL te arrojará el error de seguridad:  
+   `ERROR 1290 (HY000): The MySQL server is running with the --read-only option so it cannot execute this statement`.  
+   Esto demuestra que el Slave está protegido contra escrituras accidentales.
+
+---
+
+# 8. Cómo Demostrar la Replicación y el Sistema ante el Profesor
 
 Durante tu exposición o evaluación, sigue estos sencillos pasos:
 
@@ -377,7 +499,7 @@ Durante tu exposición o evaluación, sigue estos sencillos pasos:
 
 ---
 
-# 7. Preguntas Frecuentes y Guion para la Sustentación
+# 9. Preguntas Frecuentes y Guion para la Sustentación
 
 ### Pregunta 1: "¿Por qué decidieron usar Docker en su proyecto de fin de carrera?"
 > **Respuesta sugerida:**  
@@ -400,5 +522,6 @@ Durante tu exposición o evaluación, sigue estos sencillos pasos:
 ### 💡 Resumen Final
 * **Para iniciar todo:** Doble clic en `admin_tools/iniciar_docker.bat`.
 * **Para ver la web:** `http://localhost`.
+* **Para consultar la BD:** MySQL Workbench en el puerto `3308` (Master) o `3309` (Slave).
 * **Para monitorear la réplica:** Doble clic en `admin_tools/monitor_replicacion_docker.bat`.
 * **Para apagar todo:** Doble clic en `admin_tools/detener_docker.bat`.
