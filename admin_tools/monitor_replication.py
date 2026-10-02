@@ -5,8 +5,8 @@
 SUMAQ SPA - MONITOR Y DEMOSTRACIÓN DE REPLICACIÓN MASTER-SLAVE EN TIEMPO REAL
 ==============================================================================
 Arquitectura:
-  - Master (Source):  127.0.0.1:3306 (Server-ID: 1, RW - Escrituras y Transacciones)
-  - Slave (Replica):  127.0.0.1:3307 (Server-ID: 2, RO - Lecturas y Respaldo)
+  - Master (Source):  127.0.0.1:3307 (Server-ID: 1, RW - Escrituras y Transacciones)
+  - Slave (Replica):  127.0.0.1:3306 (Server-ID: 2, RO - Lecturas y Respaldo)
 ==============================================================================
 """
 
@@ -17,6 +17,7 @@ import socket
 import argparse
 import datetime
 import uuid
+import subprocess
 from typing import Dict, Any, Optional, Tuple
 
 # Forzar codificación UTF-8 en Windows Console si está disponible
@@ -34,20 +35,20 @@ except ImportError:
 
 # Configuración de conexiones
 MASTER_CONFIG = {
-    'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'root',
-    'password': '',
+    'host': os.environ.get('MASTER_HOST', '127.0.0.1'),
+    'port': int(os.environ.get('MASTER_PORT', 3307)),
+    'user': os.environ.get('MASTER_USER', 'root'),
+    'password': os.environ.get('MASTER_PASSWORD', '123456'),
     'database': 'sumaq_spa',
     'connect_timeout': 2,
     'autocommit': True
 }
 
 SLAVE_CONFIG = {
-    'host': '127.0.0.1',
-    'port': 3307,
-    'user': 'root',
-    'password': '',
+    'host': os.environ.get('SLAVE_HOST', '127.0.0.1'),
+    'port': int(os.environ.get('SLAVE_PORT', 3306)),
+    'user': os.environ.get('SLAVE_USER', 'root'),
+    'password': os.environ.get('SLAVE_PASSWORD', ''),
     'database': 'sumaq_spa',
     'connect_timeout': 2,
     'autocommit': True
@@ -92,6 +93,27 @@ def get_connection(config: Dict[str, Any]) -> Optional[pymysql.Connection]:
         return pymysql.connect(**config)
     except Exception:
         return None
+
+def ensure_slave_running() -> bool:
+    if check_tcp_port(SLAVE_CONFIG['host'], SLAVE_CONFIG['port']):
+        return True
+    print(f"\n{Colors.YELLOW}[!] El servidor Esclavo ({SLAVE_CONFIG['port']}) no esta en linea.{Colors.RESET}")
+    print(f"{Colors.CYAN}Iniciando automaticamente el proceso del Esclavo en una ventana de consola...{Colors.RESET}")
+    bat_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "iniciar_esclavo_3306.bat")
+    try:
+        flags = getattr(subprocess, 'CREATE_NEW_CONSOLE', 0)
+        import subprocess as sp
+        sp.Popen(["cmd.exe", "/c", bat_path], creationflags=flags)
+        for _ in range(10):
+            time.sleep(1)
+            if check_tcp_port(SLAVE_CONFIG['host'], SLAVE_CONFIG['port']):
+                print(f"{Colors.GREEN}[OK] Esclavo ({SLAVE_CONFIG['port']}) iniciado exitosamente.{Colors.RESET}\n")
+                time.sleep(1)
+                return True
+    except Exception as e:
+        print(f"{Colors.RED}No se pudo iniciar el Esclavo automaticamente: {e}{Colors.RESET}")
+        print(f"{Colors.YELLOW}Por favor ejecute manualmente: admin_tools\\iniciar_esclavo_3306.bat{Colors.RESET}\n")
+    return False
 
 def get_server_info(conn: pymysql.Connection) -> Dict[str, Any]:
     info = {}
@@ -162,7 +184,7 @@ def ensure_test_table(conn: pymysql.Connection):
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 token VARCHAR(64) NOT NULL,
                 mensaje VARCHAR(255) DEFAULT '',
-                servidor_origen VARCHAR(64) DEFAULT 'MASTER-3306',
+                servidor_origen VARCHAR(64) DEFAULT 'MASTER-3307',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
@@ -170,26 +192,28 @@ def ensure_test_table(conn: pymysql.Connection):
 # ==============================================================================
 # VISTA 1: DIAGNÓSTICO ESTÁTICO / HEALTHCHECK DE AMBOS PUERTOS
 # ==============================================================================
-### RIESGO: Replicación Master-Slave asíncrona (puertos 3306 / 3307)
+### RIESGO: Replicación Master-Slave asíncrona (puertos 3307 / 3306)
 def run_health_check():
     clear_screen()
+    m_p = MASTER_CONFIG['port']
+    s_p = SLAVE_CONFIG['port']
     print(f"{Colors.BOLD}{Colors.CYAN}========================================================================================{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}       SUMAQ SPA - DIAGNOSTICO DE TOPOLOGIA Y ESTADO DE REPLICACION (3306 <-> 3307)     {Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}       SUMAQ SPA - DIAGNOSTICO DE TOPOLOGIA Y ESTADO DE REPLICACION ({m_p} <-> {s_p})     {Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.CYAN}========================================================================================{Colors.RESET}\n")
 
-    m_tcp = check_tcp_port(MASTER_CONFIG['host'], MASTER_CONFIG['port'])
-    s_tcp = check_tcp_port(SLAVE_CONFIG['host'], SLAVE_CONFIG['port'])
+    m_tcp = check_tcp_port(MASTER_CONFIG['host'], m_p)
+    s_tcp = check_tcp_port(SLAVE_CONFIG['host'], s_p)
 
     print(f"{Colors.BOLD}1. ESTADO DE PUERTOS TCP Y ESCUCHA DE SOCKETS:{Colors.RESET}")
-    print(f"  - Puerto 3306 [Master Principal]: " + (f"{Colors.GREEN}[ESCUCHANDO / ACTIVO]{Colors.RESET}" if m_tcp else f"{Colors.RED}[INACTIVO / CERRADO]{Colors.RESET}"))
-    print(f"  - Puerto 3307 [Slave Replica]:    " + (f"{Colors.GREEN}[ESCUCHANDO / ACTIVO]{Colors.RESET}" if s_tcp else f"{Colors.RED}[INACTIVO / CERRADO]{Colors.RESET}"))
+    print(f"  - Puerto {m_p} [Master Principal]: " + (f"{Colors.GREEN}[ESCUCHANDO / ACTIVO]{Colors.RESET}" if m_tcp else f"{Colors.RED}[INACTIVO / CERRADO]{Colors.RESET}"))
+    print(f"  - Puerto {s_p} [Slave Replica]:    " + (f"{Colors.GREEN}[ESCUCHANDO / ACTIVO]{Colors.RESET}" if s_tcp else f"{Colors.RED}[INACTIVO / CERRADO]{Colors.RESET}"))
     print()
 
     m_conn = get_connection(MASTER_CONFIG) if m_tcp else None
     s_conn = get_connection(SLAVE_CONFIG) if s_tcp else None
 
     # Info Master
-    print(f"{Colors.BOLD}{Colors.CYAN}2. NODO MASTER (PUERTO 3306 - ESCRITURAS / TRANSACCIONES):{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}2. NODO MASTER (PUERTO {m_p} - ESCRITURAS / TRANSACCIONES):{Colors.RESET}")
     if m_conn:
         try:
             m_info = get_server_info(m_conn)
@@ -210,12 +234,12 @@ def run_health_check():
         finally:
             m_conn.close()
     else:
-        print(f"  {Colors.RED}No se pudo conectar a MySQL en puerto 3306.{Colors.RESET}")
+        print(f"  {Colors.RED}No se pudo conectar a MySQL en puerto {m_p}.{Colors.RESET}")
 
     print()
 
     # Info Slave
-    print(f"{Colors.BOLD}{Colors.MAGENTA}3. NODO SLAVE / REPLICA (PUERTO 3307 - LECTURAS / ALTA DISPONIBILIDAD):{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.MAGENTA}3. NODO SLAVE / REPLICA (PUERTO {s_p} - LECTURAS / ALTA DISPONIBILIDAD):{Colors.RESET}")
     if s_conn:
         try:
             s_info = get_server_info(s_conn)
@@ -237,7 +261,7 @@ def run_health_check():
                 sql_color = Colors.GREEN if sql_run == 'Yes' else Colors.RED
                 lag_color = Colors.GREEN if lag == 0 else Colors.YELLOW
 
-                print(f"  * Hilo I/O (Recepcion): {io_color}{io_run}{Colors.RESET} (Conectado a Master 127.0.0.1:3306)")
+                print(f"  * Hilo I/O (Recepcion): {io_color}{io_run}{Colors.RESET} (Conectado a Master 127.0.0.1:{m_p})")
                 print(f"  * Hilo SQL (Ejecucion): {sql_color}{sql_run}{Colors.RESET} (Aplicando eventos en base sumaq_spa)")
                 print(f"  * Retraso (Replication Lag): {lag_color}{lag} segundos (Sincronizado en tiempo real){Colors.RESET}")
                 print(f"  * Master Log File:      {master_log}")
@@ -250,7 +274,7 @@ def run_health_check():
         finally:
             s_conn.close()
     else:
-        print(f"  {Colors.RED}No se pudo conectar a MySQL en puerto 3307.{Colors.RESET}")
+        print(f"  {Colors.RED}No se pudo conectar a MySQL en puerto {s_p}.{Colors.RESET}")
 
     print(f"\n{Colors.CYAN}========================================================================================{Colors.RESET}")
 
@@ -259,6 +283,7 @@ def run_health_check():
 # ==============================================================================
 def run_live_dashboard(max_ticks: Optional[int] = None):
     clear_screen()
+    ensure_slave_running()
     print(f"{Colors.BOLD}{Colors.YELLOW}Iniciando Tablero en Vivo... Presione Ctrl+C para regresar al menu.{Colors.RESET}")
     time.sleep(0.5)
 
@@ -282,14 +307,16 @@ def run_live_dashboard(max_ticks: Optional[int] = None):
             print(f"{Colors.BOLD}{Colors.WHITE}+--------------------------------------------------------------------------------------+{Colors.RESET}")
 
             # Topología de Conexión
+            m_p = MASTER_CONFIG['port']
+            s_p = SLAVE_CONFIG['port']
             m_status_str = f"{Colors.GREEN}[EN LINEA]{Colors.RESET}" if m_conn else f"{Colors.RED}[DESCONECTADO]{Colors.RESET}"
             s_status_str = f"{Colors.GREEN}[EN LINEA]{Colors.RESET}" if s_conn else f"{Colors.RED}[DESCONECTADO]{Colors.RESET}"
 
             print(f"\n {Colors.BOLD}TOPOLOGIA DE NODOS:{Colors.RESET}")
-            print(f"  [{Colors.CYAN}MASTER (3306){Colors.RESET}] {m_status_str}  ===(Binlog ROW Sync)===>  [{Colors.MAGENTA}SLAVE (3307){Colors.RESET}] {s_status_str}")
+            print(f"  [{Colors.CYAN}MASTER ({m_p}){Colors.RESET}] {m_status_str}  ===(Binlog ROW Sync)===>  [{Colors.MAGENTA}SLAVE ({s_p}){Colors.RESET}] {s_status_str}")
 
             # Métricas del Master
-            print(f"\n{Colors.BOLD}{Colors.CYAN} === [NODO MASTER: PUERTO 3306] (Transacciones & Escritura) ============================={Colors.RESET}")
+            print(f"\n{Colors.BOLD}{Colors.CYAN} === [NODO MASTER: PUERTO {m_p}] (Transacciones & Escritura) ============================={Colors.RESET}")
             if m_conn:
                 m_info = get_server_info(m_conn)
                 m_stat = get_master_status(m_conn)
@@ -312,10 +339,10 @@ def run_live_dashboard(max_ticks: Optional[int] = None):
                     t_val = p['time'] if p['time'] is not None else 0
                     print(f"    - ID {p['id']:>4} | User: {p['user']:<11} | Command: {p['command']:<7} | Time: {t_val:>2}s | State: {p['state'][:25]}")
             else:
-                print(f"  {Colors.RED}[!] No se puede comunicar con el Master en 127.0.0.1:3306{Colors.RESET}")
+                print(f"  {Colors.RED}[!] No se puede comunicar con el Master en 127.0.0.1:{m_p}{Colors.RESET}")
 
             # Métricas del Slave
-            print(f"\n{Colors.BOLD}{Colors.MAGENTA} === [NODO SLAVE: PUERTO 3307] (Lecturas & Alta Disponibilidad) =========================={Colors.RESET}")
+            print(f"\n{Colors.BOLD}{Colors.MAGENTA} === [NODO SLAVE: PUERTO {s_p}] (Lecturas & Alta Disponibilidad) =========================={Colors.RESET}")
             if s_conn:
                 s_info = get_server_info(s_conn)
                 s_stat = get_slave_status(s_conn)
@@ -345,7 +372,7 @@ def run_live_dashboard(max_ticks: Optional[int] = None):
                     t_val = p['time'] if p['time'] is not None else 0
                     print(f"    - ID {p['id']:>4} | User: {p['user']:<11} | Command: {p['command']:<7} | Time: {t_val:>2}s | State: {p['state'][:25]}")
             else:
-                print(f"  {Colors.RED}[!] No se puede comunicar con el Slave en 127.0.0.1:3307{Colors.RESET}")
+                print(f"  {Colors.RED}[!] No se puede comunicar con el Slave en 127.0.0.1:{s_p}{Colors.RESET}")
 
             print(f"\n{Colors.CYAN}----------------------------------------------------------------------------------------{Colors.RESET}")
             print(f" {Colors.DIM}Actualizando automaticamente cada 1.0s. Presione Ctrl+C para salir al menu.{Colors.RESET}")
@@ -373,11 +400,18 @@ def run_interactive_demo():
     print(f"{Colors.BOLD}{Colors.CYAN}       DEMOSTRACION TRANSACCIONAL EN VIVO: ESCRITURA EN MASTER -> SINCRONIZACION SLAVE  {Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.CYAN}========================================================================================{Colors.RESET}\n")
 
+    ensure_slave_running()
     m_conn = get_connection(MASTER_CONFIG)
     s_conn = get_connection(SLAVE_CONFIG)
+    m_p = MASTER_CONFIG['port']
+    s_p = SLAVE_CONFIG['port']
 
     if not m_conn or not s_conn:
-        print(f"{Colors.RED}Error: Ambos servidores (3306 y 3307) deben estar encendidos para la demostracion.{Colors.RESET}")
+        print(f"{Colors.RED}Error: No se pudo conectar a ambos servidores ({m_p} y {s_p}).{Colors.RESET}")
+        if not m_conn:
+            print(f"  * Master (Puerto {m_p}): NO responde. Asegurese de que el servicio MySQL80 este iniciado.")
+        if not s_conn:
+            print(f"  * Slave  (Puerto {s_p}): NO responde. Ejecute 'admin_tools\\iniciar_esclavo_3306.bat' para encenderlo.")
         wait_prompt()
         return
 
@@ -392,8 +426,8 @@ def run_interactive_demo():
         file_m_pre = m_status_pre['file'] if m_status_pre else 'N/A'
         pos_s_pre = s_status_pre['Exec_Master_Log_Pos'] if s_status_pre else 0
 
-        print(f"  - Master (3306) Binlog File / Pos: {Colors.CYAN}{file_m_pre} @ {pos_m_pre}{Colors.RESET}")
-        print(f"  - Slave  (3307) Executed Log Pos:  {Colors.MAGENTA}{pos_s_pre}{Colors.RESET}")
+        print(f"  - Master ({m_p}) Binlog File / Pos: {Colors.CYAN}{file_m_pre} @ {pos_m_pre}{Colors.RESET}")
+        print(f"  - Slave  ({s_p}) Executed Log Pos:  {Colors.MAGENTA}{pos_s_pre}{Colors.RESET}")
         print()
 
         # Generar payload único
@@ -401,14 +435,14 @@ def run_interactive_demo():
         test_token = f"SUMAQ-DEMO-{int(time.time())}-{test_uuid}"
         test_msg = f"Prueba de Replicacion en Vivo - Cita/Transaccion #{test_uuid}"
 
-        print(f"{Colors.BOLD}PASO 2: EJECUTANDO TRANSACCION 'INSERT' EN EL MASTER (PUERTO 3306):{Colors.RESET}")
+        print(f"{Colors.BOLD}PASO 2: EJECUTANDO TRANSACCION 'INSERT' EN EL MASTER (PUERTO {m_p}):{Colors.RESET}")
         print(f"  > Payload: Token='{Colors.YELLOW}{test_token}{Colors.RESET}', Mensaje='{test_msg}'")
 
         t_start = time.perf_counter()
         with m_conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 INSERT INTO _test_replication_proof (token, mensaje, servidor_origen)
-                VALUES (%s, %s, 'MASTER-3306')
+                VALUES (%s, %s, 'MASTER-{m_p}')
             """, (test_token, test_msg))
             row_id = cur.lastrowid
         t_write_ms = (time.perf_counter() - t_start) * 1000
@@ -423,7 +457,7 @@ def run_interactive_demo():
         print(f"  - Nueva posicion del Binlog:       {Colors.CYAN}{pos_m_post} bytes (+{diff_bytes} bytes generados){Colors.RESET}")
         print()
 
-        print(f"{Colors.BOLD}PASO 3: VERIFICANDO REPLICACION INMEDIATA EN EL SLAVE (PUERTO 3307):{Colors.RESET}")
+        print(f"{Colors.BOLD}PASO 3: VERIFICANDO REPLICACION INMEDIATA EN EL SLAVE (PUERTO {s_p}):{Colors.RESET}")
         print(f"  > Consultando tabla en el Slave mediante SELECT WHERE token = '{test_token}'...")
 
         replicated_row = None
@@ -445,7 +479,7 @@ def run_interactive_demo():
         if replicated_row:
             s_status_post = get_slave_status(s_conn)
             print(f"  {Colors.GREEN}[OK] !REGISTRO ENCONTRADO EN EL SLAVE! (Replicado en {t_repl_ms:.2f} ms){Colors.RESET}")
-            print(f"  - Datos leidos desde el Slave (3307):")
+            print(f"  - Datos leidos desde el Slave ({s_p}):")
             print(f"    * ID:               {replicated_row[0]}")
             print(f"    * Token:            {replicated_row[1]}")
             print(f"    * Mensaje:          {replicated_row[2]}")
@@ -475,11 +509,14 @@ def run_split_simulation():
     print(f"{Colors.BOLD}{Colors.CYAN}       SIMULACION DE ENRUTAMIENTO DE CARGA (READ / WRITE SPLITTING)                     {Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.CYAN}========================================================================================{Colors.RESET}\n")
 
+    ensure_slave_running()
     m_conn = get_connection(MASTER_CONFIG)
     s_conn = get_connection(SLAVE_CONFIG)
+    m_p = MASTER_CONFIG['port']
+    s_p = SLAVE_CONFIG['port']
 
     if not m_conn or not s_conn:
-        print(f"{Colors.RED}Error: Ambos nodos (3306 y 3307) deben estar en linea.{Colors.RESET}")
+        print(f"{Colors.RED}Error: Ambos nodos ({m_p} y {s_p}) deben estar en linea.{Colors.RESET}")
         wait_prompt()
         return
 
@@ -488,8 +525,8 @@ def run_split_simulation():
         total_ops = 8
 
         print(f"{Colors.BOLD}Ejecutando rafaga de transacciones:{Colors.RESET}")
-        print(f"  - Operaciones de ESCRITURA (INSERT)  ===> Enrutadas a {Colors.CYAN}MASTER (3306){Colors.RESET}")
-        print(f"  - Operaciones de LECTURA (SELECT)    ===> Enrutadas a {Colors.MAGENTA}SLAVE (3307){Colors.RESET}\n")
+        print(f"  - Operaciones de ESCRITURA (INSERT)  ===> Enrutadas a {Colors.CYAN}MASTER ({m_p}){Colors.RESET}")
+        print(f"  - Operaciones de LECTURA (SELECT)    ===> Enrutadas a {Colors.MAGENTA}SLAVE ({s_p}){Colors.RESET}\n")
 
         for i in range(1, total_ops + 1):
             batch_uuid = uuid.uuid4().hex[:6]
@@ -498,7 +535,7 @@ def run_split_simulation():
             # 1. Escritura en Master
             t0 = time.perf_counter()
             with m_conn.cursor() as cur:
-                cur.execute("INSERT INTO _test_replication_proof (token, mensaje, servidor_origen) VALUES (%s, %s, 'MASTER')",
+                cur.execute(f"INSERT INTO _test_replication_proof (token, mensaje, servidor_origen) VALUES (%s, %s, 'MASTER-{m_p}')",
                             (batch_token, f"Transaccion Lote #{i}"))
             t_w = (time.perf_counter() - t0) * 1000
 
@@ -529,10 +566,12 @@ def run_split_simulation():
 def main_menu():
     while True:
         clear_screen()
+        m_p = MASTER_CONFIG['port']
+        s_p = SLAVE_CONFIG['port']
         print(f"{Colors.BOLD}{Colors.CYAN}========================================================================================{Colors.RESET}")
         print(f"{Colors.BOLD}{Colors.WHITE}        SUMAQ SPA - PANEL DE CONTROL Y DEMOSTRACION DE REPLICACION MASTER-SLAVE         {Colors.RESET}")
         print(f"{Colors.BOLD}{Colors.CYAN}========================================================================================{Colors.RESET}")
-        print(f" {Colors.DIM}Topologia: Master (127.0.0.1:3306) <===[Binlog ROW]===> Slave (127.0.0.1:3307){Colors.RESET}\n")
+        print(f" {Colors.DIM}Topologia: Master (127.0.0.1:{m_p}) <===[Binlog ROW]===> Slave (127.0.0.1:{s_p}){Colors.RESET}\n")
 
         print(f"  {Colors.BOLD}[1]{Colors.RESET} {Colors.GREEN}Tablero en Tiempo Real (Live Activity Dashboard - 1s Refresh){Colors.RESET}")
         print(f"  {Colors.BOLD}[2]{Colors.RESET} {Colors.CYAN}Demostracion Transaccional en Vivo (Insert Master -> Replicacion Slave){Colors.RESET}")
@@ -568,8 +607,15 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--demo', action='store_true', help="Ejecutar directamente la Demostracion Transaccional")
     parser.add_argument('-c', '--check', action='store_true', help="Ejecutar diagnostico puntual y salir")
     parser.add_argument('-s', '--split', action='store_true', help="Ejecutar simulacion de Read/Write Splitting")
+    parser.add_argument('--docker', action='store_true', help="Conectar a los puertos de Docker (Master 3308, Slave 3309)")
 
     args = parser.parse_args()
+
+    if args.docker:
+        MASTER_CONFIG['port'] = 3308
+        MASTER_CONFIG['password'] = '123456'
+        SLAVE_CONFIG['port'] = 3309
+        SLAVE_CONFIG['password'] = '123456'
 
     if args.live:
         run_live_dashboard()

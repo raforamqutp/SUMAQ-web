@@ -41,3 +41,6 @@ backend/admin_tools/backups/*.sql
 final/
 docs-other/
 PROMPT_*.md
+backend/replication/data_slave/
+*.sync.sql
+

@@ -25,7 +25,7 @@ Para el sistema **SUMAQ Spa & Centro de Bienestar**, se seleccionó la arquitect
               ▼                            │
 ┌───────────────────────────┐    ┌─────────┴─────────────┐
 │       MYSQL MASTER        │    │     MYSQL REPLICA     │
-│   (Server-ID: 1, Port 3306)│    │ (Server-ID: 2, Port 3307)
+│   (Server-ID: 1, Port 3307)│    │ (Server-ID: 2, Port 3306)│
 │     - Binary Log (ROW)    │───▶│   - Relay Log         │
 │     - Base: sumaq_spa     │    │   - read_only = 1     │
 └───────────────────────────┘    └───────────────────────┘
@@ -83,17 +83,17 @@ FLUSH PRIVILEGES;
    ```
 2. Importar el dump inicial en la réplica:
    ```bash
-   mysql -u root -p -P 3307 sumaq_spa < sumaq_initial_replica.sql
+   mysql -u root -p -P 3306 sumaq_spa < sumaq_initial_replica.sql
    ```
 3. Configurar los parámetros de conexión al Master:
    ```sql
    CHANGE MASTER TO
        MASTER_HOST = '127.0.0.1',
-       MASTER_PORT = 3306,
+       MASTER_PORT = 3307,
        MASTER_USER = 'repl_user',
        MASTER_PASSWORD = 'ReplSumaq2026Secure!',
-       MASTER_LOG_FILE = 'mysql-bin.000001',
-       MASTER_LOG_POS = 154;
+       MASTER_LOG_FILE = 'BRYAN-bin.000014',
+       MASTER_LOG_POS = 513573;
 
    START SLAVE;
    ```
@@ -117,7 +117,7 @@ SHOW SLAVE STATUS\G;
 
 ## 5. Procedimiento de Recuperación y Conmutación por Error (Failover)
 
-En caso de caída irreversible del servidor Master:
+En caso de caída irreversible del servidor Master (Puerto 3307):
 1. **Detener Réplica y Promoverla a Nuevo Master:**
    ```sql
    STOP SLAVE;
@@ -127,7 +127,7 @@ En caso de caída irreversible del servidor Master:
 2. **Actualizar Configuración de Backend:**
    Cambiar la variable de entorno en `.env`:
    ```env
-   DB_PORT=3307
+   DB_PORT=3306
    ```
 3. **Reiniciar Backend:**
    ```bash

@@ -75,19 +75,20 @@ Para entornos de producción se definen los siguientes perfiles de usuario en My
 
 ---
 
-## 4. Replicación Master-Slave y Monitoreo en Tiempo Real (Puertos 3306 y 3307)
+## 4. Replicación Master-Slave y Monitoreo en Tiempo Real (Puertos 3307 y 3306)
 
 ### A. Arquitectura
-- **Nodo Master (Source):** `127.0.0.1:3306` (Server-ID: 1, `read_only = OFF`). Procesa todas las transacciones `INSERT/UPDATE/DELETE` y escribe en el Binary Log (`ROW`).
-- **Nodo Slave (Replica):** `127.0.0.1:3307` (Server-ID: 2, `read_only = ON`). Recibe los eventos del Binlog mediante el hilo I/O y los aplica con el hilo SQL en el Relay Log, absorbiendo consultas de lectura `SELECT`.
+- **Nodo Master (Source):** `127.0.0.1:3307` (Server-ID: 1, `read_only = OFF`). Procesa todas las transacciones `INSERT/UPDATE/DELETE` del backend Django y escribe en el Binary Log (`ROW`).
+- **Nodo Slave (Replica):** `127.0.0.1:3306` (Server-ID: 2, `read_only = ON`). Recibe los eventos del Binlog mediante el hilo I/O y los aplica con el hilo SQL en el Relay Log, absorbiendo consultas de lectura `SELECT`.
 
 ### B. Herramientas de Monitoreo y Demostración en Terminal
-- **Script Principal:** [admin_tools/monitor_replication.py](file:///d:/Projects/SUMAQ/admin_tools/monitor_replication.py)
-- **Lanzador Directo:** [admin_tools/monitor_replicacion.bat](file:///d:/Projects/SUMAQ/admin_tools/monitor_replicacion.bat)
+- **Script Principal:** [admin_tools/monitor_replication.py](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/admin_tools/monitor_replication.py)
+- **Lanzador Directo:** [admin_tools/monitor_replicacion.bat](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/admin_tools/monitor_replicacion.bat)
+- **Lanzador de Esclavo (3306):** [admin_tools/iniciar_esclavo_3306.bat](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/admin_tools/iniciar_esclavo_3306.bat)
 
 #### Modos de Demostración:
 1. **`python admin_tools/monitor_replication.py --live`** (o tecla `[1]`): Tablero de telemetría en tiempo real que refresca cada 1 segundo mostrando estado de sockets, QPS de Master vs Slave, hilos I/O y SQL (`Yes/Yes`), lag de sincronización (0s) y procesos activos.
-2. **`python admin_tools/monitor_replication.py --demo`** (o tecla `[2]`): Demostración transaccional que inserta un registro en el Master (3306), muestra el avance del Binlog y comprueba la replicación instantánea (< 2ms) en el Slave (3307).
+2. **`python admin_tools/monitor_replication.py --demo`** (o tecla `[2]`): Demostración transaccional que inserta un registro en el Master (3307), muestra el avance del Binlog y comprueba la replicación instantánea (< 2ms) en el Slave (3306).
 3. **`python admin_tools/monitor_replication.py --split`** (o tecla `[3]`): Simulación de enrutamiento de carga (Read/Write Splitting).
 4. **`python admin_tools/monitor_replication.py --check`** (o tecla `[4]`): Diagnóstico rápido de conectividad y estado de replicación.
 

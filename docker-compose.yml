@@ -1,0 +1,136 @@
+services:
+  # ============================================================================
+  # 1. BASE DE DATOS MASTER (PRINCIPAL - TRANSACCIONES Y ESCRITURAS)
+  # ============================================================================
+  mysql-master:
+    image: mysql:8.0
+    container_name: sumaq-mysql-master
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "sumaq_spa"
+    command: >
+      --server-id=1
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --binlog-do-db=sumaq_spa
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3308:3306"
+    volumes:
+      - master_db_data:/var/lib/mysql
+      - ./database/03_sumaq_spa_full_dump.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./database/init_master_repl.sql:/docker-entrypoint-initdb.d/02_repl.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sumaq-net
+
+  # ============================================================================
+  # 2. BASE DE DATOS SLAVE (RÉPLICA - LECTURAS Y ALTA DISPONIBILIDAD)
+  # ============================================================================
+  mysql-slave:
+    image: mysql:8.0
+    container_name: sumaq-mysql-slave
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "sumaq_spa"
+    command: >
+      --server-id=2
+      --relay-log=mysql-relay-bin
+      --read-only=1
+      --replicate-do-db=sumaq_spa
+      --replica-skip-errors=1062,1032
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3309:3306"
+    volumes:
+      - slave_db_data:/var/lib/mysql
+      - ./database/03_sumaq_spa_full_dump.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    networks:
+      - sumaq-net
+
+  # ============================================================================
+  # 3. BACKEND DJANGO REST API + GUNICORN
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sumaq-backend
+    restart: always
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: "sumaq-spa-insecure-secret-key-development-2026-prod-ready"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,backend,frontend,0.0.0.0"
+      DB_ENGINE: "mysql"
+      DB_NAME: "sumaq_spa"
+      DB_USER: "root"
+      DB_PASSWORD: "123456"
+      DB_HOST: "mysql-master"
+      DB_PORT: "3306"
+      CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80,http://localhost:5173"
+      INIT_DB_SEED: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_media:/app/media
+      - backend_static:/app/staticfiles
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    networks:
+      - sumaq-net
+
+  # ============================================================================
+  # 4. FRONTEND REACT 19 + NGINX REVERSE PROXY
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "/api"
+    container_name: sumaq-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "5173:80"
+    volumes:
+      - backend_static:/var/www/static:ro
+      - backend_media:/var/www/media:ro
+    depends_on:
+      - backend
+    networks:
+      - sumaq-net
+
+# ==============================================================================
+# VOLÚMENES PERSISTENTES
+# ==============================================================================
+volumes:
+  master_db_data:
+    driver: local
+  slave_db_data:
+    driver: local
+  backend_media:
+    driver: local
+  backend_static:
+    driver: local
+
+# ==============================================================================
+# RED INTERNA AISLADA
+# ==============================================================================
+networks:
+  sumaq-net:
+    driver: bridge
