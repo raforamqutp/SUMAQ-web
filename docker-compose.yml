@@ -73,7 +73,7 @@ services:
     environment:
       DEBUG: "False"
       SECRET_KEY: "sumaq-spa-insecure-secret-key-development-2026-prod-ready"
-      ALLOWED_HOSTS: "localhost,127.0.0.1,backend,frontend,0.0.0.0"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,backend,frontend,0.0.0.0,68.155.146.110,*"
       DB_ENGINE: "mysql"
       DB_NAME: "sumaq_spa"
       DB_USER: "root"
