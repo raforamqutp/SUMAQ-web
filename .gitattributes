@@ -1,0 +1,2 @@
+# Asegurar que los scripts de shell para contenedores Linux siempre mantengan terminaciones LF
+*.sh text eol=lf

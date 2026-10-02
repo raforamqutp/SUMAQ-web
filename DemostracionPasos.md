@@ -101,7 +101,7 @@
      ```bash
      python admin_tools/monitor_db.py
      ```
-* **Explicación técnica:** El spa cuenta con una arquitectura de alta disponibilidad con réplica asíncrona en el puerto secundario `3307` y failover con RTO < 5 minutos.
+* **Explicación técnica:** El spa cuenta con una arquitectura de alta disponibilidad con Master transaccional en el puerto `3307`, réplica asíncrona en el puerto secundario `3306` y conmutación por error (Failover) con RTO < 5 minutos. Demostrable en vivo con `python admin_tools/monitor_replication.py --demo`.
 
 ---
 
