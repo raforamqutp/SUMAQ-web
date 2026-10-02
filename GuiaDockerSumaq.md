@@ -18,8 +18,9 @@
    - [E. Las Herramientas de Control: Scripts en `admin_tools/`](#e-las-herramientas-de-control-scripts-en-admin_tools)
 6. [Manual Práctico de Operación (Paso a Paso sin Complicaciones)](#6-manual-práctico-de-operación-paso-a-paso-sin-complicaciones)
 7. [Cómo hacer Consultas SQL a la Base de Datos en Docker (4 Métodos Prácticos)](#7-cómo-hacer-consultas-sql-a-la-base-de-datos-en-docker-4-métodos-prácticos)
-8. [Cómo Demostrar la Replicación y el Sistema ante el Profesor](#8-cómo-demostrar-la-replicación-y-el-sistema-ante-el-profesor)
-9. [Preguntas Frecuentes y Guion para la Sustentación](#9-preguntas-frecuentes-y-guion-para-la-sustentación)
+8. [Copias de Seguridad (Backups) y Recuperación ante Errores Humanos en Docker](#8-copias-de-seguridad-backups-y-recuperación-ante-errores-humanos-en-docker)
+9. [Cómo Demostrar la Replicación y el Sistema ante el Profesor](#9-cómo-demostrar-la-replicación-y-el-sistema-ante-el-profesor)
+10. [Preguntas Frecuentes y Guion para la Sustentación](#10-preguntas-frecuentes-y-guion-para-la-sustentación)
 
 ---
 
@@ -482,7 +483,69 @@ Para demostrarle al profesor cómo viaja un dato entre contenedores:
 
 ---
 
-# 8. Cómo Demostrar la Replicación y el Sistema ante el Profesor
+# 8. Copias de Seguridad (Backups) y Recuperación ante Errores Humanos en Docker
+
+### ⚠️ Una lección crítica que todo ingeniero debe saber:
+> *"Si tengo una réplica esclava... ¿por qué sigo necesitando backups?"*
+
+**La Réplica NO es un Backup:**
+* Si un servidor se quema o se corta la luz, la réplica te salva (**Alta Disponibilidad**).
+* Pero si tú o un empleado ejecuta por error:  
+  `DELETE FROM clients_cliente WHERE id = 15;`  
+  **¡Ese borrado viaja en 10 milisegundos al Esclavo y lo borra en ambos lados!** La réplica copia todo, incluidos los errores humanos.
+* Por lo tanto, para recuperar un cliente o cita eliminada por accidente, **la única salvación es un BACKUP**.
+
+---
+
+### ¿Cómo generar una Copia de Seguridad (Backup) en Docker?
+Hemos creado una herramienta de 1 solo clic:  
+👉 Dale doble clic a: [`admin_tools/backup_docker.bat`](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/admin_tools/backup_docker.bat)
+
+**¿Qué hace por dentro?**
+1. Llama a la herramienta nativa de MySQL dentro del contenedor:  
+   `docker exec sumaq-mysql-master mysqldump -u root -p123456 --single-transaction --routines --triggers sumaq_spa > backup.sql`
+2. Genera un archivo con fecha y hora exacta en la carpeta:  
+   `admin_tools/backups/backup_docker_sumaq_spa_20261002_120000.sql`
+3. Como se ejecuta con `--single-transaction`, **no interrumpe ni bloquea la página web** mientras se hace la copia.
+
+---
+
+### ¿Cómo recuperar un Cliente Borrado por Error? (2 Métodos Prácticos)
+
+Imagina el peor escenario: *Un empleado del Spa borró por error al cliente con `id = 15` (Juan Pérez).*
+
+#### 🔹 Método A: Extracción Quirúrgica (Recomendado si solo borraste 1 cliente)
+Este método es el más inteligente y seguro porque **no borras las reservas nuevas que se hayan hecho después del backup**:
+
+1. Ve a la carpeta `admin_tools/backups/` y abre tu archivo de backup más reciente con el **Bloc de Notas** o con **VS Code**.
+2. Presiona `Ctrl + B` (o `Ctrl + F`) y busca el nombre del cliente o su ID (ejemplo: `'Juan Pérez'` o `15`).
+3. Encontrarás la línea del `INSERT` donde están sus datos originales.
+4. Copias esa línea y la pegas en una pestaña de **MySQL Workbench** conectada al Master (Puerto `3308`):
+   ```sql
+   USE sumaq_spa;
+   INSERT INTO clients_cliente (id, nombres, apellidos, telefono, email) 
+   VALUES (15, 'Juan', 'Pérez', '999888777', 'juan@gmail.com');
+   ```
+5. Le das al rayito de ejecutar.
+6. ¡Listo! El cliente reaparece en el Master y automáticamente se replica al Slave en milisegundos.
+
+---
+
+#### 🔹 Método B: Restauración Completa de la Base de Datos (Si el desastre fue total)
+Si alguien borró una tabla entera o hizo un desastre masivo:
+
+1. Dale doble clic a:  
+   👉 [`admin_tools/restore_docker.bat`](file:///c:/Users/alexi/Downloads/PROYECTO%20UNI/INTEGRADOR/SUMAQ-web/admin_tools/restore_docker.bat)
+2. El script detectará automáticamente el archivo de backup más reciente en `admin_tools/backups/`.
+3. Te pedirá confirmación (`Desea continuar con la restauracion? [S/N]`).
+4. Al escribir `S` y dar Enter:
+   * Inyecta todo el archivo `.sql` dentro del contenedor `sumaq-mysql-master`.
+   * Vuelve toda la base de datos exactamente al segundo en que se tomó el respaldo.
+   * **Se sincroniza en tiempo real:** Todo lo restaurado viaja de inmediato al Slave de Docker (3309).
+
+---
+
+# 9. Cómo Demostrar la Replicación y el Sistema ante el Profesor
 
 Durante tu exposición o evaluación, sigue estos sencillos pasos:
 
@@ -499,7 +562,7 @@ Durante tu exposición o evaluación, sigue estos sencillos pasos:
 
 ---
 
-# 9. Preguntas Frecuentes y Guion para la Sustentación
+# 10. Preguntas Frecuentes y Guion para la Sustentación
 
 ### Pregunta 1: "¿Por qué decidieron usar Docker en su proyecto de fin de carrera?"
 > **Respuesta sugerida:**  
