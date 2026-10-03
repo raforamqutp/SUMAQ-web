@@ -14,6 +14,8 @@ class Servicio(models.Model):
     duracion_min = models.PositiveIntegerField('Duración (minutos)', default=60)
     imagen_url = models.CharField('URL de Imagen', max_length=500, blank=True, default='')
     activo = models.BooleanField('Activo', default=True)
+    created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de Actualización', auto_now=True)
 
     objects = models.Manager()
     DoesNotExist: type[Exception]

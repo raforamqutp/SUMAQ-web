@@ -43,3 +43,13 @@ class MovimientoCaja(models.Model):
 
     def __str__(self):
         return f"[{self.tipo}] S/ {self.monto} - {self.concepto or self.descripcion}"
+
+    def save(self, *args, **kwargs):
+        if not self.concepto:
+            if self.descripcion:
+                self.concepto = self.descripcion[:200]
+            elif self.cita:
+                self.concepto = f"Cobro de Cita {self.cita.servicio.nombre if self.cita.servicio else ''} ({self.cita.codigo_reserva})"[:200]
+            else:
+                self.concepto = f"Movimiento de {self.get_tipo_display()}"[:200]
+        super().save(*args, **kwargs)

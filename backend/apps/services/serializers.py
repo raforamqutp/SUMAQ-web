@@ -39,8 +39,11 @@ class ServicioSerializer(serializers.ModelSerializer):
             'duracion_min',
             'imagen_url',
             'activo',
-            'recetas'
+            'recetas',
+            'created_at',
+            'updated_at'
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class RecetaItemInputSerializer(serializers.Serializer):

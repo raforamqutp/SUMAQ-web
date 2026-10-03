@@ -69,7 +69,7 @@ export const therapistService = {
   getComprobantePDFUrl: (citaId: number): string => {
     const token = localStorage.getItem('sumaq_access_token');
     return token
-      ? `http://127.0.0.1:8000/api/terapeuta/citas/${citaId}/pdf/?token=${token}`
-      : `http://127.0.0.1:8000/api/terapeuta/citas/${citaId}/pdf/`;
+      ? `/api/terapeuta/citas/${citaId}/pdf/?token=${token}`
+      : `/api/terapeuta/citas/${citaId}/pdf/`;
   },
 };

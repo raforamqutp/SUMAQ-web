@@ -130,7 +130,7 @@ export const LoginPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickLogin('admin@sumaqspa.pe', 'AdminSumaq2026!')}
+                onClick={() => handleQuickLogin('admin@sumaqspa.pe', 'Sumaq2026!')}
                 className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5A3896]">

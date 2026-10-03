@@ -153,6 +153,7 @@ ACCOUNT_LOCKOUT_DURATION_SECONDS = 15 * 60  # 15 minutos
 ### RIESGO: Throttling de tasa: 30 peticiones/min (anónimos) y 120 (autenticados)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'apps.common.authentication.QueryParamJWTAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (

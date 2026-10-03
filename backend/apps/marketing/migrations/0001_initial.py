@@ -23,6 +23,8 @@ class Migration(migrations.Migration):
                 ('fecha_inicio', models.DateField(verbose_name='Fecha de Inicio')),
                 ('fecha_fin', models.DateField(verbose_name='Fecha de Fin')),
                 ('activo', models.BooleanField(default=True, verbose_name='Activo')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')),
+                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Fecha de Actualización')),
             ],
             options={
                 'verbose_name': 'Promoción / Cupón',

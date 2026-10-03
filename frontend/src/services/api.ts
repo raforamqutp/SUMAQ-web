@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -68,9 +68,12 @@ export async function downloadPdf(endpointUrl: string, defaultFilename: string =
     console.error('Error descargando PDF mediante blob:', error);
     const token = localStorage.getItem('sumaq_access_token');
     const separator = endpointUrl.includes('?') ? '&' : '?';
-    const fullUrl = endpointUrl.startsWith('http')
-      ? endpointUrl
-      : `${API_BASE_URL}${endpointUrl.startsWith('/') ? '' : '/'}${endpointUrl}`;
+    let fullUrl = endpointUrl;
+    if (!fullUrl.startsWith('http')) {
+      if (!fullUrl.startsWith('/api/')) {
+        fullUrl = `/api${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`;
+      }
+    }
     const targetUrl = token ? `${fullUrl}${separator}token=${token}` : fullUrl;
     window.open(targetUrl, '_blank');
   }

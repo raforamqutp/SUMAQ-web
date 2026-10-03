@@ -15,6 +15,8 @@ class Promocion(models.Model):
     fecha_inicio = models.DateField('Fecha de Inicio')
     fecha_fin = models.DateField('Fecha de Fin')
     activo = models.BooleanField('Activo', default=True)
+    created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Fecha de Actualización', auto_now=True)
 
     objects = models.Manager()
 

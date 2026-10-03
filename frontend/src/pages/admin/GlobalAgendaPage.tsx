@@ -92,15 +92,18 @@ export const GlobalAgendaPage: React.FC = () => {
                 {/* Slots List */}
                 <div className="p-4 flex-1 space-y-3">
                   {SLOTS_HORAS.map((hora) => {
-                    const citaSlot = citasCabina.find(
-                      (c) => c.hora_inicio?.substring(0, 5) === hora
+                    const citaActiva = citasCabina.find(
+                      (c) => c.hora_inicio?.substring(0, 5) === hora && c.estado !== 'CANCELADA'
+                    );
+                    const citaCancelada = citasCabina.find(
+                      (c) => c.hora_inicio?.substring(0, 5) === hora && c.estado === 'CANCELADA'
                     );
 
                     return (
                       <div
                         key={hora}
                         className={`p-3.5 rounded-2xl border transition-all ${
-                          citaSlot
+                          citaActiva
                             ? 'bg-[#FAF8F5] border-[#DFD0C0] shadow-xs'
                             : 'bg-white/40 border-[#EDE5DC] opacity-75'
                         }`}
@@ -110,8 +113,17 @@ export const GlobalAgendaPage: React.FC = () => {
                             <Clock className="w-3.5 h-3.5 text-[#8C6F55]" />
                             <span>{hora} - {parseInt(hora.split(':')[0], 10) + 1}:00</span>
                           </div>
-                          {citaSlot ? (
-                            <Badge status={citaSlot.estado} />
+                          {citaActiva ? (
+                            <Badge status={citaActiva.estado} />
+                          ) : citaCancelada ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-semibold text-[#9B2C1C] bg-[#FDF2F4] px-1.5 py-0.5 rounded border border-[#F4BAC6]">
+                                Cancelada
+                              </span>
+                              <span className="text-[10px] font-semibold text-[#24634B] bg-[#EFF8F4] px-2 py-0.5 rounded-md">
+                                Libre
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-[10px] font-semibold text-[#24634B] bg-[#EFF8F4] px-2 py-0.5 rounded-md">
                               Libre
@@ -119,26 +131,30 @@ export const GlobalAgendaPage: React.FC = () => {
                           )}
                         </div>
 
-                        {citaSlot ? (
+                        {citaActiva ? (
                           <div className="space-y-1 text-xs">
                             <p className="font-semibold text-[#2C2725] truncate">
-                              {citaSlot.cliente?.nombre_completo}
+                              {citaActiva.cliente?.nombre_completo}
                             </p>
                             <p className="text-[11px] text-[#8C6F55] truncate">
-                              {citaSlot.servicio?.nombre} &middot; {citaSlot.terapeuta?.nombre_completo}
+                              {citaActiva.servicio?.nombre} &middot; {citaActiva.terapeuta?.nombre_completo}
                             </p>
                             <div className="pt-2 flex items-center justify-between border-t border-[#EDE5DC]">
                               <span className="font-mono text-[10px] text-[#8C6F55]">
-                                {citaSlot.codigo_reserva}
+                                {citaActiva.codigo_reserva}
                               </span>
                               <button
-                                onClick={() => downloadPdf(`/admin/citas/${citaSlot.id}/pdf/`, `Comprobante_Sumaq_${citaSlot.codigo_reserva}.pdf`)}
+                                onClick={() => downloadPdf(`/admin/citas/${citaActiva.id}/pdf/`, `Comprobante_Sumaq_${citaActiva.codigo_reserva}.pdf`)}
                                 className="text-[11px] font-semibold text-[#8C6F55] hover:text-[#2C2725] flex items-center gap-1 cursor-pointer"
                               >
                                 <Download className="w-3 h-3" /> PDF
                               </button>
                             </div>
                           </div>
+                        ) : citaCancelada ? (
+                          <p className="text-[11px] text-[#24634B] italic">
+                            Slot disponible (Cita anterior {citaCancelada.codigo_reserva} fue cancelada)
+                          </p>
                         ) : (
                           <p className="text-[11px] text-[#A88B71] italic">Sin reserva programada</p>
                         )}

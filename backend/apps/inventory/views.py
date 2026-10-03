@@ -10,14 +10,14 @@ from apps.inventory.serializers import (
     MovimientoInventarioSerializer,
     MovimientoManualInputSerializer
 )
-from apps.common.permissions import IsAdminUserRole, IsTherapistUserRole
+from apps.common.permissions import IsAdminUserRole, IsTherapistUserRole, IsStaffUserRole
 from apps.common.viewsets import WrappedModelViewSet
 
 
 class ProductoAdminViewSet(WrappedModelViewSet):
     queryset = Producto.objects.all().order_by('id')
     serializer_class = ProductoSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -39,7 +39,7 @@ class ProductoAdminViewSet(WrappedModelViewSet):
 class MovimientoInventarioViewSet(WrappedModelViewSet):
     queryset = MovimientoInventario.objects.select_related('producto').all().order_by('-fecha_registro', '-id')
     serializer_class = MovimientoInventarioSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())

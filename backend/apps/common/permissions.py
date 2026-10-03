@@ -15,6 +15,19 @@ class IsAdminUserRole(BasePermission):
         )
 
 
+class IsStaffUserRole(BasePermission):
+    """
+    Permite acceso a Administradores y Recepcionistas (Gestión de citas, agenda, caja, inventario).
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.rol in ['ADMIN', 'RECEPCIONISTA'] and
+            request.user.activo
+        )
+
+
 class IsTherapistUserRole(BasePermission):
     """
     Permite acceso a usuarios con rol TERAPEUTA o ADMIN.
@@ -40,7 +53,7 @@ class IsAssignedTherapistOrAdmin(BasePermission):
         )
 
     def has_object_permission(self, request, view, obj):
-        if request.user.rol == 'ADMIN':
+        if request.user.rol in ['ADMIN', 'RECEPCIONISTA']:
             return True
 
         if request.user.rol == 'TERAPEUTA':

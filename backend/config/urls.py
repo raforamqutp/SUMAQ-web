@@ -99,6 +99,7 @@ urlpatterns = [
     path('api/admin/', include(admin_router.urls)),
 
     # Django Admin (optional)
+    path('django-admin/', admin.site.urls),
     path('admin/', admin.site.urls),
 ]
 

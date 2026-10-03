@@ -61,17 +61,30 @@ class TerapeutaCreateUpdateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         nombre_completo = validated_data.pop('nombre_completo', 'Terapeuta')
-        email = validated_data.pop('email', f"terapeuta_{Terapeuta.objects.count() + 1}@sumaqspa.pe")
+        email = validated_data.pop('email', None)
+        if not email:
+            email = f"terapeuta_{Terapeuta.objects.count() + 1}@sumaqspa.pe"
         password = validated_data.pop('password', 'Sumaq2026!')
 
-        user = User.objects.create(
-            email=email,
-            nombre_completo=nombre_completo,
-            rol=User.Roles.TERAPEUTA,
-            activo=True
-        )
-        user.set_password(password)
-        user.save()
+        user = User.objects.filter(email=email).first()
+        if user:
+            if hasattr(user, 'perfil_terapeuta') and user.perfil_terapeuta:
+                raise serializers.ValidationError({"email": "Ya existe un perfil de terapeuta registrado con este correo."})
+            user.nombre_completo = nombre_completo
+            user.rol = User.Roles.TERAPEUTA
+            user.activo = True
+            if password:
+                user.set_password(password)
+            user.save()
+        else:
+            user = User.objects.create(
+                email=email,
+                nombre_completo=nombre_completo,
+                rol=User.Roles.TERAPEUTA,
+                activo=True
+            )
+            user.set_password(password)
+            user.save()
 
         terapeuta = Terapeuta.objects.create(usuario=user, **validated_data)
         return terapeuta
@@ -79,11 +92,14 @@ class TerapeutaCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         nombre_completo = validated_data.pop('nombre_completo', None)
         email = validated_data.pop('email', None)
+        password = validated_data.pop('password', None)
 
         if nombre_completo:
             instance.usuario.nombre_completo = nombre_completo
         if email:
             instance.usuario.email = email
+        if password:
+            instance.usuario.set_password(password)
         instance.usuario.save()
 
         for attr, value in validated_data.items():

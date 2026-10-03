@@ -13,5 +13,8 @@ class PromocionSerializer(serializers.ModelSerializer):
             'porcentaje_descuento',
             'fecha_inicio',
             'fecha_fin',
-            'activo'
+            'activo',
+            'created_at',
+            'updated_at'
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at']

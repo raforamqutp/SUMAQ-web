@@ -18,7 +18,7 @@ class CabinaViewSet(WrappedModelViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         # Si la llamada es pública, solo retornar cabinas activas
-        if not (request.user and request.user.is_authenticated and request.user.rol == 'ADMIN'):
+        if not (request.user and request.user.is_authenticated and request.user.rol in ['ADMIN', 'RECEPCIONISTA']):
             queryset = queryset.filter(activa=True)
 
         serializer = self.get_serializer(queryset, many=True)

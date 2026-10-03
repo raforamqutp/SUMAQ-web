@@ -15,13 +15,13 @@ from apps.finance.serializers import (
     MovimientoCajaSerializer,
     MovimientoCajaCreateSerializer
 )
-from apps.common.permissions import IsAdminUserRole
+from apps.common.permissions import IsAdminUserRole, IsStaffUserRole
 from apps.common.viewsets import WrappedModelViewSet
 
 
 class MovimientoCajaViewSet(WrappedModelViewSet):
     queryset = MovimientoCaja.objects.all().order_by('-fecha_registro', '-id')
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
     def get_serializer_class(self):
         if self.action == 'create':

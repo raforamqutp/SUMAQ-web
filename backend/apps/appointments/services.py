@@ -315,7 +315,9 @@ class ReservaService:
             MovimientoCaja.objects.create(
                 cita=cita,
                 tipo=MovimientoCaja.Tipos.INGRESO_CITA,
+                concepto=f"Cobro de Cita {servicio.nombre} ({codigo_reserva})",
                 monto=monto_total,
+                metodo_pago=metodo_pago,
                 descripcion=f"Reserva Web {codigo_reserva} - {cliente.nombre_completo} ({servicio.nombre})"
             )
 
@@ -386,7 +388,9 @@ class ReservaService:
             MovimientoCaja.objects.create(
                 cita=cita_lock,
                 tipo=MovimientoCaja.Tipos.EGRESO,
+                concepto=f"Devolución / Cancelación Cita {cita_lock.codigo_reserva}",
                 monto=cita_lock.monto_total,
+                metodo_pago=cita_lock.metodo_pago,
                 descripcion=f"Anulación / Cancelación Web de Cita {cita_lock.codigo_reserva}. Motivo: {motivo or 'Cancelado por el cliente'}"
             )
 

@@ -24,7 +24,7 @@ class TerapeutaViewSet(WrappedModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        if not (request.user and request.user.is_authenticated and request.user.rol == 'ADMIN'):
+        if not (request.user and request.user.is_authenticated and request.user.rol in ['ADMIN', 'RECEPCIONISTA']):
             queryset = queryset.filter(activo=True, usuario__activo=True)
 
         serializer = TerapeutaSerializer(queryset, many=True)

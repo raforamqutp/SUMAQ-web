@@ -24,6 +24,8 @@ class Migration(migrations.Migration):
                 ('duracion_min', models.PositiveIntegerField(default=60, verbose_name='Duración (minutos)')),
                 ('imagen_url', models.CharField(blank=True, default='', max_length=500, verbose_name='URL de Imagen')),
                 ('activo', models.BooleanField(default=True, verbose_name='Activo')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')),
+                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Fecha de Actualización')),
             ],
             options={
                 'verbose_name': 'Servicio / Tratamiento',

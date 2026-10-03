@@ -1,14 +1,14 @@
 from rest_framework.response import Response
 from apps.clients.models import Cliente
 from apps.clients.serializers import ClienteSerializer
-from apps.common.permissions import IsAdminUserRole
+from apps.common.permissions import IsAdminUserRole, IsStaffUserRole
 from apps.common.viewsets import WrappedModelViewSet
 
 
 class ClienteAdminViewSet(WrappedModelViewSet):
     queryset = Cliente.objects.all().order_by('nombre_completo')
     serializer_class = ClienteSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())

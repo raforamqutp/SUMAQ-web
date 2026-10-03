@@ -78,7 +78,9 @@ CREATE TABLE `servicios` (
   `precio_publico` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `duracion_min` INT NOT NULL DEFAULT 60,
   `imagen_url` VARCHAR(500) NOT NULL DEFAULT '',
-  `activo` TINYINT(1) NOT NULL DEFAULT 1
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. TABLA PRODUCTOS (Insumos botánicos, cosméticos y kárdex de almacén)
@@ -120,6 +122,8 @@ CREATE TABLE `promociones` (
   `fecha_inicio` DATE NOT NULL,
   `fecha_fin` DATE NOT NULL,
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_promociones_cupon` (`codigo_cupon`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

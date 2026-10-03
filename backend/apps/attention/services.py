@@ -43,7 +43,9 @@ class AtencionService:
             MovimientoCaja.objects.create(
                 cita=cita_lock,
                 tipo=MovimientoCaja.Tipos.INGRESO_CITA,
+                concepto=f"Servicio Adicional: {extra_servicio.nombre} ({cita_lock.codigo_reserva})",
                 monto=subtotal_adicional,
+                metodo_pago=cita_lock.metodo_pago,
                 descripcion=f"Tratamiento adicional: {extra_servicio.nombre} (x{cantidad}) en cita {cita_lock.codigo_reserva}"
             )
 

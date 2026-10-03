@@ -16,7 +16,9 @@ export const AdminTherapistsPage: React.FC = () => {
   // Modal de terapeuta
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTerapeuta, setEditingTerapeuta] = useState<Terapeuta | null>(null);
-  const [usuarioId, setUsuarioId] = useState<number | null>(null);
+  const [nombreCompleto, setNombreCompleto] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('Sumaq2026!');
   const [especialidad, setEspecialidad] = useState('');
   const [cabinaId, setCabinaId] = useState<number | null>(null);
   const [fotoUrl, setFotoUrl] = useState('');
@@ -48,7 +50,9 @@ export const AdminTherapistsPage: React.FC = () => {
 
   const handleOpenCreate = () => {
     setEditingTerapeuta(null);
-    setUsuarioId(usuarios.length > 0 ? usuarios[0].id : null);
+    setNombreCompleto('');
+    setEmail('');
+    setPassword('Sumaq2026!');
     setEspecialidad('');
     setCabinaId(cabinas.length > 0 ? cabinas[0].id : null);
     setFotoUrl('');
@@ -58,7 +62,9 @@ export const AdminTherapistsPage: React.FC = () => {
 
   const handleOpenEdit = (t: Terapeuta) => {
     setEditingTerapeuta(t);
-    setUsuarioId(t.usuario?.id || null);
+    setNombreCompleto(t.nombre_completo || t.usuario?.nombre_completo || '');
+    setEmail(t.email || t.usuario?.email || '');
+    setPassword('');
     setEspecialidad(t.especialidad);
     setCabinaId(t.cabina?.id || null);
     setFotoUrl(t.foto_url || '');
@@ -67,6 +73,14 @@ export const AdminTherapistsPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!nombreCompleto.trim() && !editingTerapeuta) {
+      toast.error('Campos obligatorios', 'Ingrese el nombre completo del terapeuta.');
+      return;
+    }
+    if (!email.trim() && !editingTerapeuta) {
+      toast.error('Campos obligatorios', 'Ingrese el correo electrónico.');
+      return;
+    }
     if (!especialidad.trim()) {
       toast.error('Campos obligatorios', 'Ingrese la especialidad.');
       return;
@@ -74,13 +88,15 @@ export const AdminTherapistsPage: React.FC = () => {
     setSubmitting(true);
     try {
       const payload: any = {
+        nombre_completo: nombreCompleto.trim(),
+        email: email.trim().toLowerCase(),
         especialidad: especialidad.trim(),
-        cabina: cabinaId,
+        cabina_id: cabinaId || null,
         foto_url: fotoUrl.trim(),
         activo,
       };
-      if (!editingTerapeuta && usuarioId) {
-        payload.usuario = usuarioId;
+      if (password) {
+        payload.password = password;
       }
 
       if (editingTerapeuta) {
@@ -93,7 +109,7 @@ export const AdminTherapistsPage: React.FC = () => {
       setModalOpen(false);
       fetchData();
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Error al guardar terapeuta.';
+      const msg = err.response?.data?.error?.message || err.response?.data?.email?.[0] || 'Error al guardar terapeuta.';
       toast.error('Error', msg);
     } finally {
       setSubmitting(false);
@@ -173,33 +189,52 @@ export const AdminTherapistsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: EDITAR TERAPEUTA */}
+      {/* MODAL: EDITAR / CREAR TERAPEUTA */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingTerapeuta ? 'Editar Terapeuta' : 'Nuevo Terapeuta'}
-        subtitle="Asignación de cuenta de usuario y cabina de atención"
+        title={editingTerapeuta ? 'Editar Terapeuta' : 'Nuevo Perfil de Terapeuta'}
+        subtitle="Configuración de credenciales de usuario y cabina de atención"
       >
         <div className="space-y-4 text-xs">
-          {!editingTerapeuta && (
+          <div>
+            <label className="block font-semibold text-[#543F30] mb-1">Nombre Completo del Especialista *</label>
+            <input
+              type="text"
+              value={nombreCompleto}
+              onChange={(e) => setNombreCompleto(e.target.value)}
+              placeholder="Ej: Valeria Mendoza"
+              className="w-full px-3.5 py-2 bg-white border border-[#DFD0C0] rounded-xl text-xs text-[#2C2725] focus:outline-none focus:ring-2 focus:ring-[#8C6F55]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#543F30] mb-1">Cuenta de Usuario</label>
-              <select
-                value={usuarioId || ''}
-                onChange={(e) => setUsuarioId(parseInt(e.target.value, 10))}
+              <label className="block font-semibold text-[#543F30] mb-1">Correo Electrónico (Login) *</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="valeria.mendoza@sumaqspa.pe"
                 className="w-full px-3.5 py-2 bg-white border border-[#DFD0C0] rounded-xl text-xs text-[#2C2725] focus:outline-none focus:ring-2 focus:ring-[#8C6F55]"
-              >
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre_completo} ({u.email})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
-          )}
+            <div>
+              <label className="block font-semibold text-[#543F30] mb-1">
+                {editingTerapeuta ? 'Nueva Contraseña (opcional)' : 'Contraseña de Acceso *'}
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2 bg-white border border-[#DFD0C0] rounded-xl text-xs text-[#2C2725] focus:outline-none focus:ring-2 focus:ring-[#8C6F55]"
+              />
+            </div>
+          </div>
 
           <div>
-            <label className="block font-semibold text-[#543F30] mb-1">Especialidad Terapéutica</label>
+            <label className="block font-semibold text-[#543F30] mb-1">Especialidad Terapéutica *</label>
             <input
               type="text"
               value={especialidad}
@@ -213,9 +248,10 @@ export const AdminTherapistsPage: React.FC = () => {
             <label className="block font-semibold text-[#543F30] mb-1">Cabina Habitual Asignada</label>
             <select
               value={cabinaId || ''}
-              onChange={(e) => setCabinaId(parseInt(e.target.value, 10))}
+              onChange={(e) => setCabinaId(e.target.value ? parseInt(e.target.value, 10) : null)}
               className="w-full px-3.5 py-2 bg-white border border-[#DFD0C0] rounded-xl text-xs text-[#2C2725] focus:outline-none focus:ring-2 focus:ring-[#8C6F55]"
             >
+              <option value="">Sin cabina fija</option>
               {cabinas.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nombre} ({c.tipo})
@@ -233,6 +269,19 @@ export const AdminTherapistsPage: React.FC = () => {
               placeholder="https://images.unsplash.com/..."
               className="w-full px-3.5 py-2 bg-white border border-[#DFD0C0] rounded-xl text-xs text-[#2C2725] focus:outline-none focus:ring-2 focus:ring-[#8C6F55]"
             />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="terapeuta-activo"
+              checked={activo}
+              onChange={(e) => setActivo(e.target.checked)}
+              className="rounded text-[#8C6F55] focus:ring-[#8C6F55]"
+            />
+            <label htmlFor="terapeuta-activo" className="text-xs text-[#543F30] font-medium">
+              Especialista activo para asignación y reservas
+            </label>
           </div>
 
           <div className="pt-4 flex justify-end gap-2">

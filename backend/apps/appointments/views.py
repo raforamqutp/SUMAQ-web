@@ -13,7 +13,7 @@ from apps.appointments.serializers import (
     ReprogramarCitaWebInputSerializer
 )
 from apps.appointments.services import DisponibilidadService, ReservaService
-from apps.common.permissions import IsAdminUserRole, IsAssignedTherapistOrAdmin
+from apps.common.permissions import IsAdminUserRole, IsAssignedTherapistOrAdmin, IsStaffUserRole
 from apps.common.authentication import QueryParamJWTAuthentication
 from apps.common.pdf import generar_comprobante_pdf
 from apps.common.viewsets import WrappedModelViewSet
@@ -134,7 +134,7 @@ class CitaAdminViewSet(WrappedModelViewSet):
         'ficha_atencion__servicios_adicionales__servicio'
     ).all().order_by('-fecha', '-hora_inicio')
     serializer_class = CitaListDetailSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())

@@ -15,6 +15,9 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { Modal } from '../../components/Modal';
+import { adminService } from '../../services/adminService';
+import { MovimientoCaja } from '../../types/models';
 
 interface CartItem {
   id: string;
@@ -96,12 +99,49 @@ export const AdminCashRegisterPage: React.FC = () => {
     setAmountReceived(val);
   };
 
-  const handleEmitInvoice = (withPdf: boolean) => {
-    setIsCompleted(true);
-    if (withPdf) {
-      toast.success('Boleta Emitida', `Total cobrado: S/ ${total.toFixed(2)} (PDF generado)`);
-    } else {
-      toast.success('Venta Registrada', `Total cobrado: S/ ${total.toFixed(2)} en caja chica`);
+  const [submittingSale, setSubmittingSale] = useState(false);
+  const [historialModalOpen, setHistorialModalOpen] = useState(false);
+  const [historialCaja, setHistorialCaja] = useState<MovimientoCaja[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+
+  const handleOpenHistorial = async () => {
+    setLoadingHistorial(true);
+    setHistorialModalOpen(true);
+    try {
+      const data = await adminService.getCajaMovimientos();
+      setHistorialCaja(data);
+    } catch (err) {
+      toast.error('Error', 'No se pudo cargar el historial de caja.');
+    } finally {
+      setLoadingHistorial(false);
+    }
+  };
+
+  const handleEmitInvoice = async (withPdf: boolean) => {
+    if (cart.length === 0) {
+      toast.error('Carrito Vacío', 'Agregue al menos un servicio o producto para registrar la venta.');
+      return;
+    }
+    setSubmittingSale(true);
+    try {
+      const itemsSummary = cart.map(i => `${i.name} (x${i.quantity})`).join(', ');
+      await adminService.createCajaMovimiento({
+        tipo: 'INGRESO',
+        concepto: `Venta POS - ${clientName || 'Cliente Mostrador'}: ${itemsSummary}`.substring(0, 190),
+        monto: parseFloat(total.toFixed(2)),
+        metodo_pago: paymentMethod
+      });
+
+      setIsCompleted(true);
+      if (withPdf) {
+        toast.success('Boleta Emitida', `Total cobrado: S/ ${total.toFixed(2)} registrado en caja.`);
+      } else {
+        toast.success('Venta Registrada', `Total cobrado: S/ ${total.toFixed(2)} registrado exitosamente en caja.`);
+      }
+    } catch (err: any) {
+      toast.error('Error al registrar venta', err.response?.data?.error?.message || err.message || 'Error en el servidor de caja.');
+    } finally {
+      setSubmittingSale(false);
     }
   };
 
@@ -136,8 +176,8 @@ export const AdminCashRegisterPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => toast.info('Historial de Caja', 'Abriendo historial de movimientos del turno...')}
-            className="px-3.5 py-2 text-xs font-medium text-[#5A5047] bg-[#F7F4F0] hover:bg-[#EFEAE2] rounded-xl border border-[#E0D8CE] flex items-center gap-2 transition"
+            onClick={handleOpenHistorial}
+            className="px-3.5 py-2 text-xs font-medium text-[#5A5047] bg-[#F7F4F0] hover:bg-[#EFEAE2] rounded-xl border border-[#E0D8CE] flex items-center gap-2 transition cursor-pointer"
           >
             <History className="w-4 h-4" />
             Historial del Día
@@ -441,16 +481,18 @@ export const AdminCashRegisterPage: React.FC = () => {
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
+                  disabled={submittingSale}
                   onClick={() => handleEmitInvoice(true)}
-                  className="w-full py-3 bg-[#8C6F55] text-white text-xs font-bold rounded-xl hover:bg-[#785E47] transition shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-[#8C6F55] text-white text-xs font-bold rounded-xl hover:bg-[#785E47] transition shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <FileText className="w-4 h-4" />
-                  Emitir Boleta PDF
+                  {submittingSale ? 'Registrando Venta...' : 'Emitir Boleta y Cobrar'}
                 </button>
                 <button
                   type="button"
+                  disabled={submittingSale}
                   onClick={() => handleEmitInvoice(false)}
-                  className="w-full py-2.5 bg-[#FAF8F5] text-[#5A5047] text-xs font-semibold rounded-xl border border-[#E0D8CE] hover:bg-[#F0EAE2] transition text-center"
+                  className="w-full py-2.5 bg-[#FAF8F5] text-[#5A5047] text-xs font-semibold rounded-xl border border-[#E0D8CE] hover:bg-[#F0EAE2] transition text-center cursor-pointer disabled:opacity-50"
                 >
                   Registrar sin Comprobante
                 </button>
@@ -459,6 +501,70 @@ export const AdminCashRegisterPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: HISTORIAL DE CAJA */}
+      <Modal
+        isOpen={historialModalOpen}
+        onClose={() => setHistorialModalOpen(false)}
+        title="Historial de Movimientos de Caja"
+        subtitle="Asientos contables e ingresos en tiempo real"
+      >
+        <div className="space-y-4 text-xs">
+          {loadingHistorial ? (
+            <div className="flex justify-center py-10">
+              <div className="w-8 h-8 border-3 border-[#8C6F55] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : historialCaja.length === 0 ? (
+            <p className="text-center text-[#7A7067] py-8">No hay movimientos registrados en caja.</p>
+          ) : (
+            <div className="max-h-96 overflow-y-auto border border-[#E0D8CE] rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#FAF8F5] text-[#5A5047] border-b border-[#E0D8CE] uppercase text-[10px]">
+                  <tr>
+                    <th className="p-3">Tipo</th>
+                    <th className="p-3">Concepto</th>
+                    <th className="p-3">Método</th>
+                    <th className="p-3 text-right">Monto</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E0D8CE]">
+                  {historialCaja.map((m) => (
+                    <tr key={m.id} className="hover:bg-[#FDFBF7]">
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                          m.tipo === 'INGRESO' ? 'bg-[#EFF8F4] text-[#24634B]' : 'bg-[#FDF2F4] text-[#9B2C1C]'
+                        }`}>
+                          {m.tipo}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <p className="font-semibold text-[#2C2725]">{m.concepto}</p>
+                        <p className="text-[10px] text-[#8C6F55]">{new Date(m.fecha_registro).toLocaleString('es-PE')}</p>
+                      </td>
+                      <td className="p-3 font-mono text-[11px] text-[#5A5047]">{m.metodo_pago}</td>
+                      <td className={`p-3 text-right font-bold ${
+                        m.tipo === 'INGRESO' ? 'text-[#24634B]' : 'text-[#9B2C1C]'
+                      }`}>
+                        {m.tipo === 'INGRESO' ? '+' : '-'} S/ {parseFloat(m.monto.toString()).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => setHistorialModalOpen(false)}
+              className="px-4 py-2 bg-[#8C6F55] text-white text-xs font-semibold rounded-xl hover:bg-[#785E47] transition cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

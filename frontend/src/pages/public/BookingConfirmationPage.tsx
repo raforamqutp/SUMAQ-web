@@ -28,12 +28,12 @@ export const BookingConfirmationPage: React.FC = () => {
   const handleDownloadPDF = () => {
     if (cita.codigo_reserva) {
       downloadPdf(
-        `http://127.0.0.1:8000/api/citas/comprobante-pdf/${cita.codigo_reserva}/`,
+        `/citas/comprobante-pdf/${cita.codigo_reserva}/`,
         `Comprobante_Sumaq_${cita.codigo_reserva}.pdf`
       );
     } else {
       downloadPdf(
-        `http://127.0.0.1:8000/api/citas/${cita.id}/pdf/publico/`,
+        `/citas/${cita.id}/pdf/publico/`,
         `Comprobante_Sumaq_${cita.id}.pdf`
       );
     }
