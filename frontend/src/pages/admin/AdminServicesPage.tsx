@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
 import { Servicio, Producto } from '../../types/models';
 import { Button } from '../../components/Button';
@@ -7,6 +8,8 @@ import { useToast } from '../../contexts/ToastContext';
 import { Sparkles, Plus, Edit2, Trash2, Clock, Droplets, X } from 'lucide-react';
 
 export const AdminServicesPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'ADMIN';
   const { toast } = useToast();
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -149,9 +152,11 @@ export const AdminServicesPage: React.FC = () => {
           </p>
         </div>
 
-        <Button variant="primary" size="md" onClick={handleOpenCreate} icon={<Plus className="w-4 h-4" />}>
-          Nuevo Servicio
-        </Button>
+        {isAdmin && (
+          <Button variant="primary" size="md" onClick={handleOpenCreate} icon={<Plus className="w-4 h-4" />}>
+            Nuevo Servicio
+          </Button>
+        )}
       </div>
 
       {/* Services Grid */}
@@ -205,14 +210,16 @@ export const AdminServicesPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[#F6F2EC] flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleOpenEdit(serv)} icon={<Edit2 className="w-3.5 h-3.5" />}>
-                  Editar & Receta
-                </Button>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(serv.id)} icon={<Trash2 className="w-3.5 h-3.5" />}>
-                  Eliminar
-                </Button>
-              </div>
+              {isAdmin && (
+                <div className="mt-6 pt-4 border-t border-[#F6F2EC] flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleOpenEdit(serv)} icon={<Edit2 className="w-3.5 h-3.5" />}>
+                    Editar & Receta
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(serv.id)} icon={<Trash2 className="w-3.5 h-3.5" />}>
+                    Eliminar
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>

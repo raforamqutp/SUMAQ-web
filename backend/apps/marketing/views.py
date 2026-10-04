@@ -4,14 +4,14 @@ from rest_framework.response import Response
 from django.utils import timezone
 from apps.marketing.models import Promocion
 from apps.marketing.serializers import PromocionSerializer
-from apps.common.permissions import IsAdminUserRole
+from apps.common.permissions import IsAdminUserRole, IsStaffUserRole
 from apps.common.viewsets import WrappedModelViewSet
 
 
 class PromocionViewSet(WrappedModelViewSet):
     queryset = Promocion.objects.all().order_by('-id')
     serializer_class = PromocionSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
 
 class PromocionesActivasPublicView(APIView):

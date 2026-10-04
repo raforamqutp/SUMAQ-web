@@ -14,19 +14,11 @@ if not exist ".env" (
     )
 )
 
-if exist "..\.venv" (
-    set VENV_PATH=..\.venv
-) else if exist ".venv" (
-    set VENV_PATH=.venv
-) else (
-    echo [info] Creando entorno virtual .venv...
-    python -m venv .venv
-    set VENV_PATH=.venv
-    call %VENV_PATH%\Scripts\activate.bat
-    pip install -r requirements.txt
+if exist "..\.venv\Scripts\activate.bat" (
+    call ..\.venv\Scripts\activate.bat
+) else if exist ".venv\Scripts\activate.bat" (
+    call .venv\Scripts\activate.bat
 )
-
-call %VENV_PATH%\Scripts\activate.bat
 
 python init_db.py
 echo.

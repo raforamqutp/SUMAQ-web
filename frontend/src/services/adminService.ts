@@ -285,6 +285,26 @@ export const adminService = {
     return [];
   },
 
+  searchClientes: async (search: string): Promise<Cliente[]> => {
+    const response = await apiClient.get<any>(`/admin/clientes/?search=${encodeURIComponent(search)}`);
+    const data = extractData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
+  },
+
+  createCliente: async (payload: {
+    dni: string;
+    nombre_completo: string;
+    telefono?: string;
+    email?: string;
+  }): Promise<Cliente> => {
+    const response = await apiClient.post<any>('/admin/clientes/', payload);
+    const data = extractData<Cliente>(response);
+    if (data?.id) return data;
+    throw new Error('No se pudo registrar el cliente.');
+  },
+
   // Caja
   getCajaMovimientos: async (): Promise<MovimientoCaja[]> => {
     const response = await apiClient.get<any>('/admin/caja/');
@@ -299,6 +319,8 @@ export const adminService = {
     concepto: string;
     monto: number;
     metodo_pago: 'EFECTIVO' | 'TARJETA' | 'YAPE' | 'PLIN';
+    cita?: number;
+    descripcion?: string;
   }): Promise<MovimientoCaja> => {
     const response = await apiClient.post<any>('/admin/caja/', payload);
     const data = extractData<MovimientoCaja>(response);

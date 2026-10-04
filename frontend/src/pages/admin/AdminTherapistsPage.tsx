@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { adminService } from '../../services/adminService';
-import { Terapeuta, Cabina, User } from '../../types/models';
+import { Terapeuta, Cabina } from '../../types/models';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { Users2, Plus, Edit2, ShieldCheck, Mail, DoorClosed } from 'lucide-react';
 
 export const AdminTherapistsPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'ADMIN';
   const { toast } = useToast();
   const [terapeutas, setTerapeutas] = useState<Terapeuta[]>([]);
   const [cabinas, setCabinas] = useState<Cabina[]>([]);
-  const [usuarios, setUsuarios] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal de terapeuta
@@ -25,18 +27,16 @@ export const AdminTherapistsPage: React.FC = () => {
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Carga de terapeutas, cabinas y usuarios
+  // Carga de terapeutas y cabinas
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [teraps, cabs, users] = await Promise.all([
+      const [teraps, cabs] = await Promise.all([
         adminService.getTerapeutas(),
         adminService.getCabinas(),
-        adminService.getUsuarios(),
       ]);
       setTerapeutas(teraps);
       setCabinas(cabs);
-      setUsuarios(users.filter((u) => u.rol === 'TERAPEUTA'));
     } catch (err) {
       console.error("Error loading therapists data:", err);
     } finally {
@@ -130,9 +130,11 @@ export const AdminTherapistsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button variant="primary" size="md" onClick={handleOpenCreate} icon={<Plus className="w-4 h-4" />}>
-          Nuevo Perfil de Terapeuta
-        </Button>
+        {isAdmin && (
+          <Button variant="primary" size="md" onClick={handleOpenCreate} icon={<Plus className="w-4 h-4" />}>
+            Nuevo Perfil de Terapeuta
+          </Button>
+        )}
       </div>
 
       {/* Therapists Cards Grid */}
@@ -179,11 +181,13 @@ export const AdminTherapistsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[#F6F2EC] flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => handleOpenEdit(t)} icon={<Edit2 className="w-3.5 h-3.5" />}>
-                  Editar Asignación
-                </Button>
-              </div>
+              {isAdmin && (
+                <div className="mt-6 pt-4 border-t border-[#F6F2EC] flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => handleOpenEdit(t)} icon={<Edit2 className="w-3.5 h-3.5" />}>
+                    Editar Asignación
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>

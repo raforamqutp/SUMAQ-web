@@ -241,3 +241,166 @@ def generar_comprobante_pdf(cita):
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
+
+
+def generar_comprobante_caja_pdf(movimiento):
+    """
+    Genera un comprobante oficial de caja chica / venta POS en formato PDF.
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=40
+    )
+
+    styles = getSampleStyleSheet()
+    color_primary = colors.HexColor('#8C6F55')
+    color_dark = colors.HexColor('#2C2725')
+    color_light_bg = colors.HexColor('#FAF8F5')
+    color_accent = colors.HexColor('#C8907E')
+
+    style_title = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=20,
+        leading=24,
+        textColor=color_primary,
+        alignment=TA_CENTER
+    )
+
+    style_subtitle = ParagraphStyle(
+        'SubtitleStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=color_dark,
+        alignment=TA_CENTER
+    )
+
+    style_section = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        leading=16,
+        textColor=color_primary,
+        spaceAfter=6
+    )
+
+    style_normal = ParagraphStyle(
+        'NormalText',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13,
+        textColor=color_dark
+    )
+
+    style_bold = ParagraphStyle(
+        'BoldText',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=13,
+        textColor=color_dark
+    )
+
+    style_right = ParagraphStyle(
+        'RightText',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13,
+        textColor=color_dark,
+        alignment=TA_RIGHT
+    )
+
+    style_right_bold = ParagraphStyle(
+        'RightBoldText',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=14,
+        textColor=color_primary,
+        alignment=TA_RIGHT
+    )
+
+    story = []
+
+    # Encabezado Empresa
+    story.append(Paragraph("SUMAQ SPA & CENTRO DE BIENESTAR", style_title))
+    story.append(Paragraph("Santuario de Serenidad, Autocuidado y Terapias Holísticas", style_subtitle))
+    story.append(Paragraph("RUC: 20608945123 • Av. La Encalada 1420, Santiago de Surco • Lima, Perú", style_subtitle))
+    story.append(Spacer(1, 15))
+
+    # Tarjeta de Datos de Boleta
+    boleta_data = [
+        [
+            Paragraph(f"<b>BOLETA DE VENTA POS:</b> B001-{movimiento.id:06d}", style_bold),
+            Paragraph(f"<b>Fecha de Emisión:</b> {movimiento.fecha_registro.strftime('%d/%m/%Y %H:%M')}", style_right)
+        ],
+        [
+            Paragraph(f"<b>Tipo:</b> {movimiento.get_tipo_display()}", style_normal),
+            Paragraph(f"<b>Método de Pago:</b> {movimiento.metodo_pago}", style_right)
+        ]
+    ]
+
+    t_header = Table(boleta_data, colWidths=[270, 260])
+    t_header.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), color_light_bg),
+        ('BOX', (0, 0), (-1, -1), 1, color_accent),
+        ('PADDING', (0, 0), (-1, -1), 8),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(t_header)
+    story.append(Spacer(1, 15))
+
+    # Detalle del Movimiento
+    story.append(Paragraph("DETALLE DE LA OPERACIÓN EN CAJA", style_section))
+
+    items_data = [
+        [
+            Paragraph("<b>Concepto / Descripción</b>", style_bold),
+            Paragraph("<b>Método</b>", style_bold),
+            Paragraph("<b>Monto (PEN)</b>", style_right_bold)
+        ],
+        [
+            Paragraph(movimiento.concepto or movimiento.descripcion, style_normal),
+            Paragraph(movimiento.metodo_pago, style_normal),
+            Paragraph(f"S/ {movimiento.monto:.2f}", style_right)
+        ],
+        [
+            Paragraph("<b>TOTAL COBRADO (PEN)</b>", style_right_bold),
+            Paragraph("", style_normal),
+            Paragraph(f"<b>S/ {movimiento.monto:.2f}</b>", style_right_bold)
+        ]
+    ]
+
+    t_items = Table(items_data, colWidths=[330, 90, 110])
+    t_items.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), color_light_bg),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E0D8')),
+        ('PADDING', (0, 0), (-1, -1), 6),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('SPAN', (0, -1), (1, -1)),
+    ]))
+    story.append(t_items)
+    story.append(Spacer(1, 15))
+
+    if movimiento.descripcion and movimiento.descripcion != movimiento.concepto:
+        story.append(Paragraph(f"<b>Observaciones:</b> {movimiento.descripcion}", style_normal))
+        story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Comprobante emitido electrónicamente como constancia de operación en caja.", style_subtitle))
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+

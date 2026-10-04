@@ -9,30 +9,43 @@ echo                  SUMAQ SPA - LANZADOR DEL SISTEMA
 echo ======================================================================
 echo.
 
-:: 1. Verificar o Iniciar MySQL (XAMPP / Servicio local)
-echo [1/4] Verificando servidor MySQL en puerto 3306...
-netstat -ano | findstr ":3306" | findstr "LISTENING" >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [INFO] Puerto 3306 no detectado. Intentando arrancar MySQL de XAMPP...
-    if exist "C:\xampp\mysql\bin\mysqld.exe" (
-        start "MySQL XAMPP" /min "C:\xampp\mysql\bin\mysqld.exe" --defaults-file="C:\xampp\mysql\bin\my.ini" --standalone
-        timeout /t 3 /nobreak >nul 2>nul
-    ) else if exist "C:\xampp\mysql_start.bat" (
-        start /min "" "C:\xampp\mysql_start.bat"
-        timeout /t 3 /nobreak >nul 2>nul
+:: 1. Verificar o Iniciar MySQL (MySQL 8.0 puerto 3307 o XAMPP puerto 3306)
+echo [1/4] Verificando servidor MySQL (puerto 3307 o 3306)...
+set MYSQL_PORT=
+netstat -ano | findstr ":3307" | findstr "LISTENING" >nul 2>nul
+if %errorlevel% equ 0 (
+    set MYSQL_PORT=3307
+    echo [OK] Servidor MySQL activo y respondiendo en el puerto 3307 (MySQL 8.0).
+) else (
+    netstat -ano | findstr ":3306" | findstr "LISTENING" >nul 2>nul
+    if %errorlevel% equ 0 (
+        set MYSQL_PORT=3306
+        echo [OK] Servidor MySQL activo y respondiendo en el puerto 3306 (XAMPP / Local).
     ) else (
+        echo [INFO] Puertos 3307 y 3306 no detectados. Intentando arrancar MySQL...
         net start MySQL80 >nul 2>nul
         net start MySQL >nul 2>nul
+        if exist "C:\xampp\mysql\bin\mysqld.exe" (
+            start "MySQL XAMPP" /min "C:\xampp\mysql\bin\mysqld.exe" --defaults-file="C:\xampp\mysql\bin\my.ini" --standalone
+        ) else if exist "C:\xampp\mysql_start.bat" (
+            start /min "" "C:\xampp\mysql_start.bat"
+        )
         timeout /t 3 /nobreak >nul 2>nul
+        netstat -ano | findstr ":3307" | findstr "LISTENING" >nul 2>nul
+        if %errorlevel% equ 0 (
+            set MYSQL_PORT=3307
+            echo [OK] Servidor MySQL 8.0 iniciado y respondiendo en el puerto 3307.
+        ) else (
+            netstat -ano | findstr ":3306" | findstr "LISTENING" >nul 2>nul
+            if %errorlevel% equ 0 (
+                set MYSQL_PORT=3306
+                echo [OK] Servidor MySQL iniciado y respondiendo en el puerto 3306.
+            ) else (
+                echo [AVISO] No se pudo arrancar MySQL automaticamente.
+                echo Si tu base de datos ya esta activa en otro puerto o servicio, el sistema continuara.
+            )
+        )
     )
-)
-
-netstat -ano | findstr ":3306" | findstr "LISTENING" >nul 2>nul
-if %errorlevel% equ 0 (
-    echo [OK] Servidor MySQL activo y respondiendo en el puerto 3306.
-) else (
-    echo [AVISO] MySQL no pudo ser arrancado automaticamente.
-    echo Asegurate de iniciar el modulo MySQL desde el panel de XAMPP Control.
 )
 echo.
 
@@ -100,7 +113,11 @@ echo                  SISTEMA SUMAQ SPA INICIADO CON EXITO
 echo ======================================================================
 echo   - Frontend Web:  http://localhost:5173/
 echo   - Backend API:   http://127.0.0.1:8000/api/
-echo   - MySQL Server:  127.0.0.1:3306 [XAMPP / root / sin password]
+if defined MYSQL_PORT (
+    echo   - MySQL Server:  127.0.0.1:%MYSQL_PORT% [Activo]
+) else (
+    echo   - MySQL Server:  127.0.0.1:3307 / 3306
+)
 echo.
 echo   Credenciales de Demostracion:
 echo   - Administrador: admin@sumaqspa.pe      / AdminSumaq2026!

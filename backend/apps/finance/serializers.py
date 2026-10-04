@@ -27,6 +27,7 @@ class MovimientoCajaCreateSerializer(serializers.ModelSerializer):
             'concepto',
             'monto',
             'metodo_pago',
+            'cita',
             'descripcion'
         ]
 

@@ -1,7 +1,9 @@
 from decimal import Decimal
 from datetime import timedelta
+from django.http import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
@@ -16,6 +18,8 @@ from apps.finance.serializers import (
     MovimientoCajaCreateSerializer
 )
 from apps.common.permissions import IsAdminUserRole, IsStaffUserRole
+from apps.common.authentication import QueryParamJWTAuthentication
+from apps.common.pdf import generar_comprobante_pdf, generar_comprobante_caja_pdf
 from apps.common.viewsets import WrappedModelViewSet
 
 
@@ -38,9 +42,22 @@ class MovimientoCajaViewSet(WrappedModelViewSet):
             'data': MovimientoCajaSerializer(instance).data
         }, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['get'], url_path='pdf', authentication_classes=[QueryParamJWTAuthentication])
+    def descargar_pdf(self, request, pk=None):
+        movimiento = self.get_object()
+        if movimiento.cita:
+            pdf_bytes = generar_comprobante_pdf(movimiento.cita)
+            filename = f"Boleta_Cita_{movimiento.cita.codigo_reserva}.pdf"
+        else:
+            pdf_bytes = generar_comprobante_caja_pdf(movimiento)
+            filename = f"Boleta_Venta_POS_{movimiento.id}.pdf"
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+
 
 class AdminDashboardAnalyticsView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsStaffUserRole]
 
     def get(self, request):
         today = timezone.localdate()
@@ -62,12 +79,16 @@ class AdminDashboardAnalyticsView(APIView):
         citas_hoy_atendidas = Cita.objects.filter(fecha=today, estado=Cita.Estados.ATENDIDA)
         ingresos_hoy = float(citas_hoy_atendidas.aggregate(total=Sum('monto_total'))['total'] or Decimal('0.00'))
 
-        # Fallback si no hay registros en la fecha actual
-        if ingresos_hoy == 0.0 and ingresos_totales > 0.0:
-            ingresos_hoy = round(ingresos_totales * 0.15, 2)
-
-        costo_insumos_hoy = round(ingresos_hoy * 0.10, 2)
-        ganancia_operativa_hoy = round(ingresos_hoy - costo_insumos_hoy, 2)
+        movs_salida_hoy = MovimientoInventario.objects.filter(
+            tipo=MovimientoInventario.Tipos.SALIDA_CONSUMO_SERVICIO,
+            fecha_registro__date=today
+        )
+        costo_insumos_hoy = float(sum(m.cantidad * m.costo_unitario for m in movs_salida_hoy))
+        egresos_caja_hoy = float(MovimientoCaja.objects.filter(
+            tipo=MovimientoCaja.Tipos.EGRESO,
+            fecha_registro__date=today
+        ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00'))
+        ganancia_operativa_hoy = round(ingresos_hoy - costo_insumos_hoy - egresos_caja_hoy, 2)
 
         # 3. Operaciones Hoy
         citas_hoy = Cita.objects.filter(fecha=today)
@@ -79,19 +100,11 @@ class AdminDashboardAnalyticsView(APIView):
         capacidad_maxima = 27  # 3 cabinas x 9 turnos diarios
         tasa_ocupacion = round((citas_totales_hoy / capacidad_maxima) * 100.0, 1) if capacidad_maxima > 0 else 0.0
 
-        # Fallback si aún no hay citas hoy
-        if citas_totales_hoy == 0:
-            citas_totales_hoy = 6
-            citas_pendientes_hoy = 4
-            citas_atendidas_hoy = 2
-            citas_canceladas_hoy = 0
-            tasa_ocupacion = 22.2
-
         # 4. Alertas de Stock
         productos = Producto.objects.all()
         productos_criticos = sum(1 for p in productos if p.estado_stock != Producto.EstadosStock.NORMAL)
 
-        # 5. Tendencia 7 Días
+        # 5. Tendencia 7 Días (Cálculo real por fecha)
         dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
         tendencia_7_dias = []
 
@@ -103,13 +116,11 @@ class AdminDashboardAnalyticsView(APIView):
             citas_dia_count = citas_dia.count()
             ingresos_dia = float(citas_dia.filter(estado=Cita.Estados.ATENDIDA).aggregate(total=Sum('monto_total'))['total'] or Decimal('0.00'))
 
-            if ingresos_dia == 0 and citas_dia_count == 0:
-                # Fallback visual para días sin movimiento
-                factor = (dia_fecha.day % 5) + 3
-                ingresos_dia = round(factor * 110.0, 2)
-                citas_dia_count = factor
-
-            costos_dia = round(ingresos_dia * 0.10, 2)
+            movs_salida_dia = MovimientoInventario.objects.filter(
+                tipo=MovimientoInventario.Tipos.SALIDA_CONSUMO_SERVICIO,
+                fecha_registro__date=dia_fecha
+            )
+            costos_dia = float(sum(m.cantidad * m.costo_unitario for m in movs_salida_dia))
             ganancia_dia = round(ingresos_dia - costos_dia, 2)
 
             tendencia_7_dias.append({
@@ -129,13 +140,6 @@ class AdminDashboardAnalyticsView(APIView):
                 servicios_populares.append({
                     'servicio__nombre': s['servicio__nombre'],
                     'total': s['total']
-                })
-
-        if not servicios_populares:
-            for serv in Servicio.objects.filter(activo=True)[:3]:
-                servicios_populares.append({
-                    'servicio__nombre': serv.nombre,
-                    'total': 8
                 })
 
         return Response({
@@ -201,8 +205,18 @@ class AdminReportesView(APIView):
         citas_atendidas_count = citas_atendidas_qs.count()
 
         ingresos = float(citas_atendidas_qs.aggregate(total=Sum('monto_total'))['total'] or Decimal('0.00'))
-        costo_insumos = round(ingresos * 0.085, 2)
-        ganancia_operativa = round(ingresos - costo_insumos, 2)
+        movs_salida_rango = MovimientoInventario.objects.filter(
+            tipo=MovimientoInventario.Tipos.SALIDA_CONSUMO_SERVICIO,
+            fecha_registro__date__gte=fecha_inicio,
+            fecha_registro__date__lte=fecha_fin
+        )
+        costo_insumos = float(sum(m.cantidad * m.costo_unitario for m in movs_salida_rango))
+        egresos_caja_rango = float(MovimientoCaja.objects.filter(
+            tipo=MovimientoCaja.Tipos.EGRESO,
+            fecha_registro__date__gte=fecha_inicio,
+            fecha_registro__date__lte=fecha_fin
+        ).aggregate(total=Sum('monto'))['total'] or Decimal('0.00'))
+        ganancia_operativa = round(ingresos - costo_insumos - egresos_caja_rango, 2)
 
         # Desglose por terapeuta
         terapeutas = Terapeuta.objects.select_related('usuario').filter(activo=True)
