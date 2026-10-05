@@ -100,3 +100,59 @@ def test_completar_cita_insufficient_stock_rollback(setup_inventory_test):
 
     assert cita.estado == Cita.Estados.PENDIENTE
     assert prod.stock_actual == Decimal('1.00')
+
+
+@pytest.mark.django_db
+def test_admin_producto_crud_and_soft_delete():
+    from rest_framework.test import APIClient
+    admin = User.objects.create_superuser(
+        email='admin.inv@sumaqspa.pe',
+        password='AdminPassword123!',
+        nombre_completo='Admin Inv',
+        rol=User.Roles.ADMIN
+    )
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    # 1. Crear producto con stock inicial
+    create_resp = client.post('/api/admin/inventario/', {
+        'nombre': 'Crema Exfoliante Gold',
+        'descripcion': 'Exfoliante premium con microesferas',
+        'costo_unitario': '45.00',
+        'stock_actual': '15.00',
+        'stock_minimo_alerta': '3.00',
+        'unidad_medida': 'potes (500gr)',
+        'activo': True
+    }, format='json')
+    assert create_resp.status_code == 201
+    prod_id = create_resp.data['data']['id']
+    assert create_resp.data['data']['nombre'] == 'Crema Exfoliante Gold'
+
+    # Verificar que generó asiento de stock inicial en kardex
+    kardex = MovimientoInventario.objects.filter(producto_id=prod_id).first()
+    assert kardex is not None
+    assert kardex.tipo == MovimientoInventario.Tipos.ENTRADA_COMPRA
+    assert kardex.cantidad == Decimal('15.00')
+
+    # 2. Modificar producto (PATCH precio/costo y nombre)
+    patch_resp = client.patch(f'/api/admin/inventario/{prod_id}/', {
+        'costo_unitario': '48.50',
+        'nombre': 'Crema Exfoliante Platinum'
+    }, format='json')
+    assert patch_resp.status_code == 200
+    assert patch_resp.data['data']['costo_unitario'] == '48.50'
+    assert patch_resp.data['data']['nombre'] == 'Crema Exfoliante Platinum'
+
+    # 3. Soft delete (DELETE desactiva en vez de destruir)
+    del_resp = client.delete(f'/api/admin/inventario/{prod_id}/')
+    assert del_resp.status_code == 200
+    prod = Producto.objects.get(id=prod_id)
+    assert prod.activo is False
+
+    # 4. Reactivar producto (PATCH activo=True)
+    reactivate_resp = client.patch(f'/api/admin/inventario/{prod_id}/', {
+        'activo': True
+    }, format='json')
+    assert reactivate_resp.status_code == 200
+    prod.refresh_from_db()
+    assert prod.activo is True

@@ -209,31 +209,28 @@ export const AdminCashRegisterPage: React.FC = () => {
           
           if (pendingCita && pendingCita.servicio) {
             setTodayCita(pendingCita);
-            const price = typeof pendingCita.monto_total === 'number'
-              ? pendingCita.monto_total
-              : parseFloat(pendingCita.monto_total?.toString() || pendingCita.servicio.precio_publico.toString());
-
-            const isToday = pendingCita.fecha === todayStr;
-            const citaItem: CartItem = {
-              id: `cita-${pendingCita.id}`,
-              name: `${pendingCita.servicio.nombre} (Cita #${pendingCita.codigo_reserva} - ${isToday ? 'Hoy' : pendingCita.fecha})`,
-              type: 'SERVICIO',
-              price: price,
-              quantity: 1,
-              servicioId: pendingCita.servicio.id,
-              citaId: pendingCita.id
-            };
-
-            setCart([citaItem]);
-            if (pendingCitas.length > 1) {
+            const adicionales = (pendingCita as any).ficha_atencion?.servicios_adicionales || [];
+            
+            if (adicionales.length > 0) {
+              const extraItems: CartItem[] = adicionales.map((sa: any) => ({
+                id: `extra-sa-${sa.id}`,
+                name: `${sa.servicio_nombre || 'Servicio Adicional'} (Adicional Cita #${pendingCita.codigo_reserva})`,
+                type: 'SERVICIO',
+                price: parseFloat(sa.precio_unitario_historico || sa.subtotal || '0'),
+                quantity: sa.cantidad || 1,
+                servicioId: sa.servicio,
+                citaId: pendingCita.id
+              }));
+              setCart(extraItems);
               toast.info(
-                'Múltiples Citas Detectadas',
-                `Se cargó la cita prioritaria (#${pendingCita.codigo_reserva} - ${isToday ? 'Hoy' : pendingCita.fecha}). El cliente tiene ${pendingCitas.length} citas pendientes programadas.`
+                'Cita Pre-pagada Online',
+                `Cita #${pendingCita.codigo_reserva} (${pendingCita.servicio.nombre}) pagada online. Se cargaron ${extraItems.length} servicio(s) adicional(es) pendiente(s) de cobro.`
               );
             } else {
+              setCart([]);
               toast.info(
-                'Cita Pendiente Cargada',
-                `Se cargó la cita pendiente #${pendingCita.codigo_reserva} (${pendingCita.servicio.nombre}) por S/ ${price.toFixed(2)}.`
+                'Cita Pre-pagada Online',
+                `Cita #${pendingCita.codigo_reserva} (${pendingCita.servicio.nombre}) ya fue pagada online (S/ 0.00 pendiente de base). Listo para cobrar consumos extras o liquidar atención.`
               );
             }
           } else {
@@ -294,6 +291,19 @@ export const AdminCashRegisterPage: React.FC = () => {
 
     setCart(prev => [...prev, citaItem]);
     toast.success('Cita Cargada a Caja', `Se agregó la cita #${cita.codigo_reserva} (${cita.servicio.nombre}) por S/ ${price.toFixed(2)}.`);
+  };
+
+  // Liquidar cita atendida sin consumos extras (S/ 0.00)
+  const handleQuickCompleteCita = async (citaId: number) => {
+    try {
+      await adminService.updateCitaEstado(citaId, 'ATENDIDA');
+      toast.success('Cita Atendida', `Cita actualizada a ATENDIDA exitosamente en Agenda.`);
+      if (selectedCliente) {
+        handleSearchClient(selectedCliente.dni);
+      }
+    } catch (err) {
+      toast.error('Error', 'No se pudo actualizar el estado de la cita a ATENDIDA.');
+    }
   };
 
   // Cargar cita detectada al carrito (compatibilidad)
@@ -515,15 +525,15 @@ export const AdminCashRegisterPage: React.FC = () => {
 
       if (withPdf) {
         try {
-          if (associatedCitaId) {
+          if (createdMov?.id) {
+            await downloadPdf(
+              `/admin/caja/${createdMov.id}/pdf/`,
+              `Boleta_Venta_POS_${createdMov.id}.pdf`
+            );
+          } else if (associatedCitaId) {
             await downloadPdf(
               `/admin/citas/${associatedCitaId}/pdf/`,
               `Boleta_Sumaq_${todayCita?.codigo_reserva || associatedCitaId}.pdf`
-            );
-          } else if (createdMov?.id) {
-            await downloadPdf(
-              `/admin/caja/${createdMov.id}/pdf/`,
-              `Boleta_POS_${createdMov.id}.pdf`
             );
           }
           toast.success('Boleta Emitida y Descargada', `Cobro de S/ ${total.toFixed(2)} registrado y boleta generada exitosamente.`);
@@ -641,24 +651,24 @@ export const AdminCashRegisterPage: React.FC = () => {
             ) : null}
           </div>
           <div className="flex flex-wrap justify-center gap-3 pt-3">
+            {lastCompletedSale?.movimientoId && (
+              <button
+                type="button"
+                onClick={() => downloadPdf(`/admin/caja/${lastCompletedSale.movimientoId}/pdf/`, `Boleta_Venta_POS_${lastCompletedSale.movimientoId}.pdf`)}
+                className="px-5 py-2.5 bg-[#8C6F55] text-white hover:bg-[#785E47] text-xs font-semibold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Download className="w-4 h-4" />
+                Descargar Boleta de Venta POS PDF
+              </button>
+            )}
             {lastCompletedSale?.citaId && (
               <button
                 type="button"
-                onClick={() => downloadPdf(`/admin/citas/${lastCompletedSale.citaId}/pdf/`, `Boleta_Sumaq_${lastCompletedSale.codigoReserva || lastCompletedSale.citaId}.pdf`)}
-                className="px-5 py-2.5 bg-white border border-[#8C6F55] text-[#8C6F55] hover:bg-[#FAF8F5] text-xs font-semibold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
+                onClick={() => downloadPdf(`/admin/citas/${lastCompletedSale.citaId}/pdf/`, `Comprobante_Cita_${lastCompletedSale.codigoReserva || lastCompletedSale.citaId}.pdf`)}
+                className="px-5 py-2.5 bg-white border border-[#DFD0C0] text-[#543F30] hover:bg-[#FAF8F5] text-xs font-semibold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
               >
                 <Download className="w-4 h-4" />
-                Descargar Boleta PDF
-              </button>
-            )}
-            {lastCompletedSale?.movimientoId && !lastCompletedSale?.citaId && (
-              <button
-                type="button"
-                onClick={() => downloadPdf(`/admin/caja/${lastCompletedSale.movimientoId}/pdf/`, `Boleta_POS_${lastCompletedSale.movimientoId}.pdf`)}
-                className="px-5 py-2.5 bg-white border border-[#8C6F55] text-[#8C6F55] hover:bg-[#FAF8F5] text-xs font-semibold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
-              >
-                <Download className="w-4 h-4" />
-                Descargar Boleta POS PDF
+                Ver Comprobante de Cita
               </button>
             )}
             <button
@@ -851,6 +861,9 @@ export const AdminCashRegisterPage: React.FC = () => {
                                 <span className="font-semibold text-[#2C2725]">
                                   #{cita.codigo_reserva} &middot; {cita.servicio?.nombre}
                                 </span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                                  PRE-PAGADA ONLINE
+                                </span>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                   isToday
                                     ? 'bg-emerald-100 text-emerald-800'
@@ -859,31 +872,42 @@ export const AdminCashRegisterPage: React.FC = () => {
                                   {isToday ? 'HOY' : cita.fecha}
                                 </span>
                                 <span className="text-[11px] font-mono text-[#8C6F55] font-semibold">
-                                  S/ {price.toFixed(2)}
+                                  Saldo Base: S/ 0.00
                                 </span>
                               </div>
                               <p className="text-[11px] text-[#7A7067] truncate">
-                                Hora: {cita.hora_inicio?.slice(0, 5)} &middot; Terapeuta: {cita.terapeuta?.nombre_completo || 'No asignado'}
+                                Hora: {cita.hora_inicio?.slice(0, 5)} &middot; Terapeuta: {cita.terapeuta?.nombre_completo || 'No asignado'} &middot; Pagado con: {cita.metodo_pago}
                               </p>
                             </div>
                           </div>
 
-                          <div className="shrink-0">
+                          <div className="shrink-0 flex items-center gap-1.5">
                             {isInCart ? (
                               <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold rounded-lg flex items-center gap-1">
                                 <CheckCircle className="w-3.5 h-3.5" />
                                 En Detalle
                               </span>
                             ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleLoadCitaToCart(cita)}
-                                className="px-3 py-1.5 bg-[#8C6F55] hover:bg-[#785E47] text-white text-[11px] font-semibold rounded-lg shadow-2xs flex items-center gap-1 transition cursor-pointer"
-                                title="Cargar esta cita al detalle para cobrarla"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                Cargar a Caja
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickCompleteCita(cita.id)}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs flex items-center gap-1 transition cursor-pointer"
+                                  title="Marcar cita como atendida sin consumos adicionales"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  Atender (Sin Extras)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLoadCitaToCart(cita)}
+                                  className="px-2.5 py-1.5 bg-white border border-[#DFD0C0] text-[#7A7067] hover:bg-[#F3ECE4] text-[11px] font-medium rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                  title="Cobrar tratamiento base en mostrador si no fue pagado online"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  Cobrar Base
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>

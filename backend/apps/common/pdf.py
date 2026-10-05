@@ -340,13 +340,17 @@ def generar_comprobante_caja_pdf(movimiento):
     story.append(Spacer(1, 15))
 
     # Tarjeta de Datos de Boleta
+    cliente_info = "Cliente Mostrador"
+    if movimiento.cita and hasattr(movimiento.cita, 'cliente') and movimiento.cita.cliente:
+        cliente_info = f"{movimiento.cita.cliente.nombre_completo} (DNI: {movimiento.cita.cliente.dni})"
+
     boleta_data = [
         [
             Paragraph(f"<b>BOLETA DE VENTA POS:</b> B001-{movimiento.id:06d}", style_bold),
             Paragraph(f"<b>Fecha de Emisión:</b> {movimiento.fecha_registro.strftime('%d/%m/%Y %H:%M')}", style_right)
         ],
         [
-            Paragraph(f"<b>Tipo:</b> {movimiento.get_tipo_display()}", style_normal),
+            Paragraph(f"<b>Cliente:</b> {cliente_info}", style_normal),
             Paragraph(f"<b>Método de Pago:</b> {movimiento.metodo_pago}", style_right)
         ]
     ]

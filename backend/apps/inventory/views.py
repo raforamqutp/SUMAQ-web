@@ -23,9 +23,16 @@ class ProductoAdminViewSet(WrappedModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         estado = request.query_params.get('estado')
         search = request.query_params.get('search')
+        activo = request.query_params.get('activo')
 
         if search:
             queryset = queryset.filter(nombre__icontains=search) | queryset.filter(descripcion__icontains=search)
+
+        if activo is not None:
+            if activo.lower() in ['true', '1']:
+                queryset = queryset.filter(activo=True)
+            elif activo.lower() in ['false', '0']:
+                queryset = queryset.filter(activo=False)
 
         if estado:
             # Filtrado por propiedad calculada estado_stock
@@ -34,6 +41,27 @@ class ProductoAdminViewSet(WrappedModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response({'success': True, 'data': serializer.data})
+
+    def perform_create(self, serializer):
+        producto = serializer.save()
+        if producto.stock_actual > Decimal('0.00'):
+            MovimientoInventario.objects.create(
+                producto=producto,
+                tipo=MovimientoInventario.Tipos.ENTRADA_COMPRA,
+                cantidad=producto.stock_actual,
+                costo_unitario=producto.costo_unitario,
+                referencia_tipo='STOCK_INICIAL',
+                descripcion='Stock inicial registrado al dar de alta el producto'
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.activo = False
+        instance.save(update_fields=['activo'])
+        return Response({
+            'success': True,
+            'message': f'Insumo "{instance.nombre}" desactivado correctamente.'
+        }, status=status.HTTP_200_OK)
 
 
 class MovimientoInventarioViewSet(WrappedModelViewSet):

@@ -45,7 +45,8 @@ class MovimientoCajaViewSet(WrappedModelViewSet):
     @action(detail=True, methods=['get'], url_path='pdf', authentication_classes=[QueryParamJWTAuthentication])
     def descargar_pdf(self, request, pk=None):
         movimiento = self.get_object()
-        if movimiento.cita:
+        concepto = movimiento.concepto or ''
+        if movimiento.tipo == MovimientoCaja.Tipos.INGRESO_CITA and movimiento.cita and not concepto.startswith('Venta POS'):
             pdf_bytes = generar_comprobante_pdf(movimiento.cita)
             filename = f"Boleta_Cita_{movimiento.cita.codigo_reserva}.pdf"
         else:
