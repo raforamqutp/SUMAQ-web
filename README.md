@@ -56,3 +56,8 @@ copy backend\.env.example backend\.env
 | Administrador | `admin@sumaqspa.pe` | `AdminSumaq2026!` |
 | Recepción | `recepcion@sumaqspa.pe` | `Sumaq2026!` |
 | Terapeuta | `elena.morales@sumaqspa.pe` | `Sumaq2026!` |
+
+---
+
+<!-- cambio prueba: Verificación de CI/CD Pipeline en GitHub Actions -->
+
