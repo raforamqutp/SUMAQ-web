@@ -21,7 +21,7 @@ HORAS_INICIO = [
     time(12, 0), time(13, 0), time(14, 0), time(15, 0), time(16, 0)
 ]
 
-
+#calcula cabias si estan vacias o no.
 class DisponibilidadService:
     @staticmethod
     def get_slots_disponibles(fecha, servicio_id=None, terapeuta_id=None, cabina_id=None):
