@@ -18,6 +18,7 @@ import {
   X,
   ShieldAlert,
   DollarSign,
+  LifeBuoy,
 } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
@@ -48,6 +49,7 @@ export const AdminLayout: React.FC = () => {
     { name: 'Cabinas', path: '/admin/cabinas', icon: DoorClosed, adminOnly: true },
     { name: 'Usuarios & Roles', path: '/admin/usuarios', icon: UserCog, adminOnly: true },
     { name: 'Reportes Financieros', path: '/admin/reportes', icon: BarChart3, adminOnly: true },
+    { name: 'Mesa de Ayuda (TI)', path: '/ti', icon: LifeBuoy },
   ];
 
   const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);
@@ -167,6 +169,14 @@ export const AdminLayout: React.FC = () => {
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Ver Sitio Público</span>
+            </Link>
+            <Link
+              to="/ti"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3D2D22] hover:bg-[#8C6F55] text-white text-xs font-medium transition-colors"
+              title="Abrir Mesa de Ayuda TI (ITIL)"
+            >
+              <LifeBuoy className="w-3.5 h-3.5 text-[#C8907E]" />
+              <span>Portal TI (Service Desk)</span>
             </Link>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFF8F4] border border-[#A8DAC2] text-[#24634B] text-xs font-medium">
               <span className="w-2 h-2 rounded-full bg-[#24634B] animate-pulse"></span>
