@@ -204,6 +204,33 @@ export const TicketStore = {
 
     const updated = [newTicket, ...tickets];
     this.saveTickets(updated);
+
+    // Si Jira Cloud está habilitado con credenciales, sincronizar en vivo con la API v3
+    if (jiraConfig.enabled && jiraConfig.apiToken && jiraConfig.domain) {
+      fetch('/api/ti/jira/create-issue/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: jiraConfig.domain,
+          email: jiraConfig.email,
+          api_token: jiraConfig.apiToken,
+          project_key: jiraConfig.projectKey || 'SQ',
+          summary: `[${id}] ${payload.asunto}`,
+          description: payload.descripcion,
+          issue_type: isIncident ? 'Bug' : 'Task'
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.key) {
+            this.updateTicket(id, { jiraKey: data.key, jiraUrl: data.url });
+          }
+        })
+        .catch(err => {
+          console.warn('Jira Cloud background sync fallback to local key:', err);
+        });
+    }
+
     return newTicket;
   },
 

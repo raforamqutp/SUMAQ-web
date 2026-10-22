@@ -16,7 +16,8 @@ import {
   HelpCircle,
   Terminal,
   FileText,
-  UserCheck
+  UserCheck,
+  GitPullRequest
 } from 'lucide-react';
 
 export const SupportWidget: React.FC = () => {
@@ -88,6 +89,10 @@ export const SupportWidget: React.FC = () => {
         return { label: 'Solicitud de Acceso', icon: UserCheck, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
       case 'INCIDENCIA':
         return { label: 'Incidencia Técnica', icon: AlertTriangle, color: 'text-amber-700 bg-amber-50 border-amber-200' };
+      case 'SOLICITUD_CAMBIO':
+        return { label: 'Control de Cambios (RFC)', icon: GitPullRequest, color: 'text-rose-700 bg-rose-50 border-rose-200' };
+      default:
+        return { label: 'Requerimiento TI', icon: FileText, color: 'text-gray-700 bg-gray-50 border-gray-200' };
     }
   };
 

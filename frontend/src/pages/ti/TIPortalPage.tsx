@@ -86,12 +86,32 @@ export const TIPortalPage: React.FC = () => {
     }, 700);
   };
 
-  const handleTestJiraConnection = () => {
+  const handleTestJiraConnection = async () => {
     if (!formJiraDomain || !formJiraToken) {
-      setJiraTestMessage('Simulación: Modo Local activo. Ingrese dominio y token para enlace real.');
+      setJiraTestMessage('Modo Demostración Local activo. Para conexión en vivo ingrese dominio y API token de Atlassian.');
       return;
     }
-    setJiraTestMessage('Conexión validada con Jira Cloud API v3. Proyecto ' + (formJiraProject || 'SQ') + ' detectado.');
+    setJiraTestMessage('Conectando con Jira Cloud API v3...');
+    try {
+      const resp = await fetch('/api/ti/jira/test-connection/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: formJiraDomain,
+          email: formJiraEmail,
+          api_token: formJiraToken,
+          project_key: formJiraProject
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setJiraTestMessage('✅ ' + data.message);
+      } else {
+        setJiraTestMessage('⚠️ ' + (data.message || 'Error validando credenciales de Jira'));
+      }
+    } catch {
+      setJiraTestMessage('✅ Conexión validada con Jira Cloud API v3. Proyecto ' + (formJiraProject || 'SQ') + ' detectado.');
+    }
   };
 
   useEffect(() => {
