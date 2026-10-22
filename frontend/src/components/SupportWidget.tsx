@@ -360,6 +360,17 @@ export const SupportWidget: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs font-bold text-[#8C6F55]">{t.id}</span>
+                              {t.jiraKey && (
+                                <a
+                                  href={t.jiraUrl || `https://sumaqspa.atlassian.net/browse/${t.jiraKey}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 hover:underline"
+                                  title="Ver ticket sincronizado en Jira Cloud"
+                                >
+                                  Jira: {t.jiraKey}
+                                </a>
+                              )}
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${typeInfo.color}`}>
                                 <Icon className="w-3 h-3" />
                                 {typeInfo.label}
