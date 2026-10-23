@@ -82,6 +82,10 @@ services:
       DB_PORT: "3306"
       CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80,http://localhost:5173"
       INIT_DB_SEED: "false"
+      JIRA_BASE_URL: "${JIRA_BASE_URL:-https://sumaq-dev.atlassian.net}"
+      JIRA_USER_EMAIL: "${JIRA_USER_EMAIL:-rafaelramirez.utp@gmail.com}"
+      JIRA_PROJECT_KEY: "${JIRA_PROJECT_KEY:-KAN}"
+      JIRA_API_TOKEN: "${JIRA_API_TOKEN:-ATATT3xFfGF08u8nxmTYWYA6tO8DXXnlt-VwiaRooWs_U6BVL91xLOvnbB0JvZ3V-WqEQ2UIpnyQTo5ry8-4KlViLK3OnIXF527t4wT6jdFk2RZ38iiYZGyADe9_KzeovB9N7eZaBLBG0nVquqVhKd-nU32-4BKyLkx7oNVqnYMS6WrHyF7ZTGc=E4530C32}"
     ports:
       - "8000:8000"
     volumes:

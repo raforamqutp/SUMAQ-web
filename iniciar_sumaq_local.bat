@@ -6,8 +6,15 @@ echo ======================================================================
 echo           SUMAQ SPA TI - INICIADOR AUTOMATICO DEL SISTEMA
 echo ======================================================================
 echo.
+REM Detectar entorno virtual Python local si existe
+if exist "%~dp0.venv\Scripts\python.exe" (
+    set "PY_CMD=%~dp0.venv\Scripts\python.exe"
+) else (
+    set "PY_CMD=python"
+)
+
 echo [1/3] Levantando Backend Django en http://127.0.0.1:8000 ...
-start "SUMAQ Backend (Django API)" cmd.exe /k "cd /d %~dp0backend && python manage.py runserver 127.0.0.1:8000"
+start "SUMAQ Backend (Django API)" cmd.exe /k "cd /d %~dp0backend && "%PY_CMD%" manage.py runserver 127.0.0.1:8000"
 
 echo [2/3] Levantando Frontend Vite React en http://localhost:5173 ...
 start "SUMAQ Frontend (React 19)" cmd.exe /k "cd /d %~dp0frontend && npm.cmd run dev"
