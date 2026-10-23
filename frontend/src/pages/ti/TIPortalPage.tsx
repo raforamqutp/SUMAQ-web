@@ -23,7 +23,8 @@ import {
   Settings,
   Globe,
   Link2,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 
 export const TIPortalPage: React.FC = () => {
@@ -105,12 +106,12 @@ export const TIPortalPage: React.FC = () => {
       });
       const data = await resp.json();
       if (resp.ok && data.success) {
-        setJiraTestMessage('✅ ' + data.message);
+        setJiraTestMessage('' + data.message);
       } else {
-        setJiraTestMessage('⚠️ ' + (data.message || 'Error validando credenciales de Jira'));
+        setJiraTestMessage('' + (data.message || 'Error validando credenciales de Jira'));
       }
     } catch {
-      setJiraTestMessage('✅ Conexión validada con Jira Cloud API v3. Proyecto ' + (formJiraProject || 'SQ') + ' detectado.');
+      setJiraTestMessage('Conexión validada con Jira Cloud API v3. Proyecto ' + (formJiraProject || 'SQ') + ' detectado.');
     }
   };
 
@@ -528,7 +529,7 @@ export const TIPortalPage: React.FC = () => {
                 onClick={() => setManagingTicket(null)}
                 className="text-[#C9B29B] hover:text-white p-1 rounded-lg"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -658,7 +659,7 @@ export const TIPortalPage: React.FC = () => {
                 onClick={() => setIsJiraModalOpen(false)}
                 className="text-[#C9B29B] hover:text-white p-1 rounded-lg"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

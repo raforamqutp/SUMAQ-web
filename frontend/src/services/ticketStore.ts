@@ -3,97 +3,175 @@ import { Ticket, TicketPriority, TicketStatus, TicketType, JiraConfig } from '..
 const STORAGE_KEY = 'sumaq_service_desk_tickets_v1';
 const JIRA_CONFIG_KEY = 'sumaq_jira_config_v1';
 
-const DEFAULT_JIRA_CONFIG: JiraConfig = {
-  enabled: false,
-  domain: 'https://sumaqspa.atlassian.net',
-  email: 'admin@sumaqspa.pe',
+export const DEFAULT_JIRA_CONFIG: JiraConfig = {
+  enabled: true,
+  domain: 'https://sumaq-dev.atlassian.net',
+  email: 'rafaelramirez.utp@gmail.com',
   apiToken: '',
-  projectKey: 'SQ'
+  projectKey: 'KAN'
 };
 
-// Semillas iniciales con los casos reales desarrollados para SUMAQ Spa (ITIL v4)
-const SEED_TICKETS: Ticket[] = [
+// Semillas oficiales sincronizadas con el espacio real Sumaq Spa TI (sumaq-dev.atlassian.net)
+export const SEED_TICKETS: Ticket[] = [
   {
-    id: 'REQ-2026-0104',
-    tipo: 'SOLICITUD_ACCESO',
+    id: 'REQ-2026-0009',
+    tipo: 'SOLICITUD_CAMBIO',
     prioridad: 'P3_MEDIA',
-    asunto: 'Alta de cuenta y acceso con rol TERAPEUTA',
-    descripcion: 'Se solicita creación de credenciales para la terapeuta Camila Vega, asignada a Cabina 2 (Dermoestética) con permisos restringidos de solo lectura en inventario.',
-    modulo: 'Usuarios y Accesos',
-    solicitanteNombre: 'Elena Morales (Terapeuta Líder)',
-    solicitanteEmail: 'elena.morales@sumaqspa.pe',
-    solicitanteRol: 'TERAPEUTA',
-    fechaCreacion: '2026-10-14 09:30:00',
+    asunto: 'Desacoplamiento total de datos simulados hacia la API de Django',
+    descripcion: 'Reemplazo de estados locales en frontend por endpoints REST reales y sincronización de citas en tiempo real.',
+    modulo: 'Frontend & API',
+    solicitanteNombre: 'Alexis _Bryan',
+    solicitanteEmail: 'bryan.mango@sumaqspa.pe',
+    solicitanteRol: 'ADMIN',
+    fechaCreacion: '2026-10-23 06:06:00',
     slaHoras: 24,
-    slaFechaLimite: '2026-10-15 09:30:00',
-    estado: 'RESUELTO',
-    asignadoA: 'Anthony Luque (DevOps Lead)',
-    resolucionTecnica: 'Usuario camila.vega@sumaqspa.pe creado en tabla usuarios con hash PBKDF2-SHA256. Rol TERAPEUTA asignado bajo principio de mínimo privilegio y Anti-IDOR verificado.',
-    fechaResolucion: '2026-10-14 11:45:00',
-    githubUrl: '',
-    jiraKey: 'SQ-104',
-    jiraUrl: 'https://sumaqspa.atlassian.net/browse/SQ-104'
+    slaFechaLimite: '2026-10-24 06:06:00',
+    estado: 'EN_PROCESO',
+    asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+    resolucionTecnica: 'Endpoints en /api/ conectando servicios de citas y pagos con axios y React Query.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-9',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-9'
   },
   {
-    id: 'REQ-2026-0105',
+    id: 'REQ-2026-0008',
     tipo: 'SOLICITUD_SERVICIO',
     prioridad: 'P3_MEDIA',
-    asunto: 'Carga de receta BOM para Ritual Geotermal',
-    descripcion: 'Requerimiento para dar de alta en el catálogo el tratamiento "Ritual Geotermal con Piedras Volcánicas" (60 min - S/ 160.00) y configurar su descuento automático de insumos (Aceite de Eucalipto 30ml, 2 toallas descartables).',
-    modulo: 'Servicios y Recetas (BOM)',
-    solicitanteNombre: 'Valeria Quispe (Recepción)',
-    solicitanteEmail: 'recepcion@sumaqspa.pe',
-    solicitanteRol: 'RECEPCIONISTA',
-    fechaCreacion: '2026-10-15 14:10:00',
-    slaHoras: 24,
-    slaFechaLimite: '2026-10-16 14:10:00',
-    estado: 'EN_PROCESO',
-    asignadoA: 'Bryan Mango (DB & Backend Lead)',
-    resolucionTecnica: 'Parámetros del servicio validados en catálogo. Procediendo a asociar insumos en la tabla recetas_servicio y prueba transaccional en Azure VM.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/issues/52',
-    jiraKey: 'SQ-105',
-    jiraUrl: 'https://sumaqspa.atlassian.net/browse/SQ-105'
-  },
-  {
-    id: 'REQ-2026-0106',
-    tipo: 'SOLICITUD_INFORMACION',
-    prioridad: 'P2_ALTA',
-    asunto: 'Reporte trimestral de rotación Kárdex y ventas para auditoría',
-    descripcion: 'Se requiere reporte consolidado en CSV/Excel de todas las transacciones de caja chica y movimientos de Kárdex del último trimestre para auditoría tributaria externa.',
-    modulo: 'Inventario y Kardex',
-    solicitanteNombre: 'Administración General',
-    solicitanteEmail: 'admin@sumaqspa.pe',
+    asunto: 'Scripts de backup y restore transaccional con detección de MySQL 8.0',
+    descripcion: 'Ejecución de backup_docker.bat con mysqldump --single-transaction --quick y compresión gzip hacia el esclavo 3309.',
+    modulo: 'Infraestructura & BD',
+    solicitanteNombre: 'Anthony Luque (AL)',
+    solicitanteEmail: 'anthony.luque@sumaqspa.pe',
     solicitanteRol: 'ADMIN',
-    fechaCreacion: '2026-10-16 10:15:00',
-    slaHoras: 8,
-    slaFechaLimite: '2026-10-16 18:15:00',
-    estado: 'ABIERTO',
-    asignadoA: 'Bryan Mango (Database Lead)',
-    resolucionTecnica: 'En cola de ejecución para consulta SQL de solo lectura sobre el nodo de réplica MySQL Slave (puerto 3309), protegiendo el nodo Master 3308.',
-    githubUrl: '',
-    jiraKey: 'SQ-106',
-    jiraUrl: 'https://sumaqspa.atlassian.net/browse/SQ-106'
+    fechaCreacion: '2026-10-23 06:06:00',
+    slaHoras: 24,
+    slaFechaLimite: '2026-10-24 06:06:00',
+    estado: 'EN_PROCESO',
+    asignadoA: 'Anthony Luque (AL)',
+    resolucionTecnica: 'Script verificado con Checksum MD5 y Seconds_Behind_Master: 0 en contenedor 3309.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-8',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-8'
   },
   {
-    id: 'INC-2026-0089',
+    id: 'REQ-2026-0007',
+    tipo: 'SOLICITUD_SERVICIO',
+    prioridad: 'P3_MEDIA',
+    asunto: 'Ajuste de sintaxis SQL reemplazando ON DELETE PROTECT por RESTRICT',
+    descripcion: 'Normalización de restricciones de integridad referencial para compatibilidad estricta con MySQL 8.0 y Django ORM.',
+    modulo: 'Base de Datos MySQL',
+    solicitanteNombre: 'Anthony Luque (AL)',
+    solicitanteEmail: 'anthony.luque@sumaqspa.pe',
+    solicitanteRol: 'ADMIN',
+    fechaCreacion: '2026-10-23 06:06:00',
+    slaHoras: 24,
+    slaFechaLimite: '2026-10-24 06:06:00',
+    estado: 'EN_PROCESO',
+    asignadoA: 'Anthony Luque (AL)',
+    resolucionTecnica: 'Esquema de migración makemigrations generado con integridad referencial validada en tests unitarios.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-7',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-7'
+  },
+  {
+    id: 'REQ-2026-0006',
+    tipo: 'SOLICITUD_SERVICIO',
+    prioridad: 'P3_MEDIA',
+    asunto: 'Implementación de Rate Limiting y auto-logout por inactividad',
+    descripcion: 'Middleware de seguridad contra ataques de fuerza bruta y expiración de tokens JWT en 120 minutos.',
+    modulo: 'Seguridad & Auth',
+    solicitanteNombre: 'Rafael Ramirez Quiroz (RQ)',
+    solicitanteEmail: 'rafaelramirez.utp@gmail.com',
+    solicitanteRol: 'ADMIN',
+    fechaCreacion: '2026-10-23 06:06:00',
+    slaHoras: 24,
+    slaFechaLimite: '2026-10-24 06:06:00',
+    estado: 'EN_PROCESO',
+    asignadoA: 'Bryan Alexis Mango (BT)',
+    resolucionTecnica: 'test_account_lockout_after_five_failed_attempts aprobado con código HTTP 429.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-6',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-6'
+  },
+  {
+    id: 'INC-2026-0005',
     tipo: 'INCIDENCIA',
     prioridad: 'P1_CRITICA',
-    asunto: 'Bloqueo intermitente al confirmar citas en Cabina 1',
-    descripcion: 'Al intentar confirmar citas consecutivas en Cabina 1 (Holística) se presentó contención de hilos en Gunicorn por solapamiento de bloqueos.',
-    modulo: 'Agenda / Citas',
-    solicitanteNombre: 'Elena Morales (Terapeuta)',
-    solicitanteEmail: 'elena.morales@sumaqspa.pe',
-    solicitanteRol: 'TERAPEUTA',
-    fechaCreacion: '2026-10-13 16:00:00',
+    asunto: 'Bloqueo temporal de cuenta de usuario tras 5 intentos fallidos',
+    descripcion: 'Protección contra intrusiones por diccionario con bloqueo transaccional de 15 minutos verificado en test_auth.py.',
+    modulo: 'Seguridad & Auth',
+    solicitanteNombre: 'Sistema Automatizado de Monitoreo',
+    solicitanteEmail: 'telemetria@sumaqspa.pe',
+    solicitanteRol: 'SISTEMA',
+    fechaCreacion: '2026-10-23 06:06:00',
     slaHoras: 2,
-    slaFechaLimite: '2026-10-13 18:00:00',
+    slaFechaLimite: '2026-10-23 08:06:00',
     estado: 'RESUELTO',
-    asignadoA: 'Anthony Luque (DevOps) & Bryan Mango (Backend)',
-    resolucionTecnica: 'Se optimizó la transacción en DisponibilidadService con select_for_update a nivel de fila y aislamiento ACID. Hotfix CHE-2026-001 desplegado en Azure VM.',
-    fechaResolucion: '2026-10-13 17:25:00',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/pull/48',
-    jiraKey: 'SQ-89',
-    jiraUrl: 'https://sumaqspa.atlassian.net/browse/SQ-89'
+    asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+    resolucionTecnica: 'Parche aplicado con recálculo atómico en Redis / Base de datos. Estado normalizado.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-5',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-5'
+  },
+  {
+    id: 'REQ-2026-0024',
+    tipo: 'INCIDENCIA',
+    prioridad: 'P2_ALTA',
+    asunto: 'Orquestación multicontenedor con Docker Compose (Frontend, Backend, MySQL Master/Slave)',
+    descripcion: 'Pila inmutable desplegada en Azure VM (68.155.146.110) con aislamiento de redes y volúmenes persistentes.',
+    modulo: 'DevOps & Cloud',
+    solicitanteNombre: 'Anthony Luque (AL)',
+    solicitanteEmail: 'anthony.luque@sumaqspa.pe',
+    solicitanteRol: 'ADMIN',
+    fechaCreacion: '2026-10-23 06:06:00',
+    slaHoras: 8,
+    slaFechaLimite: '2026-10-23 14:06:00',
+    estado: 'EN_PROCESO',
+    asignadoA: 'Bryan Alexis Mango (BT)',
+    resolucionTecnica: 'docker-compose.yml verificado con docker compose config sin errores sintácticos.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-24',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-24'
+  },
+  {
+    id: 'REQ-2026-0025',
+    tipo: 'INCIDENCIA',
+    prioridad: 'P2_ALTA',
+    asunto: 'Implementación de arquitectura y monitor de replicación MySQL Master-Slave',
+    descripcion: 'Configuración de nodo 3308 como maestro transaccional y 3309 como réplica de lectura para analítica de caja.',
+    modulo: 'Base de Datos MySQL',
+    solicitanteNombre: 'Bryan Mango (BT)',
+    solicitanteEmail: 'bryan.mango@sumaqspa.pe',
+    solicitanteRol: 'ADMIN',
+    fechaCreacion: '2026-10-23 06:06:00',
+    slaHoras: 8,
+    slaFechaLimite: '2026-10-23 14:06:00',
+    estado: 'EN_PROCESO',
+    asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+    resolucionTecnica: 'Slave_IO_Running: Yes, Slave_SQL_Running: Yes, Seconds_Behind_Master: 0.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-25',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-25'
+  },
+  {
+    id: 'REQ-2026-0026',
+    tipo: 'SOLICITUD_SERVICIO',
+    prioridad: 'P3_MEDIA',
+    asunto: 'Documentación de evidencias técnicas para los 20 riesgos del proyecto',
+    descripcion: 'Compilación de la matriz de mitigación técnica y pruebas unitarias Pytest 20/20 pasando en el pipeline de CI.',
+    modulo: 'Calidad & Auditoría',
+    solicitanteNombre: 'Rafael Ramirez Quiroz (RQ)',
+    solicitanteEmail: 'rafaelramirez.utp@gmail.com',
+    solicitanteRol: 'ADMIN',
+    fechaCreacion: '2026-10-23 06:06:00',
+    slaHoras: 24,
+    slaFechaLimite: '2026-10-24 06:06:00',
+    estado: 'ABIERTO',
+    asignadoA: 'Anthony Luque (AL)',
+    resolucionTecnica: 'Suite completa en pytest backend/tests/ aprobada al 100%.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-26',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-26'
   }
 ];
 
@@ -105,7 +183,13 @@ export const TicketStore = {
         this.saveTickets(SEED_TICKETS);
         return SEED_TICKETS;
       }
-      return JSON.parse(data) as Ticket[];
+      const list = JSON.parse(data) as Ticket[];
+      // Si tiene las semillas de la semana anterior (SQ-104), actualizar automáticamente a KAN
+      if (list.length > 0 && list[0].jiraKey?.startsWith('SQ-')) {
+        this.saveTickets(SEED_TICKETS);
+        return SEED_TICKETS;
+      }
+      return list;
     } catch {
       return SEED_TICKETS;
     }
@@ -116,8 +200,12 @@ export const TicketStore = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
       window.dispatchEvent(new Event('sumaq_tickets_updated'));
     } catch (e) {
-      console.error('Error saving tickets to localStorage', e);
+      console.error('Error saving tickets', e);
     }
+  },
+
+  getTicketById(id: string): Ticket | undefined {
+    return this.getTickets().find(t => t.id === id);
   },
 
   getTicketsByUser(userEmail?: string): Ticket[] {
@@ -130,7 +218,13 @@ export const TicketStore = {
     try {
       const data = localStorage.getItem(JIRA_CONFIG_KEY);
       if (!data) return DEFAULT_JIRA_CONFIG;
-      return JSON.parse(data) as JiraConfig;
+      const parsed = JSON.parse(data) as JiraConfig;
+      // Si tenía el dominio anterior de prueba, actualizar al real
+      if (parsed.domain?.includes('sumaqspa.atlassian.net') || parsed.projectKey === 'SQ') {
+        this.saveJiraConfig(DEFAULT_JIRA_CONFIG);
+        return DEFAULT_JIRA_CONFIG;
+      }
+      return parsed;
     } catch {
       return DEFAULT_JIRA_CONFIG;
     }
@@ -160,10 +254,9 @@ export const TicketStore = {
     const isIncident = payload.tipo === 'INCIDENCIA';
     const prefix = isIncident ? 'INC' : 'REQ';
     const year = new Date().getFullYear();
-    const count = tickets.filter(t => t.id.startsWith(prefix)).length + 101;
-    const id = `${prefix}-${year}-0${count}`;
+    const count = tickets.length + 10;
+    const id = `${prefix}-${year}-00${count}`;
 
-    // Cálculo de horas de SLA según matriz ITIL de Semana 10
     let slaHoras = 24;
     if (payload.prioridad === 'P1_CRITICA') slaHoras = 2;
     else if (payload.prioridad === 'P2_ALTA') slaHoras = 8;
@@ -178,8 +271,8 @@ export const TicketStore = {
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     };
 
-    const jiraKey = `${jiraConfig.projectKey || 'SQ'}-${count}`;
-    const jiraUrl = `${jiraConfig.domain || 'https://sumaqspa.atlassian.net'}/browse/${jiraKey}`;
+    const jiraKey = `${jiraConfig.projectKey || 'KAN'}-${count}`;
+    const jiraUrl = `${jiraConfig.domain || 'https://sumaq-dev.atlassian.net'}/browse/${jiraKey}`;
 
     const newTicket: Ticket = {
       id,
@@ -195,9 +288,9 @@ export const TicketStore = {
       slaHoras,
       slaFechaLimite: formatDateTime(limite),
       estado: 'ABIERTO',
-      asignadoA: 'Mesa de Ayuda TI (Nivel 1)',
+      asignadoA: 'Rafael Ramirez Quiroz (RQ)',
       resolucionTecnica: '',
-      githubUrl: '',
+      githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
       jiraKey: jiraConfig.enabled ? jiraKey : undefined,
       jiraUrl: jiraConfig.enabled ? jiraUrl : undefined
     };
@@ -205,8 +298,7 @@ export const TicketStore = {
     const updated = [newTicket, ...tickets];
     this.saveTickets(updated);
 
-    // Si Jira Cloud está habilitado con credenciales, sincronizar en vivo con la API v3
-    if (jiraConfig.enabled && jiraConfig.apiToken && jiraConfig.domain) {
+    if (jiraConfig.enabled && jiraConfig.domain) {
       fetch('/api/ti/jira/create-issue/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -214,7 +306,7 @@ export const TicketStore = {
           domain: jiraConfig.domain,
           email: jiraConfig.email,
           api_token: jiraConfig.apiToken,
-          project_key: jiraConfig.projectKey || 'SQ',
+          project_key: jiraConfig.projectKey || 'KAN',
           summary: `[${id}] ${payload.asunto}`,
           description: payload.descripcion,
           issue_type: isIncident ? 'Bug' : 'Task'
@@ -227,7 +319,7 @@ export const TicketStore = {
           }
         })
         .catch(err => {
-          console.warn('Jira Cloud background sync fallback to local key:', err);
+          console.warn('Jira Cloud background sync fallback:', err);
         });
     }
 
