@@ -20,8 +20,8 @@ if exist "%ENV_FILE%" (
     )
 )
 
-set MYSQLDUMP="C:\xampp\mysql\bin\mysqldump.exe"
-if not exist %MYSQLDUMP% set MYSQLDUMP="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe"
+set MYSQLDUMP="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe"
+if not exist %MYSQLDUMP% set MYSQLDUMP="C:\xampp\mysql\bin\mysqldump.exe"
 if not exist %MYSQLDUMP% set MYSQLDUMP=mysqldump
 
 set BACKUP_DIR=%~dp0backups
