@@ -29,6 +29,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = 'ADMIN', 'Administrador'
         RECEPCIONISTA = 'RECEPCIONISTA', 'Recepcionista'
         TERAPEUTA = 'TERAPEUTA', 'Terapeuta'
+        SOPORTE_TI = 'SOPORTE_TI', 'Soporte TI'
 
     email = models.EmailField('Correo Electrónico', unique=True, db_index=True)
     nombre_completo = models.CharField('Nombre Completo', max_length=200)

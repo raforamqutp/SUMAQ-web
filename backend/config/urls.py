@@ -65,6 +65,7 @@ urlpatterns = [
     path('api/health/', HealthCheckView.as_view(), name='api-health'),
     path('api/ti/jira/test-connection/', JiraTestConnectionView.as_view(), name='ti-jira-test'),
     path('api/ti/jira/create-issue/', JiraCreateIssueView.as_view(), name='ti-jira-create'),
+    path('api/ti/', include('apps.ti.urls')),
 
     # Authentication
     path('api/auth/login/', LoginView.as_view(), name='auth-login'),

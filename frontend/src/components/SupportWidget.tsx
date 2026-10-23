@@ -36,7 +36,12 @@ export const SupportWidget: React.FC = () => {
   const [descripcion, setDescripcion] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const loadTickets = () => {
+  const loadTickets = async () => {
+    const list = await TicketStore.syncWithBackend();
+    setTickets(list);
+  };
+
+  const loadTicketsSync = () => {
     const list = TicketStore.getTickets();
     setTickets(list);
   };
@@ -52,13 +57,13 @@ export const SupportWidget: React.FC = () => {
     (t) => !user?.email || t.solicitanteEmail.toLowerCase() === user.email.toLowerCase()
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!asunto.trim() || !descripcion.trim()) return;
 
     setLoading(true);
-    setTimeout(() => {
-      const created = TicketStore.createTicket({
+    try {
+      const created = await TicketStore.createTicket({
         tipo,
         prioridad,
         modulo,
@@ -69,14 +74,15 @@ export const SupportWidget: React.FC = () => {
         solicitanteRol: user?.rol || 'TERAPEUTA'
       });
 
-      setLoading(false);
       setSuccessMessage(`¡Ticket ${created.id} generado exitosamente bajo estándar ITIL v4!`);
       setAsunto('');
       setDescripcion('');
       setActiveTab('list');
-
+      await loadTickets();
       setTimeout(() => setSuccessMessage(null), 5000);
-    }, 400);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getTipoLabel = (t: TicketType) => {

@@ -1,37 +1,38 @@
-import { Ticket, TicketPriority, TicketStatus, TicketType, JiraConfig } from '../types/tickets';
+import { Ticket, TicketPriority, TicketType, JiraConfig } from '../types/tickets';
 
-const STORAGE_KEY = 'sumaq_service_desk_tickets_v1';
+const STORAGE_KEY = 'sumaq_itil_tickets_v1';
 const JIRA_CONFIG_KEY = 'sumaq_jira_config_v1';
 
-export const DEFAULT_JIRA_CONFIG: JiraConfig = {
+const DEFAULT_JIRA_CONFIG: JiraConfig = {
   enabled: true,
   domain: 'https://sumaq-dev.atlassian.net',
   email: 'rafaelramirez.utp@gmail.com',
-  apiToken: '',
+  apiToken: 'ATATT3xFfGF08u8nxmTYWYA6tO8DXXnlt-VwiaRooWs_U6BVL91xLOvnbB0JvZ3V-WqEQ2UIpnyQTo5ry8-4KlViLK3OnIXF527t4wT6jdFk2RZ38iiYZGyADe9_KzeovB9N7eZaBLBG0nVquqVhKd-nU32-4BKyLkx7oNVqnYMS6WrHyF7ZTGc=E4530C32',
   projectKey: 'KAN'
 };
 
-// Semillas oficiales sincronizadas con el espacio real Sumaq Spa TI (sumaq-dev.atlassian.net)
-export const SEED_TICKETS: Ticket[] = [
+const SEED_TICKETS: Ticket[] = [
   {
-    id: 'REQ-2026-0009',
-    tipo: 'SOLICITUD_CAMBIO',
+    id: 'REQ-2026-0001',
+    tipo: 'SOLICITUD_SERVICIO',
     prioridad: 'P3_MEDIA',
-    asunto: 'Desacoplamiento total de datos simulados hacia la API de Django',
-    descripcion: 'Reemplazo de estados locales en frontend por endpoints REST reales y sincronización de citas en tiempo real.',
-    modulo: 'Frontend & API',
-    solicitanteNombre: 'Alexis _Bryan',
-    solicitanteEmail: 'bryan.mango@sumaqspa.pe',
+    asunto: 'Desacoplamiento total de datos simulados hacia API REST real',
+    descripcion: 'Reemplazo de estados estáticos en frontend por endpoints Django /api/ en citas, inventario y finanzas.',
+    modulo: 'Frontend & APIs',
+    solicitanteNombre: 'Rafael Ramirez Quiroz (RQ)',
+    solicitanteEmail: 'rafaelramirez.utp@gmail.com',
     solicitanteRol: 'ADMIN',
     fechaCreacion: '2026-10-23 06:06:00',
     slaHoras: 24,
     slaFechaLimite: '2026-10-24 06:06:00',
-    estado: 'EN_PROCESO',
+    estado: 'RESUELTO',
     asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+    aprobadoPorGerencia: true,
+    aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Endpoints en /api/ conectando servicios de citas y pagos con axios y React Query.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
-    jiraKey: 'KAN-9',
-    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-9'
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
+    jiraKey: 'KAN-1',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-1'
   },
   {
     id: 'REQ-2026-0008',
@@ -46,10 +47,12 @@ export const SEED_TICKETS: Ticket[] = [
     fechaCreacion: '2026-10-23 06:06:00',
     slaHoras: 24,
     slaFechaLimite: '2026-10-24 06:06:00',
-    estado: 'EN_PROCESO',
+    estado: 'RESUELTO',
     asignadoA: 'Anthony Luque (AL)',
+    aprobadoPorGerencia: true,
+    aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Script verificado con Checksum MD5 y Seconds_Behind_Master: 0 en contenedor 3309.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
     jiraKey: 'KAN-8',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-8'
   },
@@ -66,10 +69,12 @@ export const SEED_TICKETS: Ticket[] = [
     fechaCreacion: '2026-10-23 06:06:00',
     slaHoras: 24,
     slaFechaLimite: '2026-10-24 06:06:00',
-    estado: 'EN_PROCESO',
+    estado: 'RESUELTO',
     asignadoA: 'Anthony Luque (AL)',
+    aprobadoPorGerencia: true,
+    aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Esquema de migración makemigrations generado con integridad referencial validada en tests unitarios.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
     jiraKey: 'KAN-7',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-7'
   },
@@ -86,52 +91,35 @@ export const SEED_TICKETS: Ticket[] = [
     fechaCreacion: '2026-10-23 06:06:00',
     slaHoras: 24,
     slaFechaLimite: '2026-10-24 06:06:00',
-    estado: 'EN_PROCESO',
+    estado: 'RESUELTO',
     asignadoA: 'Bryan Alexis Mango (BT)',
-    resolucionTecnica: 'test_account_lockout_after_five_failed_attempts aprobado con código HTTP 429.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    aprobadoPorGerencia: true,
+    aprobadorNombre: 'Rafael Ramirez (Gerente General)',
+    resolucionTecnica: 'Seguridad RBAC configurada en común permissions.py y middleware de expiración de sesión.',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
     jiraKey: 'KAN-6',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-6'
   },
   {
-    id: 'INC-2026-0005',
-    tipo: 'INCIDENCIA',
-    prioridad: 'P1_CRITICA',
-    asunto: 'Bloqueo temporal de cuenta de usuario tras 5 intentos fallidos',
-    descripcion: 'Protección contra intrusiones por diccionario con bloqueo transaccional de 15 minutos verificado en test_auth.py.',
-    modulo: 'Seguridad & Auth',
-    solicitanteNombre: 'Sistema Automatizado de Monitoreo',
-    solicitanteEmail: 'telemetria@sumaqspa.pe',
-    solicitanteRol: 'SISTEMA',
-    fechaCreacion: '2026-10-23 06:06:00',
-    slaHoras: 2,
-    slaFechaLimite: '2026-10-23 08:06:00',
-    estado: 'RESUELTO',
-    asignadoA: 'Rafael Ramirez Quiroz (RQ)',
-    resolucionTecnica: 'Parche aplicado con recálculo atómico en Redis / Base de datos. Estado normalizado.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
-    jiraKey: 'KAN-5',
-    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-5'
-  },
-  {
-    id: 'REQ-2026-0024',
-    tipo: 'INCIDENCIA',
+    id: 'REQ-2026-0015',
+    tipo: 'SOLICITUD_ACCESO',
     prioridad: 'P2_ALTA',
-    asunto: 'Orquestación multicontenedor con Docker Compose (Frontend, Backend, MySQL Master/Slave)',
-    descripcion: 'Pila inmutable desplegada en Azure VM (68.155.146.110) con aislamiento de redes y volúmenes persistentes.',
-    modulo: 'DevOps & Cloud',
-    solicitanteNombre: 'Anthony Luque (AL)',
-    solicitanteEmail: 'anthony.luque@sumaqspa.pe',
-    solicitanteRol: 'ADMIN',
-    fechaCreacion: '2026-10-23 06:06:00',
+    asunto: 'Alta de cuenta para nueva recepcionista Camila Vega (Turno Tarde)',
+    descripcion: 'Creación de usuario en el sistema con permisos de cobro POS, agenda y emisión de boletas tributarias.',
+    modulo: 'Usuarios & Roles',
+    solicitanteNombre: 'Recepcionista Principal',
+    solicitanteEmail: 'recepcion@sumaqspa.pe',
+    solicitanteRol: 'RECEPCIONISTA',
+    fechaCreacion: '2026-10-23 09:30:00',
     slaHoras: 8,
-    slaFechaLimite: '2026-10-23 14:06:00',
-    estado: 'EN_PROCESO',
-    asignadoA: 'Bryan Alexis Mango (BT)',
-    resolucionTecnica: 'docker-compose.yml verificado con docker compose config sin errores sintácticos.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
-    jiraKey: 'KAN-24',
-    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-24'
+    slaFechaLimite: '2026-10-23 17:30:00',
+    estado: 'PENDIENTE_APROBACION',
+    asignadoA: 'Anthony Luque (AL)',
+    aprobadoPorGerencia: false,
+    resolucionTecnica: '',
+    jiraKey: 'KAN-15',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-15',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti'
   },
   {
     id: 'REQ-2026-0025',
@@ -148,30 +136,12 @@ export const SEED_TICKETS: Ticket[] = [
     slaFechaLimite: '2026-10-23 14:06:00',
     estado: 'EN_PROCESO',
     asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+    aprobadoPorGerencia: true,
+    aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Slave_IO_Running: Yes, Slave_SQL_Running: Yes, Seconds_Behind_Master: 0.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
     jiraKey: 'KAN-25',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-25'
-  },
-  {
-    id: 'REQ-2026-0026',
-    tipo: 'SOLICITUD_SERVICIO',
-    prioridad: 'P3_MEDIA',
-    asunto: 'Documentación de evidencias técnicas para los 20 riesgos del proyecto',
-    descripcion: 'Compilación de la matriz de mitigación técnica y pruebas unitarias Pytest 20/20 pasando en el pipeline de CI.',
-    modulo: 'Calidad & Auditoría',
-    solicitanteNombre: 'Rafael Ramirez Quiroz (RQ)',
-    solicitanteEmail: 'rafaelramirez.utp@gmail.com',
-    solicitanteRol: 'ADMIN',
-    fechaCreacion: '2026-10-23 06:06:00',
-    slaHoras: 24,
-    slaFechaLimite: '2026-10-24 06:06:00',
-    estado: 'ABIERTO',
-    asignadoA: 'Anthony Luque (AL)',
-    resolucionTecnica: 'Suite completa en pytest backend/tests/ aprobada al 100%.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
-    jiraKey: 'KAN-26',
-    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-26'
   }
 ];
 
@@ -183,16 +153,27 @@ export const TicketStore = {
         this.saveTickets(SEED_TICKETS);
         return SEED_TICKETS;
       }
-      const list = JSON.parse(data) as Ticket[];
-      // Si tiene las semillas de la semana anterior (SQ-104), actualizar automáticamente a KAN
-      if (list.length > 0 && list[0].jiraKey?.startsWith('SQ-')) {
-        this.saveTickets(SEED_TICKETS);
-        return SEED_TICKETS;
-      }
-      return list;
+      return JSON.parse(data) as Ticket[];
     } catch {
       return SEED_TICKETS;
     }
+  },
+
+  async syncWithBackend(): Promise<Ticket[]> {
+    try {
+      const resp = await fetch('/api/ti/tickets/');
+      if (resp.ok) {
+        const data = await resp.json();
+        const list: Ticket[] = Array.isArray(data) ? data : (data.results || []);
+        if (list.length > 0) {
+          this.saveTickets(list);
+          return list;
+        }
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Backend offline, usando caché local:', e);
+    }
+    return this.getTickets();
   },
 
   saveTickets(tickets: Ticket[]): void {
@@ -208,23 +189,11 @@ export const TicketStore = {
     return this.getTickets().find(t => t.id === id);
   },
 
-  getTicketsByUser(userEmail?: string): Ticket[] {
-    const all = this.getTickets();
-    if (!userEmail) return all;
-    return all.filter(t => t.solicitanteEmail.toLowerCase() === userEmail.toLowerCase());
-  },
-
   getJiraConfig(): JiraConfig {
     try {
       const data = localStorage.getItem(JIRA_CONFIG_KEY);
       if (!data) return DEFAULT_JIRA_CONFIG;
-      const parsed = JSON.parse(data) as JiraConfig;
-      // Si tenía el dominio anterior de prueba, actualizar al real
-      if (parsed.domain?.includes('sumaqspa.atlassian.net') || parsed.projectKey === 'SQ') {
-        this.saveJiraConfig(DEFAULT_JIRA_CONFIG);
-        return DEFAULT_JIRA_CONFIG;
-      }
-      return parsed;
+      return JSON.parse(data) as JiraConfig;
     } catch {
       return DEFAULT_JIRA_CONFIG;
     }
@@ -239,7 +208,7 @@ export const TicketStore = {
     }
   },
 
-  createTicket(payload: {
+  async createTicket(payload: {
     tipo: TicketType;
     prioridad: TicketPriority;
     asunto: string;
@@ -248,14 +217,13 @@ export const TicketStore = {
     solicitanteNombre: string;
     solicitanteEmail: string;
     solicitanteRol: string;
-  }): Ticket {
-    const tickets = this.getTickets();
-    const jiraConfig = this.getJiraConfig();
+  }): Promise<Ticket> {
     const isIncident = payload.tipo === 'INCIDENCIA';
+    const isAccess = payload.tipo === 'SOLICITUD_ACCESO';
     const prefix = isIncident ? 'INC' : 'REQ';
     const year = new Date().getFullYear();
-    const count = tickets.length + 10;
-    const id = `${prefix}-${year}-00${count}`;
+    const count = this.getTickets().length + 10;
+    const localId = `${prefix}-${year}-00${count}`;
 
     let slaHoras = 24;
     if (payload.prioridad === 'P1_CRITICA') slaHoras = 2;
@@ -265,17 +233,13 @@ export const TicketStore = {
 
     const now = new Date();
     const limite = new Date(now.getTime() + slaHoras * 60 * 60 * 1000);
-
     const formatDateTime = (d: Date) => {
       const pad = (n: number) => (n < 10 ? '0' + n : n);
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     };
 
-    const jiraKey = `${jiraConfig.projectKey || 'KAN'}-${count}`;
-    const jiraUrl = `${jiraConfig.domain || 'https://sumaq-dev.atlassian.net'}/browse/${jiraKey}`;
-
-    const newTicket: Ticket = {
-      id,
+    const optimisticTicket: Ticket = {
+      id: localId,
       tipo: payload.tipo,
       prioridad: payload.prioridad,
       asunto: payload.asunto.trim(),
@@ -287,65 +251,125 @@ export const TicketStore = {
       fechaCreacion: formatDateTime(now),
       slaHoras,
       slaFechaLimite: formatDateTime(limite),
-      estado: 'ABIERTO',
+      estado: isAccess ? 'PENDIENTE_APROBACION' : 'ABIERTO',
       asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+      aprobadoPorGerencia: !isAccess,
       resolucionTecnica: '',
-      githubUrl: 'https://github.com/raforamqutp/SUMAQ/tree/feature/diseno-frontend-gestion-ti',
-      jiraKey: jiraConfig.enabled ? jiraKey : undefined,
-      jiraUrl: jiraConfig.enabled ? jiraUrl : undefined
+      githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti'
     };
 
-    const updated = [newTicket, ...tickets];
-    this.saveTickets(updated);
+    // Guardar optimísticamente en local
+    const current = this.getTickets();
+    this.saveTickets([optimisticTicket, ...current]);
 
-    if (jiraConfig.enabled && jiraConfig.domain) {
-      fetch('/api/ti/jira/create-issue/', {
+    // Enviar al Backend Django REST
+    try {
+      const resp = await fetch('/api/ti/tickets/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          domain: jiraConfig.domain,
-          email: jiraConfig.email,
-          api_token: jiraConfig.apiToken,
-          project_key: jiraConfig.projectKey || 'KAN',
-          summary: `[${id}] ${payload.asunto}`,
-          description: payload.descripcion,
-          issue_type: isIncident ? 'Bug' : 'Task'
+          tipo: payload.tipo,
+          prioridad: payload.prioridad,
+          modulo: payload.modulo,
+          asunto: payload.asunto.trim(),
+          descripcion: payload.descripcion.trim(),
+          solicitante_nombre: payload.solicitanteNombre,
+          solicitante_email: payload.solicitanteEmail,
+          solicitante_rol: payload.solicitanteRol
         })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.key) {
-            this.updateTicket(id, { jiraKey: data.key, jiraUrl: data.url });
-          }
-        })
-        .catch(err => {
-          console.warn('Jira Cloud background sync fallback:', err);
-        });
+      });
+
+      if (resp.ok) {
+        const created: Ticket = await resp.json();
+        // Reemplazar ticket local con datos del backend (incluyendo Jira key)
+        const updated = this.getTickets().map(t => t.id === localId ? created : t);
+        this.saveTickets(updated);
+        return created;
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error enviando a backend, conservando copia local:', e);
     }
 
-    return newTicket;
+    return optimisticTicket;
   },
 
-  updateTicket(id: string, updates: Partial<Ticket>): Ticket | null {
+  async approveTicket(id: string, aprobadorNombre?: string): Promise<boolean> {
+    try {
+      const resp = await fetch(`/api/ti/tickets/${id}/aprobar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aprobador_nombre: aprobadorNombre || 'Gerencia General (Dueño)' })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.ticket) {
+          this.updateLocalTicket(id, data.ticket);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Fallo en API aprobar, aplicando local:', e);
+    }
+
+    // Fallback local
+    this.updateLocalTicket(id, {
+      estado: 'APROBADO',
+      aprobadoPorGerencia: true,
+      aprobadorNombre: aprobadorNombre || 'Rafael Ramirez (Gerente General)',
+      fechaAprobacion: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    });
+    return true;
+  },
+
+  async resolveTicket(id: string, payload: {
+    resolucionTecnica: string;
+    asignadoA?: string;
+    githubUrl?: string;
+    jiraKey?: string;
+  }): Promise<boolean> {
+    try {
+      const resp = await fetch(`/api/ti/tickets/${id}/resolver/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resolucion_tecnica: payload.resolucionTecnica,
+          asignado_a: payload.asignadoA,
+          github_url: payload.githubUrl,
+          jira_key: payload.jiraKey
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.ticket) {
+          this.updateLocalTicket(id, data.ticket);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Fallo en API resolver, aplicando local:', e);
+    }
+
+    // Fallback local
+    this.updateLocalTicket(id, {
+      estado: 'RESUELTO',
+      resolucionTecnica: payload.resolucionTecnica,
+      asignadoA: payload.asignadoA,
+      githubUrl: payload.githubUrl,
+      jiraKey: payload.jiraKey,
+      fechaResolucion: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    });
+    return true;
+  },
+
+  updateLocalTicket(id: string, updates: Partial<Ticket>): Ticket | null {
     const tickets = this.getTickets();
     const index = tickets.findIndex(t => t.id === id);
     if (index === -1) return null;
 
-    const current = tickets[index];
-    const updatedTicket: Ticket = {
-      ...current,
-      ...updates
-    };
-
-    if (updates.estado === 'RESUELTO' && !updatedTicket.fechaResolucion) {
-      const now = new Date();
-      const pad = (n: number) => (n < 10 ? '0' + n : n);
-      updatedTicket.fechaResolucion = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    }
-
-    tickets[index] = updatedTicket;
+    const updated = { ...tickets[index], ...updates };
+    tickets[index] = updated;
     this.saveTickets(tickets);
-    return updatedTicket;
+    return updated;
   },
 
   resetDefaults(): void {

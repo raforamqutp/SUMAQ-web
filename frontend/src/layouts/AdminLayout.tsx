@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { TicketStore } from '../services/ticketStore';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   ShieldAlert,
   DollarSign,
   LifeBuoy,
+  Bell,
 } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
@@ -26,6 +28,7 @@ export const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const isAdmin = user?.rol === 'ADMIN';
   const isRecepcionista = user?.rol === 'RECEPCIONISTA';
@@ -36,6 +39,22 @@ export const AdminLayout: React.FC = () => {
       navigate('/admin/agenda', { replace: true });
     }
   }, [isRecepcionista, location.pathname, navigate]);
+
+  // Monitoreo de solicitudes pendientes de aprobación (ITIL Service Desk)
+  React.useEffect(() => {
+    const updateCount = async () => {
+      await TicketStore.syncWithBackend();
+      const tickets = TicketStore.getTickets();
+      const count = tickets.filter(
+        (t) => t.estado === 'PENDIENTE_APROBACION' || (t.tipo === 'SOLICITUD_ACCESO' && !t.aprobadoPorGerencia)
+      ).length;
+      setPendingCount(count);
+    };
+
+    updateCount();
+    window.addEventListener('sumaq_tickets_updated', updateCount);
+    return () => window.removeEventListener('sumaq_tickets_updated', updateCount);
+  }, []);
 
   const allNavItems = [
     { name: 'Dashboard KPIs', path: '/admin', icon: LayoutDashboard, adminOnly: true },
@@ -91,7 +110,7 @@ export const AdminLayout: React.FC = () => {
                 SUMAQ
               </span>
               <span className="text-[9px] uppercase tracking-[0.2em] text-[#C8907E] font-semibold block mt-0.5">
-                {isRecepcionista ? 'Panel Recepcion' : 'Panel Administrador'}
+                {isRecepcionista ? 'Panel Recepcion' : 'Admin General (Dueño)'}
               </span>
             </div>
           </Link>
@@ -108,19 +127,27 @@ export const AdminLayout: React.FC = () => {
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
+            const isTI = item.path === '/ti';
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   active
                     ? 'bg-[#8C6F55] text-white shadow-sm font-semibold'
                     : 'text-[#C9B29B] hover:text-white hover:bg-[#3D2D22]'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-[#A88B71]'}`} />
-                <span>{item.name}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-[#A88B71]'}`} />
+                  <span>{item.name}</span>
+                </div>
+                {isTI && pendingCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-black">
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -170,6 +197,22 @@ export const AdminLayout: React.FC = () => {
               <ArrowLeft className="w-4 h-4" />
               <span>Ver Sitio Público</span>
             </Link>
+
+            {/* Campanita de Notificaciones Service Desk */}
+            <Link
+              to="/ti"
+              className="relative p-2 rounded-xl text-[#543F30] hover:text-[#8C6F55] hover:bg-[#EDE5DC]/60 transition-colors"
+              title={pendingCount > 0 ? `${pendingCount} solicitudes pendientes de aprobación por Gerencia` : "Mesa de Ayuda TI (Sin alertas)"}
+            >
+              <Bell className="w-5 h-5" />
+              {pendingCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                </span>
+              )}
+            </Link>
+
             <Link
               to="/ti"
               className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3D2D22] hover:bg-[#8C6F55] text-white text-xs font-medium transition-colors"
@@ -177,7 +220,13 @@ export const AdminLayout: React.FC = () => {
             >
               <LifeBuoy className="w-3.5 h-3.5 text-[#C8907E]" />
               <span>Portal TI (Service Desk)</span>
+              {pendingCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-bold">
+                  {pendingCount}
+                </span>
+              )}
             </Link>
+
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFF8F4] border border-[#A8DAC2] text-[#24634B] text-xs font-medium">
               <span className="w-2 h-2 rounded-full bg-[#24634B] animate-pulse"></span>
               Sistema Operativo

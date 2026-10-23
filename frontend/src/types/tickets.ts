@@ -2,7 +2,7 @@ export type TicketType = 'SOLICITUD_SERVICIO' | 'SOLICITUD_INFORMACION' | 'SOLIC
 
 export type TicketPriority = 'P1_CRITICA' | 'P2_ALTA' | 'P3_MEDIA' | 'P4_BAJA';
 
-export type TicketStatus = 'ABIERTO' | 'EN_PROCESO' | 'RESUELTO' | 'CERRADO';
+export type TicketStatus = 'ABIERTO' | 'EN_PROCESO' | 'PENDIENTE_APROBACION' | 'APROBADO' | 'RESUELTO' | 'CERRADO';
 
 export interface JiraConfig {
   enabled: boolean;
@@ -27,6 +27,9 @@ export interface Ticket {
   slaFechaLimite: string;
   estado: TicketStatus;
   asignadoA?: string;
+  aprobadoPorGerencia?: boolean;
+  aprobadorNombre?: string;
+  fechaAprobacion?: string;
   resolucionTecnica?: string;
   fechaResolucion?: string;
   githubUrl?: string;

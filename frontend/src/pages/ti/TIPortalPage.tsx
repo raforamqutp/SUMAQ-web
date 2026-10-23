@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { TicketStore } from '../../services/ticketStore';
 import { Ticket, TicketPriority, TicketStatus, TicketType, JiraConfig } from '../../types/tickets';
 import {
@@ -24,11 +25,14 @@ import {
   Globe,
   Link2,
   Check,
+  ShieldCheck,
   X
 } from 'lucide-react';
 
 export const TIPortalPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isGerenteOrAdmin = !user || user.rol === 'ADMIN';
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedType, setSelectedType] = useState<string>('TODOS');
   const [selectedStatus, setSelectedStatus] = useState<string>('TODOS');
@@ -53,9 +57,16 @@ export const TIPortalPage: React.FC = () => {
   const [formJiraEnabled, setFormJiraEnabled] = useState<boolean>(jiraConfig.enabled);
   const [jiraTestMessage, setJiraTestMessage] = useState<string | null>(null);
 
-  const loadData = () => {
-    setTickets(TicketStore.getTickets());
+  const loadData = async () => {
+    const list = await TicketStore.syncWithBackend();
+    setTickets(list);
     setJiraConfig(TicketStore.getJiraConfig());
+  };
+
+  const handleApproveTicket = async (t: Ticket) => {
+    const approver = user?.nombre_completo ? `${user.nombre_completo} (Gerente General)` : 'Rafael Ramirez (Gerente General)';
+    await TicketStore.approveTicket(t.id, approver);
+    await loadData();
   };
 
   const handleOpenJiraModal = () => {
@@ -132,23 +143,33 @@ export const TIPortalPage: React.FC = () => {
     setSaveSuccess(false);
   };
 
-  const handleSaveResolution = (e: React.FormEvent) => {
+  const handleSaveResolution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!managingTicket) return;
 
-    TicketStore.updateTicket(managingTicket.id, {
-      estado: editStatus,
-      asignadoA: editAsignado,
-      resolucionTecnica: editResolucion,
-      githubUrl: editGithubUrl,
-      jiraKey: editJiraKey,
-      jiraUrl: editJiraKey ? `${jiraConfig.domain || 'https://sumaqspa.atlassian.net'}/browse/${editJiraKey}` : undefined
-    });
+    if (editStatus === 'RESUELTO') {
+      await TicketStore.resolveTicket(managingTicket.id, {
+        resolucionTecnica: editResolucion,
+        asignadoA: editAsignado,
+        githubUrl: editGithubUrl,
+        jiraKey: editJiraKey
+      });
+    } else {
+      TicketStore.updateLocalTicket(managingTicket.id, {
+        estado: editStatus,
+        asignadoA: editAsignado,
+        resolucionTecnica: editResolucion,
+        githubUrl: editGithubUrl,
+        jiraKey: editJiraKey,
+        jiraUrl: editJiraKey ? `${jiraConfig.domain || 'https://sumaq-dev.atlassian.net'}/browse/${editJiraKey}` : undefined
+      });
+    }
 
     setSaveSuccess(true);
     setTimeout(() => {
       setManagingTicket(null);
       setSaveSuccess(false);
+      loadData();
     }, 600);
   };
 
@@ -208,6 +229,10 @@ export const TIPortalPage: React.FC = () => {
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Abierto (N1)</span>;
       case 'EN_PROCESO':
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">En Atención N2</span>;
+      case 'PENDIENTE_APROBACION':
+        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1"><Clock className="w-3 h-3 text-amber-600" /> Pendiente Aprobación Gerencia</span>;
+      case 'APROBADO':
+        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-600" /> Aprobado por Gerencia</span>;
       case 'RESUELTO':
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Resuelto / Cerrado</span>;
       default:
@@ -370,7 +395,7 @@ export const TIPortalPage: React.FC = () => {
 
             {/* Filtro por Estado */}
             <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-              {['TODOS', 'ABIERTO', 'EN_PROCESO', 'RESUELTO'].map((st) => (
+              {['TODOS', 'PENDIENTE_APROBACION', 'ABIERTO', 'EN_PROCESO', 'RESUELTO'].map((st) => (
                 <button
                   key={st}
                   onClick={() => setSelectedStatus(st)}
@@ -459,6 +484,15 @@ export const TIPortalPage: React.FC = () => {
                       <span className="text-red-700 font-medium">SLA Límite: {t.slaFechaLimite}</span>
                     </div>
 
+                    {/* Sello de Aprobación Formal de Gerencia */}
+                    {t.aprobadoPorGerencia && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 w-fit">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Aprobado formalmente por: {t.aprobadorNombre || 'Gerencia General (Dueño)'}</span>
+                        {t.fechaAprobacion && <span className="text-gray-500 font-normal">({t.fechaAprobacion})</span>}
+                      </div>
+                    )}
+
                     {/* Resolución si existe */}
                     {t.resolucionTecnica && (
                       <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
@@ -497,7 +531,19 @@ export const TIPortalPage: React.FC = () => {
                   </div>
 
                   {/* Acciones */}
-                  <div className="shrink-0 flex items-center gap-2 self-end md:self-center">
+                  <div className="shrink-0 flex flex-wrap items-center gap-2 self-end md:self-center">
+                    {/* Botón de Aprobación formal exclusivo de Gerencia General (ADMIN) */}
+                    {isGerenteOrAdmin && t.tipo === 'SOLICITUD_ACCESO' && !t.aprobadoPorGerencia && (
+                      <button
+                        onClick={() => handleApproveTicket(t)}
+                        className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title="Autorizar formalmente la creación o asignación de rol en el sistema"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>✓ Aprobar Acceso (Gerencia)</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => openManageModal(t)}
                       className="px-4 py-2 rounded-xl bg-[#2C2725] hover:bg-[#8C6F55] text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
