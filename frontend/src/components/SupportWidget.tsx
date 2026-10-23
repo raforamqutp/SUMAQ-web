@@ -74,7 +74,7 @@ export const SupportWidget: React.FC = () => {
         solicitanteRol: user?.rol || 'TERAPEUTA'
       });
 
-      setSuccessMessage(`¡Ticket ${created.id} generado exitosamente bajo estándar ITIL v4!`);
+      setSuccessMessage(`¡Ticket ${created.id} generado exitosamente!`);
       setAsunto('');
       setDescripcion('');
       setActiveTab('list');
@@ -164,8 +164,8 @@ export const SupportWidget: React.FC = () => {
                 <div>
                   <h3 className="font-serif text-base font-bold flex items-center gap-2">
                     Service Desk &middot; Gestión de Solicitudes
-                    <span className="text-[10px] bg-[#3D2D22] text-[#C8907E] px-2 py-0.5 rounded font-mono font-medium">
-                      ITIL v4 / PR-SD-01
+<span className="text-[10px] bg-[#3D2D22] text-[#C8907E] px-2 py-0.5 rounded font-mono font-medium">
+                      Mesa de Ayuda
                     </span>
                   </h3>
                   <p className="text-[11px] text-[#C9B29B]">
@@ -237,7 +237,7 @@ export const SupportWidget: React.FC = () => {
                   {/* Selector de Tipo de Solicitud */}
                   <div>
                     <label className="block text-xs font-bold text-[#543F30] uppercase tracking-wider mb-2">
-                      Tipo de Requerimiento (Semana 10)
+                      Tipo de Requerimiento
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
@@ -438,8 +438,8 @@ export const SupportWidget: React.FC = () => {
 
             {/* Footer Informativo */}
             <div className="p-3 bg-[#FAF8F5] border-t border-[#EDE5DC] flex items-center justify-between text-[11px] text-gray-500">
-              <span className="flex items-center gap-1">
-                Universidad Tecnológica del Perú &middot; Curso Integrador II
+<span className="flex items-center gap-1">
+                SUMAQ Spa &middot; Mesa de Ayuda y Soporte TI
               </span>
               <button
                 type="button"

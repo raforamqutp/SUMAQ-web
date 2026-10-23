@@ -139,7 +139,7 @@ export const App: React.FC = () => {
               />
             </Route>
 
-            {/* Modulo Service Desk / TI (ITIL) */}
+            {/* Modulo Service Desk / TI */}
             <Route path="/ti" element={<TIPortalPage />} />
 
             {/* 404 Route */}

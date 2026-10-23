@@ -40,7 +40,7 @@ export const AdminLayout: React.FC = () => {
     }
   }, [isRecepcionista, location.pathname, navigate]);
 
-  // Monitoreo de solicitudes pendientes de aprobación (ITIL Service Desk)
+  // Monitoreo de solicitudes pendientes de aprobación (Service Desk)
   React.useEffect(() => {
     const updateCount = async () => {
       await TicketStore.syncWithBackend();
@@ -216,7 +216,7 @@ export const AdminLayout: React.FC = () => {
             <Link
               to="/ti"
               className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3D2D22] hover:bg-[#8C6F55] text-white text-xs font-medium transition-colors"
-              title="Abrir Mesa de Ayuda TI (ITIL)"
+              title="Abrir Mesa de Ayuda TI"
             >
               <LifeBuoy className="w-3.5 h-3.5 text-[#C8907E]" />
               <span>Portal TI (Service Desk)</span>

@@ -257,7 +257,7 @@ export const TIPortalPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-[#C9B29B]">
-                Gestión de Solicitudes, Incidentes y Cambios &middot; ITIL v4 / ISO 20000
+                Gestión Centralizada de Solicitudes, Incidentes y Control de Cambios
               </p>
             </div>
           </div>
@@ -306,7 +306,7 @@ export const TIPortalPage: React.FC = () => {
                 Consola Central de Operaciones &middot; Rol TI Especialista
               </h2>
               <p className="text-xs text-gray-600 mt-0.5">
-                Cumplimiento del taller de consultoría <strong>Semana 10 (Sesión 19)</strong>: Procedimientos formales de Solicitudes de Servicio, Información y Accesos bajo el principio de menor privilegio y control de cambios en GitHub.
+                Procedimientos formales de Solicitudes de Servicio, Información y Accesos bajo el principio de menor privilegio y control de cambios.
               </p>
             </div>
           </div>
@@ -411,7 +411,7 @@ export const TIPortalPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Filtros por Categoría ITIL */}
+          {/* Filtros por Categoría */}
           <div className="flex items-center gap-2 pt-2 border-t border-gray-100 overflow-x-auto">
             <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 shrink-0 uppercase tracking-wider">
               <Filter className="w-3.5 h-3.5" /> Categoría:
@@ -795,16 +795,7 @@ export const TIPortalPage: React.FC = () => {
                 />
               </div>
 
-              {/* Nota sobre extensión GitHub for Jira */}
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 space-y-1">
-                <p className="font-bold flex items-center gap-1">
-                  <Link2 className="w-3.5 h-3.5 text-amber-700" />
-                  Extensión Oficial: GitHub for Jira
-                </p>
-                <p>
-                  Jira cuenta con la aplicación oficial en Atlassian Marketplace para vincular repositorios de GitHub. Al activarla en tu proyecto de Jira, cualquier commit, rama (ej. <code>feature/SQ-105</code>) o PR se sincronizará automáticamente.
-                </p>
-              </div>
+
 
               <div className="pt-2 flex items-center justify-between">
                 <button
