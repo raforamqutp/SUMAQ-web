@@ -16,6 +16,7 @@ from .serializers import (
     TicketSerializer,
     TicketCreateSerializer,
     TicketAprobarSerializer,
+    TicketCabAprobarSerializer,
     TicketResolverSerializer
 )
 
@@ -57,7 +58,7 @@ def _call_jira_api(endpoint, method='POST', payload=None):
 
 class TicketViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para la gestión integral de Tickets de la Mesa de Ayuda (ITIL v4).
+    ViewSet para la gestión integral de Tickets de la Mesa de Ayuda y Control de Cambios (ITIL v4).
     """
     queryset = Ticket.objects.all().order_by('-created_at')
     serializer_class = TicketSerializer
@@ -83,6 +84,8 @@ class TicketViewSet(viewsets.ModelViewSet):
         tipo = self.request.query_params.get('tipo')
         estado = self.request.query_params.get('estado')
         prioridad = self.request.query_params.get('prioridad')
+        area_cambio = self.request.query_params.get('area_cambio')
+        tipo_cambio = self.request.query_params.get('tipo_cambio')
         search = self.request.query_params.get('search')
 
         if tipo and tipo != 'TODOS':
@@ -91,12 +94,17 @@ class TicketViewSet(viewsets.ModelViewSet):
             qs = qs.filter(estado=estado)
         if prioridad and prioridad != 'TODOS':
             qs = qs.filter(prioridad=prioridad)
+        if area_cambio and area_cambio != 'TODOS':
+            qs = qs.filter(area_cambio=area_cambio)
+        if tipo_cambio and tipo_cambio != 'TODOS':
+            qs = qs.filter(tipo_cambio=tipo_cambio)
         if search:
             qs = qs.filter(
                 models.Q(asunto__icontains=search) |
                 models.Q(descripcion__icontains=search) |
                 models.Q(codigo__icontains=search) |
-                models.Q(solicitante_nombre__icontains=search)
+                models.Q(solicitante_nombre__icontains=search) |
+                models.Q(modulo__icontains=search)
             )
         return qs
 
@@ -106,7 +114,14 @@ class TicketViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
 
         is_incident = data['tipo'] == Ticket.Tipo.INCIDENCIA
-        prefix = 'INC' if is_incident else 'REQ'
+        is_change = data['tipo'] == Ticket.Tipo.SOLICITUD_CAMBIO
+        if is_change:
+            prefix = 'RFC'
+        elif is_incident:
+            prefix = 'INC'
+        else:
+            prefix = 'REQ'
+
         year = timezone.now().year
         count = Ticket.objects.count() + 10
         codigo = f"{prefix}-{year}-00{count}"
@@ -125,7 +140,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         sla_fecha_limite = timezone.now() + timedelta(hours=sla_horas)
 
         initial_state = Ticket.Estado.ABIERTO
-        if data['tipo'] == Ticket.Tipo.SOLICITUD_ACCESO:
+        if data['tipo'] in (Ticket.Tipo.SOLICITUD_ACCESO, Ticket.Tipo.SOLICITUD_CAMBIO):
             initial_state = Ticket.Estado.PENDIENTE_APROBACION
 
         ticket = Ticket.objects.create(
@@ -135,6 +150,11 @@ class TicketViewSet(viewsets.ModelViewSet):
             modulo=data.get('modulo', 'General'),
             asunto=data['asunto'].strip(),
             descripcion=data['descripcion'].strip(),
+            area_cambio=data.get('area_cambio'),
+            tipo_cambio=data.get('tipo_cambio', Ticket.TipoCambio.NORMAL),
+            impacto_riesgo=data.get('impacto_riesgo', Ticket.ImpactoRiesgo.MEDIO),
+            ventana_mantenimiento=data.get('ventana_mantenimiento', ''),
+            plan_rollback=data.get('plan_rollback', ''),
             solicitante_nombre=data.get('solicitante_nombre', 'Usuario Sumaq'),
             solicitante_email=data.get('solicitante_email', 'usuario@sumaqspa.pe'),
             solicitante_rol=data.get('solicitante_rol', 'TERAPEUTA'),
@@ -181,7 +201,6 @@ class TicketViewSet(viewsets.ModelViewSet):
         """
         ticket = self.get_object()
 
-        # Determinar nombre del aprobador (usuario autenticado o payload)
         aprobador = "Gerencia General (Dueño)"
         if request.user and request.user.is_authenticated:
             aprobador = f"{request.user.nombre_completo} (Gerente General)"
@@ -218,6 +237,55 @@ class TicketViewSet(viewsets.ModelViewSet):
         return Response({
             "success": True,
             "message": f"Ticket {ticket.codigo} formalmente aprobado por {aprobador}.",
+            "ticket": TicketSerializer(ticket).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='cab-aprobar')
+    def cab_aprobar(self, request, pk=None):
+        """
+        Aprobación formal de Solicitud de Cambio (RFC) por el Comité CAB (Change Advisory Board).
+        """
+        ticket = self.get_object()
+        serializer = TicketCabAprobarSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        cab_aprobador = data.get('cab_aprobador') or "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)"
+        sufijo = ticket.codigo.split('-')[-1] if '-' in ticket.codigo else "042"
+        cab_acta = data.get('cab_acta') or f"ACTA-CAB-2026-W11-{sufijo}"
+
+        ticket.cab_aprobado_por = cab_aprobador
+        ticket.cab_acta_numero = cab_acta
+        ticket.cab_fecha_aprobacion = timezone.now()
+        ticket.aprobado_por_gerencia = True
+        ticket.aprobador_nombre = cab_aprobador
+        ticket.estado = Ticket.Estado.APROBADO
+        ticket.save()
+
+        # Comentario de auditoría en Jira Cloud
+        if ticket.jira_key:
+            comment_payload = {
+                "body": {
+                    "type": "doc",
+                    "version": 1,
+                    "content": [
+                        {
+                            "type": "paragraph",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": f"🏛️ [RESOLUCIÓN FORMAL COMITÉ CAB]: Solicitud de Cambio {ticket.codigo} APROBADA UNÁNIMEMENTE por {cab_aprobador}. Acta oficial: {cab_acta}. Ventana autorizada: {ticket.ventana_mantenimiento or 'Nocturna 02:00-04:00 AM'}. Plan de Rollback: {ticket.plan_rollback or 'Activo (< 10 min)'}."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+            _call_jira_api(f'/rest/api/3/issue/{ticket.jira_key}/comment', method='POST', payload=comment_payload)
+
+        return Response({
+            "success": True,
+            "message": f"Solicitud {ticket.codigo} aprobada por el Comité CAB ({cab_acta}).",
             "ticket": TicketSerializer(ticket).data
         }, status=status.HTTP_200_OK)
 
@@ -285,6 +353,11 @@ class TicketViewSet(viewsets.ModelViewSet):
         aprobados = Ticket.objects.filter(estado=Ticket.Estado.APROBADO).count()
         resueltos = Ticket.objects.filter(estado=Ticket.Estado.RESUELTO).count()
 
+        # Métricas de Cambios (Semana 11)
+        total_rfcs = Ticket.objects.filter(tipo=Ticket.Tipo.SOLICITUD_CAMBIO).count()
+        rfcs_aprobados = Ticket.objects.filter(tipo=Ticket.Tipo.SOLICITUD_CAMBIO, estado=Ticket.Estado.APROBADO).count()
+        rfcs_pendientes = Ticket.objects.filter(tipo=Ticket.Tipo.SOLICITUD_CAMBIO, estado=Ticket.Estado.PENDIENTE_APROBACION).count()
+
         # Cálculo SLA Cumplido
         tickets_resueltos_objs = Ticket.objects.filter(estado=Ticket.Estado.RESUELTO, fecha_resolucion__isnull=False)
         sla_cumplidos = 0
@@ -301,5 +374,8 @@ class TicketViewSet(viewsets.ModelViewSet):
             "pendientes_aprobacion": pendientes_aprobacion,
             "aprobados": aprobados,
             "resueltos": resueltos,
-            "sla_cumplimiento_porcentaje": sla_pct
+            "sla_cumplimiento_porcentaje": sla_pct,
+            "total_rfcs": total_rfcs,
+            "rfcs_aprobados": rfcs_aprobados,
+            "rfcs_pendientes": rfcs_pendientes
         })

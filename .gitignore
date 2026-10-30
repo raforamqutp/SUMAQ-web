@@ -37,6 +37,12 @@ backend/admin_tools/backups/*.sql
 !admin_tools/backups/.gitkeep
 !backend/admin_tools/backups/.gitkeep
 
+# Tools binaries & JMeter cache
+tools/apache-jmeter*
+tools/*.zip
+tests/performance/*.jtl
+tests/performance/reporte_html/
+
 # Reference repository & internal files
 final/
 docs-other/

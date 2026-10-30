@@ -18,7 +18,7 @@ export const AdminUsersPage: React.FC = () => {
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rol, setRol] = useState<'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA'>('RECEPCIONISTA');
+  const [rol, setRol] = useState<'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA' | 'SOPORTE_TI'>('RECEPCIONISTA');
   const [activo, setActivo] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -221,6 +221,7 @@ export const AdminUsersPage: React.FC = () => {
               <option value="ADMIN">ADMINISTRADOR GENERAL (Acceso total, finanzas, métricas y roles)</option>
               <option value="RECEPCIONISTA">RECEPCIONISTA (Agenda 3 cabinas, citas, caja POS e insumos)</option>
               <option value="TERAPEUTA">TERAPEUTA (Portal de terapeuta, atención clínica y consumos)</option>
+              <option value="SOPORTE_TI">SOPORTE TI (Mesa de ayuda, Jira Cloud, SLA e incidentes)</option>
             </select>
           </div>
 

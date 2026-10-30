@@ -10,3 +10,4 @@ Pillow>=11.1.0
 pytest>=8.3.4
 pytest-django>=4.9.0
 gunicorn>=23.0.0
+redis>=5.0.0

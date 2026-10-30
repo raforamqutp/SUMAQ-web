@@ -62,6 +62,19 @@ services:
       - sumaq-net
 
   # ============================================================================
+  # 2.5. SERVIDOR DE CACHÉ EN MEMORIA (REDIS - PLAN DE RENDIMIENTO ITIL)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: sumaq-redis
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    networks:
+      - sumaq-net
+
+  # ============================================================================
   # 3. BACKEND DJANGO REST API + GUNICORN
   # ============================================================================
   backend:
@@ -80,6 +93,8 @@ services:
       DB_PASSWORD: "123456"
       DB_HOST: "mysql-master"
       DB_PORT: "3306"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
       CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80,http://localhost:5173"
       INIT_DB_SEED: "false"
       JIRA_BASE_URL: "${JIRA_BASE_URL:-https://sumaq-dev.atlassian.net}"
@@ -94,6 +109,8 @@ services:
     depends_on:
       mysql-master:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - sumaq-net
 

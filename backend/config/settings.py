@@ -140,13 +140,26 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Cache en memoria para throttling y bloqueo de cuentas por intentos fallidos (RH01)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'sumaq-cache',
+# Cache de alto rendimiento: Redis (con fallback a LocMem en desarrollo local)
+REDIS_HOST = os.getenv('REDIS_HOST', '')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+
+if REDIS_HOST:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}',
+            'TIMEOUT': 300,
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'sumaq-cache',
+            'TIMEOUT': 300,
+        }
+    }
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 ACCOUNT_LOCKOUT_DURATION_SECONDS = 15 * 60  # 15 minutos
 
@@ -167,8 +180,8 @@ REST_FRAMEWORK = {
         )
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '30/minute',
-        'user': '120/minute',
+        'anon': os.environ.get('THROTTLE_ANON_RATE', '1000/minute'),
+        'user': os.environ.get('THROTTLE_USER_RATE', '2000/minute'),
     },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,

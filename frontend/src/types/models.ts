@@ -2,7 +2,7 @@ export interface User {
   id: number;
   email: string;
   nombre_completo: string;
-  rol: 'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA';
+  rol: 'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA' | 'SOPORTE_TI';
   activo: boolean;
   created_at?: string;
   updated_at?: string;

@@ -11,6 +11,22 @@ class Ticket(models.Model):
         INCIDENCIA = 'INCIDENCIA', 'Incidencia Técnica'
         SOLICITUD_CAMBIO = 'SOLICITUD_CAMBIO', 'Control de Cambios (RFC)'
 
+    class AreaCambio(models.TextChoices):
+        INFRAESTRUCTURA = 'INFRAESTRUCTURA', 'Infraestructura (Redes, Switch, Router, Servidores, Azure)'
+        APLICACIONES = 'APLICACIONES', 'Aplicaciones y BD (Código, Pasarela de Pagos, Migraciones)'
+        DOCUMENTACION = 'DOCUMENTACION', 'Documentación (Manuales de Contingencia, Topología, C4)'
+        CALENDARIO = 'CALENDARIO', 'Calendario (Change Freeze, Ventanas de Mantenimiento)'
+
+    class TipoCambio(models.TextChoices):
+        NORMAL = 'NORMAL', 'Cambio Normal (Requiere Aprobación Formal CAB)'
+        EMERGENCIA = 'EMERGENCIA', 'Cambio de Emergencia (Aprobación Rápida ECAB)'
+        ESTANDAR = 'ESTANDAR', 'Cambio Estándar (Pre-aprobado, Bajo Riesgo)'
+
+    class ImpactoRiesgo(models.TextChoices):
+        BAJO = 'BAJO', 'Bajo'
+        MEDIO = 'MEDIO', 'Medio'
+        ALTO = 'ALTO', 'Alto'
+
     class Prioridad(models.TextChoices):
         P1_CRITICA = 'P1_CRITICA', 'P1 - Crítica (2h)'
         P2_ALTA = 'P2_ALTA', 'P2 - Alta (8h)'
@@ -20,8 +36,8 @@ class Ticket(models.Model):
     class Estado(models.TextChoices):
         ABIERTO = 'ABIERTO', 'Abierto (En espera de revisión)'
         EN_PROCESO = 'EN_PROCESO', 'En Proceso (Asignado a N2)'
-        PENDIENTE_APROBACION = 'PENDIENTE_APROBACION', 'Pendiente de Aprobación por Gerencia'
-        APROBADO = 'APROBADO', 'Aprobado por Gerencia'
+        PENDIENTE_APROBACION = 'PENDIENTE_APROBACION', 'Pendiente de Aprobación por Gerencia / CAB'
+        APROBADO = 'APROBADO', 'Aprobado por Gerencia / CAB'
         RESUELTO = 'RESUELTO', 'Resuelto / Cerrado'
 
     codigo = models.CharField('Código de Ticket', max_length=40, unique=True, db_index=True)
@@ -30,6 +46,18 @@ class Ticket(models.Model):
     modulo = models.CharField('Módulo Afectado', max_length=100, default='General')
     asunto = models.CharField('Asunto', max_length=255)
     descripcion = models.TextField('Descripción Detallada')
+
+    # Dimensiones de Control de Cambios ITIL v4 (Semana 11)
+    area_cambio = models.CharField('Área de Cambio', max_length=30, choices=AreaCambio.choices, blank=True, null=True)
+    tipo_cambio = models.CharField('Tipo de Cambio ITIL', max_length=20, choices=TipoCambio.choices, default=TipoCambio.NORMAL, blank=True, null=True)
+    impacto_riesgo = models.CharField('Impacto y Riesgo', max_length=10, choices=ImpactoRiesgo.choices, default=ImpactoRiesgo.MEDIO, blank=True, null=True)
+    ventana_mantenimiento = models.CharField('Ventana de Mantenimiento', max_length=150, blank=True, default='')
+    plan_rollback = models.TextField('Plan de Rollback (< 5-10 min)', blank=True, default='')
+
+    # Gobernanza Comité CAB (Change Advisory Board)
+    cab_aprobado_por = models.CharField('Aprobador CAB', max_length=150, blank=True, default='')
+    cab_acta_numero = models.CharField('N° Acta de Aprobación CAB', max_length=60, blank=True, default='')
+    cab_fecha_aprobacion = models.DateTimeField('Fecha Aprobación CAB', null=True, blank=True)
 
     # Solicitante
     solicitante_nombre = models.CharField('Nombre del Solicitante', max_length=150, default='Usuario Sumaq')
@@ -82,8 +110,8 @@ class Ticket(models.Model):
             elif self.prioridad == self.Prioridad.P4_BAJA:
                 self.sla_horas = 48
 
-        # Si es solicitud de acceso y no ha sido aprobada, marcar pendiente de aprobación
-        if self.tipo == self.Tipo.SOLICITUD_ACCESO and not self.aprobado_por_gerencia and self.estado == self.Estado.ABIERTO:
+        # Si es solicitud de acceso o de cambio y no ha sido aprobada, marcar pendiente de aprobación
+        if self.tipo in (self.Tipo.SOLICITUD_ACCESO, self.Tipo.SOLICITUD_CAMBIO) and not self.aprobado_por_gerencia and not self.cab_aprobado_por and self.estado == self.Estado.ABIERTO:
             self.estado = self.Estado.PENDIENTE_APROBACION
 
         if not self.sla_fecha_limite:

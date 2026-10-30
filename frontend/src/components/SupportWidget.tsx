@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { TicketStore } from '../services/ticketStore';
-import { Ticket, TicketPriority, TicketType } from '../types/tickets';
+import { Ticket, TicketPriority, TicketType, AreaCambio } from '../types/tickets';
 import {
   LifeBuoy,
   X,
@@ -17,11 +17,12 @@ import {
   Terminal,
   FileText,
   UserCheck,
-  GitPullRequest
+  GitPullRequest,
+  Network
 } from 'lucide-react';
 
 export const SupportWidget: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
@@ -34,6 +35,9 @@ export const SupportWidget: React.FC = () => {
   const [modulo, setModulo] = useState('Agenda / Citas');
   const [asunto, setAsunto] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [areaCambio, setAreaCambio] = useState<AreaCambio>('INFRAESTRUCTURA');
+  const [ventanaMantenimiento, setVentanaMantenimiento] = useState('Martes 02:00 AM - 04:00 AM');
+  const [planRollback, setPlanRollback] = useState('Reconexión de hardware anterior en rack (< 10 min)');
   const [loading, setLoading] = useState(false);
 
   const loadTickets = async () => {
@@ -41,17 +45,14 @@ export const SupportWidget: React.FC = () => {
     setTickets(list);
   };
 
-  const loadTicketsSync = () => {
-    const list = TicketStore.getTickets();
-    setTickets(list);
-  };
-
   useEffect(() => {
-    loadTickets();
+    if (isAuthenticated && user) {
+      loadTickets();
+    }
     const handleUpdate = () => loadTickets();
     window.addEventListener('sumaq_tickets_updated', handleUpdate);
     return () => window.removeEventListener('sumaq_tickets_updated', handleUpdate);
-  }, []);
+  }, [isAuthenticated, user]);
 
   const myTickets = tickets.filter(
     (t) => !user?.email || t.solicitanteEmail.toLowerCase() === user.email.toLowerCase()
@@ -71,7 +72,10 @@ export const SupportWidget: React.FC = () => {
         descripcion,
         solicitanteNombre: user?.nombre_completo || 'Usuario Sumaq',
         solicitanteEmail: user?.email || 'usuario@sumaqspa.com',
-        solicitanteRol: user?.rol || 'TERAPEUTA'
+        solicitanteRol: user?.rol || 'TERAPEUTA',
+        areaCambio: tipo === 'SOLICITUD_CAMBIO' ? areaCambio : undefined,
+        ventanaMantenimiento: tipo === 'SOLICITUD_CAMBIO' ? ventanaMantenimiento : undefined,
+        planRollback: tipo === 'SOLICITUD_CAMBIO' ? planRollback : undefined
       });
 
       setSuccessMessage(`¡Ticket ${created.id} generado exitosamente!`);
@@ -121,12 +125,22 @@ export const SupportWidget: React.FC = () => {
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">Abierto</span>;
       case 'EN_PROCESO':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">En Atención</span>;
+      case 'PENDIENTE_APROBACION':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Pendiente CAB</span>;
+      case 'APROBADO':
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Aprobado CAB</span>;
       case 'RESUELTO':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Resuelto</span>;
       default:
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">{s}</span>;
     }
   };
+
+  if (!isAuthenticated || !user || !['ADMIN', 'RECEPCIONISTA', 'TERAPEUTA', 'SOPORTE_TI'].includes(user.rol)) {
+    return null;
+  }
+
+  const canCreateRFC = ['ADMIN', 'SOPORTE_TI'].includes(user.rol);
 
   return (
     <>
@@ -164,8 +178,8 @@ export const SupportWidget: React.FC = () => {
                 <div>
                   <h3 className="font-serif text-base font-bold flex items-center gap-2">
                     Service Desk &middot; Gestión de Solicitudes
-<span className="text-[10px] bg-[#3D2D22] text-[#C8907E] px-2 py-0.5 rounded font-mono font-medium">
-                      Mesa de Ayuda
+                    <span className="text-[10px] bg-[#3D2D22] text-[#C8907E] px-2 py-0.5 rounded font-mono font-medium">
+                      ITIL v4
                     </span>
                   </h3>
                   <p className="text-[11px] text-[#C9B29B]">
@@ -185,7 +199,7 @@ export const SupportWidget: React.FC = () => {
                   title="Abrir la consola del Especialista de TI"
                 >
                   <Terminal className="w-3.5 h-3.5 text-[#C8907E]" />
-                  <span>Ver Portal TI</span>
+                  <span>Ver Portal TI & CAB</span>
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -218,15 +232,20 @@ export const SupportWidget: React.FC = () => {
                 }`}
               >
                 <Clock className="w-4 h-4" />
-                Mis Solicitudes ({myTickets.length})
+                Mis Tickets Registrados ({myTickets.length})
               </button>
             </div>
 
-            {/* Mensaje de Confirmación Éxito */}
+            {/* Mensaje de Éxito */}
             {successMessage && (
-              <div className="mx-5 mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{successMessage}</span>
+              <div className="mx-5 mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+                <button onClick={() => setSuccessMessage(null)} className="text-emerald-600 hover:text-emerald-900">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             )}
 
@@ -244,7 +263,10 @@ export const SupportWidget: React.FC = () => {
                         { id: 'SOLICITUD_SERVICIO', title: 'Solicitud de Servicio', desc: 'Nuevo tratamiento, insumos BOM, mantenimiento' },
                         { id: 'SOLICITUD_ACCESO', title: 'Solicitud de Acceso', desc: 'Crear usuario, rol, reseteo de clave' },
                         { id: 'SOLICITUD_INFORMACION', title: 'Solicitud de Información', desc: 'Reporte kardex/ventas en nodo Slave 3309' },
-                        { id: 'INCIDENCIA', title: 'Incidencia Técnica', desc: 'Error de sistema, lentitud o bug' }
+                        { id: 'INCIDENCIA', title: 'Incidencia Técnica', desc: 'Error de sistema, lentitud o bug' },
+                        ...(canCreateRFC
+                          ? [{ id: 'SOLICITUD_CAMBIO', title: 'Control de Cambios (RFC)', desc: 'Infraestructura, Apps, Docs, Calendario (CAB)' }]
+                          : [])
                       ].map((item) => (
                         <div
                           key={item.id}
@@ -261,6 +283,47 @@ export const SupportWidget: React.FC = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Campos condicionales si es Control de Cambios (RFC) */}
+                  {tipo === 'SOLICITUD_CAMBIO' && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 space-y-3">
+                      <p className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+                        <GitPullRequest className="w-4 h-4 text-rose-700" />
+                        <span>Parámetros de Control de Cambios (Semana 11)</span>
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                            Área de Cambio (4 Áreas)
+                          </label>
+                          <select
+                            value={areaCambio}
+                            onChange={(e) => setAreaCambio(e.target.value as AreaCambio)}
+                            className="w-full text-xs p-2 rounded-lg border border-rose-300 bg-white"
+                          >
+                            <option value="INFRAESTRUCTURA">1. Infraestructura (Switch, Router, Servidores)</option>
+                            <option value="APLICACIONES">2. Aplicaciones & Base de Datos</option>
+                            <option value="DOCUMENTACION">3. Documentación & Procesos</option>
+                            <option value="CALENDARIO">4. Calendario & Change Freeze</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                            Ventana de Mantenimiento
+                          </label>
+                          <input
+                            type="text"
+                            value={ventanaMantenimiento}
+                            onChange={(e) => setVentanaMantenimiento(e.target.value)}
+                            placeholder="Ej. Martes 02:00 AM - 04:00 AM"
+                            className="w-full text-xs p-2 rounded-lg border border-rose-300 bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Prioridad y Módulo Afectado */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -282,13 +345,14 @@ export const SupportWidget: React.FC = () => {
 
                     <div>
                       <label className="block text-xs font-bold text-[#543F30] uppercase tracking-wider mb-1">
-                        Módulo o Área Afectada
+                        Módulo o Componente Afectado
                       </label>
                       <select
                         value={modulo}
                         onChange={(e) => setModulo(e.target.value)}
                         className="w-full text-xs p-2.5 rounded-xl border border-[#EDE5DC] bg-white text-[#2C2725] focus:ring-2 focus:ring-[#8C6F55] focus:outline-none"
                       >
+                        <option value="Redes & Hardware (Switch / Router)">Redes & Hardware (Switch / Router)</option>
                         <option value="Agenda / Citas">Agenda / Citas de Cabinas</option>
                         <option value="Punto de Venta / Caja">Punto de Venta / Caja y Pagos</option>
                         <option value="Inventario y Kardex">Inventario & Kardex de Insumos</option>
@@ -307,7 +371,7 @@ export const SupportWidget: React.FC = () => {
                     <input
                       type="text"
                       required
-                      placeholder="Ej. Alta de credenciales para terapeuta Camila Vega en Cabina 2"
+                      placeholder="Ej. Reemplazo de Switch Administrable y Segmentación de VLANs 10, 20 y 30"
                       value={asunto}
                       onChange={(e) => setAsunto(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-[#EDE5DC] bg-white text-[#2C2725] focus:ring-2 focus:ring-[#8C6F55] focus:outline-none"
@@ -322,135 +386,69 @@ export const SupportWidget: React.FC = () => {
                     <textarea
                       required
                       rows={3}
-                      placeholder="Indique con claridad los requerimientos, nombres de usuarios a dar de alta, reportes necesarios o síntomas de la falla..."
+                      placeholder="Describa el motivo, componentes afectados, impacto y consideraciones operativas..."
                       value={descripcion}
                       onChange={(e) => setDescripcion(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-[#EDE5DC] bg-white text-[#2C2725] focus:ring-2 focus:ring-[#8C6F55] focus:outline-none"
+                      className="w-full text-xs p-2.5 rounded-xl border border-[#EDE5DC] bg-white text-[#2C2725] focus:ring-2 focus:ring-[#8C6F55] focus:outline-none resize-none"
                     />
                   </div>
 
-                  {/* Botón de Envío */}
                   <div className="pt-2 flex items-center justify-between">
-                    <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      Registro cifrado con auditoría y trazabilidad
-                    </span>
+                    <p className="text-[11px] text-gray-500">
+                      Principio ITIL v4: Sincronización en tiempo real con Jira Cloud v3.
+                    </p>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-[#8C6F55] hover:bg-[#6D543F] text-white rounded-xl text-xs font-bold shadow transition-all cursor-pointer disabled:opacity-50"
+                      className="px-5 py-2.5 rounded-xl bg-[#8C6F55] hover:bg-[#6D543F] text-white text-xs font-bold transition-all shadow cursor-pointer disabled:opacity-50 flex items-center gap-2"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      {loading ? 'Registrando Ticket...' : 'Emitir Ticket Formal'}
+                      <span>{loading ? 'Registrando...' : 'Enviar Solicitud'}</span>
                     </button>
                   </div>
                 </form>
               ) : (
-                /* Lista de Mis Solicitudes */
                 <div className="space-y-3">
                   {myTickets.length === 0 ? (
-                    <div className="text-center py-10 bg-white rounded-2xl border border-[#EDE5DC]">
-                      <LifeBuoy className="w-10 h-10 text-[#C9B29B] mx-auto mb-2 opacity-50" />
-                      <p className="text-xs font-semibold text-gray-600">Aún no has registrado solicitudes de soporte.</p>
-                      <button
-                        onClick={() => setActiveTab('create')}
-                        className="mt-3 text-xs text-[#8C6F55] font-bold hover:underline"
-                      >
-                        Crear tu primera solicitud aquí
-                      </button>
+                    <div className="py-8 text-center text-xs text-gray-500">
+                      No tienes tickets registrados aún.
                     </div>
                   ) : (
                     myTickets.map((t) => {
-                      const typeInfo = getTipoLabel(t.tipo);
-                      const Icon = typeInfo.icon;
+                      const tipoInfo = getTipoLabel(t.tipo);
+                      const TipoIcon = tipoInfo.icon;
                       return (
                         <div
                           key={t.id}
-                          className="p-4 bg-white rounded-xl border border-[#EDE5DC] shadow-sm hover:border-[#8C6F55]/60 transition-all space-y-2"
+                          className="p-3.5 rounded-xl border border-[#EDE5DC] bg-white space-y-2 hover:border-[#8C6F55] transition-colors"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs font-bold text-[#8C6F55]">{t.id}</span>
-                              {t.jiraKey && (
-                                <a
-                                  href={t.jiraUrl || `https://sumaqspa.atlassian.net/browse/${t.jiraKey}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 hover:underline"
-                                  title="Ver ticket sincronizado en Jira Cloud"
-                                >
-                                  Jira: {t.jiraKey}
-                                </a>
-                              )}
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${typeInfo.color}`}>
-                                <Icon className="w-3 h-3" />
-                                {typeInfo.label}
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${tipoInfo.color}`}>
+                                <TipoIcon className="w-3 h-3" />
+                                {tipoInfo.label}
                               </span>
-                            </div>
-                            <div className="flex items-center gap-2">
                               {getPriorityBadge(t.prioridad)}
-                              {getStatusBadge(t.estado)}
                             </div>
+                            {getStatusBadge(t.estado)}
                           </div>
 
-                          <h4 className="text-xs font-bold text-[#2C2725]">{t.asunto}</h4>
-                          <p className="text-[11px] text-gray-600 leading-relaxed">{t.descripcion}</p>
+                          <p className="text-xs font-bold text-[#2C2725]">{t.asunto}</p>
+                          <p className="text-[11px] text-gray-600 line-clamp-2">{t.descripcion}</p>
 
-                          <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-[10px] text-gray-400">
-                            <span>Módulo: <strong className="text-gray-600">{t.modulo}</strong></span>
-                            <span>Creado: {t.fechaCreacion}</span>
-                            <span>SLA Límite: <strong className="text-gray-600">{t.slaFechaLimite}</strong></span>
+                          <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1 border-t border-gray-100">
+                            <span>SLA Límite: {t.slaFechaLimite}</span>
+                            {t.jiraKey && (
+                              <span className="text-blue-700 font-bold">Jira: {t.jiraKey}</span>
+                            )}
                           </div>
-
-                          {/* Respuesta Técnica del área de TI si existe */}
-                          {t.resolucionTecnica && (
-                            <div className="mt-2 p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-emerald-900 text-[11px]">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold flex items-center gap-1 text-emerald-800">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  Respuesta y Atención por Área de TI:
-                                </span>
-                                {t.fechaResolucion && (
-                                  <span className="text-[10px] text-emerald-700">{t.fechaResolucion}</span>
-                                )}
-                              </div>
-                              <p className="text-gray-700 italic">{t.resolucionTecnica}</p>
-                              {t.githubUrl && (
-                                <a
-                                  href={t.githubUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-gray-800 hover:text-black underline"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Ver Registro de Cambio (RFC en GitHub)
-                                </a>
-                              )}
-                            </div>
-                          )}
                         </div>
                       );
                     })
                   )}
                 </div>
               )}
-            </div>
-
-            {/* Footer Informativo */}
-            <div className="p-3 bg-[#FAF8F5] border-t border-[#EDE5DC] flex items-center justify-between text-[11px] text-gray-500">
-<span className="flex items-center gap-1">
-                SUMAQ Spa &middot; Mesa de Ayuda y Soporte TI
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  TicketStore.resetDefaults();
-                  loadTickets();
-                }}
-                className="text-[10px] text-gray-400 hover:text-gray-600 underline cursor-pointer"
-              >
-                Restablecer Tickets de Ejemplo
-              </button>
             </div>
           </div>
         </div>

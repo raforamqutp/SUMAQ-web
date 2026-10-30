@@ -140,7 +140,14 @@ export const App: React.FC = () => {
             </Route>
 
             {/* Modulo Service Desk / TI */}
-            <Route path="/ti" element={<TIPortalPage />} />
+            <Route
+              path="/ti"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'RECEPCIONISTA', 'TERAPEUTA', 'SOPORTE_TI']}>
+                  <TIPortalPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* 404 Route */}
             <Route path="*" element={<NotFoundPage />} />
