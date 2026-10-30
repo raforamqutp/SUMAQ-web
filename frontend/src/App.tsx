@@ -38,6 +38,8 @@ const AdminCabinsPage = lazy(() => import('./pages/admin/AdminCabinsPage').then(
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
 const AdminReportsPage = lazy(() => import('./pages/admin/AdminReportsPage').then(m => ({ default: m.AdminReportsPage })));
 const AdminCashRegisterPage = lazy(() => import('./pages/admin/AdminCashRegisterPage').then(m => ({ default: m.AdminCashRegisterPage })));
+const TIPortalPage = lazy(() => import('./pages/ti/TIPortalPage').then(m => ({ default: m.TIPortalPage })));
+import { SupportWidget } from './components/SupportWidget';
 
 // Fallback de carga para Suspense
 const PageLoader: React.FC = () => (
@@ -137,9 +139,20 @@ export const App: React.FC = () => {
               />
             </Route>
 
+            {/* Modulo Service Desk / TI */}
+            <Route
+              path="/ti"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN', 'RECEPCIONISTA', 'TERAPEUTA', 'SOPORTE_TI']}>
+                  <TIPortalPage />
+                </ProtectedRoute>
+              }
+            />
+
             {/* 404 Route */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          <SupportWidget />
         </Suspense>
       </AuthProvider>
     </ToastProvider>

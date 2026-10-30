@@ -67,7 +67,7 @@ class ReservaWebInputSerializer(serializers.Serializer):
     )
     codigo_cupon = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
-
+#SQL INYECCIONES PREVENTIVO
 class ConsultarCitaInputSerializer(serializers.Serializer):
     codigo_reserva = serializers.CharField(max_length=40, required=True)
     dni = serializers.CharField(max_length=20, required=True)

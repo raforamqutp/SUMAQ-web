@@ -10,14 +10,31 @@ cd /d "%~dp0\.."
 
 :: Verificar si Docker daemon esta corriendo
 docker info >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Docker Desktop no esta iniciado o no esta respondiendo.
-    echo Por favor, abre Docker Desktop desde el menu de Windows y vuelve a ejecutar este script.
-    echo.
-    pause
-    exit /b 1
+if not errorlevel 1 goto :docker_running
+
+echo [INFO] Docker Desktop no responde. Intentando iniciar Docker Desktop...
+if exist "%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe" (
+    start "" "%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe"
+) else if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 )
 
+echo Esperando que el motor de Docker inicie (puede tardar unos segundos)...
+for /l %%i in (1,1,15) do (
+    timeout /t 2 /nobreak >nul 2>nul
+    docker info >nul 2>nul
+    if not errorlevel 1 goto :docker_running
+)
+
+echo [ERROR] Docker Desktop no esta iniciado o no esta respondiendo.
+echo Por favor, abre Docker Desktop desde el menu de Windows y vuelve a ejecutar este script.
+echo.
+pause
+exit /b 1
+
+:docker_running
+echo [OK] Motor Docker activo y listo.
+echo.
 echo 1. Levantando y reconstruyendo contenedores con la ultima version...
 docker compose up -d --build
 echo.

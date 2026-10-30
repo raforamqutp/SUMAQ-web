@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles: Array<'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA'>;
+  allowedRoles: Array<'ADMIN' | 'RECEPCIONISTA' | 'TERAPEUTA' | 'SOPORTE_TI'>;
 }
 
 // ### RIESGO: RBAC estricto con ProtectedRoute y permisos por rol en Django

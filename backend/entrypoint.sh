@@ -14,8 +14,11 @@ echo "   [OK] Conexión establecida con MySQL."
 echo "2. Aplicando migraciones de base de datos..."
 python manage.py migrate --noinput
 
+echo "3. Sembrando tickets ITIL iniciales..."
+python manage.py seed_tickets || true
+
 if [ "$INIT_DB_SEED" = "true" ]; then
-    echo "3. Inicializando datos semilla (init_db.py)..."
+    echo "4. Inicializando datos semilla (init_db.py)..."
     python init_db.py || true
 fi
 

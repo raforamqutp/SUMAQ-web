@@ -6,7 +6,8 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 # Common Views
-from apps.common.health import HealthCheckView
+from apps.common.health import HealthCheckView, PrometheusMetricsView
+from apps.common.jira import JiraTestConnectionView, JiraCreateIssueView
 
 # Auth Views
 from apps.accounts.views import LoginView, CurrentUserView, UserAdminViewSet
@@ -62,6 +63,10 @@ admin_router.register(r'caja', MovimientoCajaViewSet, basename='admin-caja')
 urlpatterns = [
     # Health Check
     path('api/health/', HealthCheckView.as_view(), name='api-health'),
+    path('api/metrics/', PrometheusMetricsView.as_view(), name='api-metrics'),
+    path('api/ti/jira/test-connection/', JiraTestConnectionView.as_view(), name='ti-jira-test'),
+    path('api/ti/jira/create-issue/', JiraCreateIssueView.as_view(), name='ti-jira-create'),
+    path('api/ti/', include('apps.ti.urls')),
 
     # Authentication
     path('api/auth/login/', LoginView.as_view(), name='auth-login'),

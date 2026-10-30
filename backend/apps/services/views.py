@@ -2,6 +2,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.cache import cache
 from apps.services.models import Servicio, RecetaServicio
 from apps.services.serializers import (
     ServicioSerializer,
@@ -21,12 +22,39 @@ class ServicioViewSet(WrappedModelViewSet):
         return [IsAdminUserRole()]
 
     def list(self, request, *args, **kwargs):
+        is_staff = request.user and request.user.is_authenticated and request.user.rol in ['ADMIN', 'RECEPCIONISTA']
+        cache_key = 'catalogo_servicios_publico_v1'
+
+        if not is_staff:
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                resp = Response({'success': True, 'data': cached_data})
+                resp['X-Cache'] = 'HIT (Redis/Memory)'
+                return resp
+
         queryset = self.filter_queryset(self.get_queryset())
-        if not (request.user and request.user.is_authenticated and request.user.rol in ['ADMIN', 'RECEPCIONISTA']):
+        if not is_staff:
             queryset = queryset.filter(activo=True)
 
         serializer = self.get_serializer(queryset, many=True)
-        return Response({'success': True, 'data': serializer.data})
+        if not is_staff:
+            cache.set(cache_key, serializer.data, timeout=300)
+
+        resp = Response({'success': True, 'data': serializer.data})
+        resp['X-Cache'] = 'MISS (MySQL Database)'
+        return resp
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        cache.delete('catalogo_servicios_publico_v1')
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        cache.delete('catalogo_servicios_publico_v1')
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        cache.delete('catalogo_servicios_publico_v1')
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
