@@ -34,7 +34,7 @@ export const SupportWidget: React.FC = () => {
   const [prioridad, setPrioridad] = useState<TicketPriority>('P3_MEDIA');
   const [modulo, setModulo] = useState('Agenda / Citas');
   const [asunto, setAsunto] = useState('');
-  const [descripcion, setDescripcion] = useState('');
+  const [descripcion, setDescripción] = useState('');
   const [areaCambio, setAreaCambio] = useState<AreaCambio>('INFRAESTRUCTURA');
   const [ventanaMantenimiento, setVentanaMantenimiento] = useState('Martes 02:00 AM - 04:00 AM');
   const [planRollback, setPlanRollback] = useState('Reconexión de hardware anterior en rack (< 10 min)');
@@ -80,7 +80,7 @@ export const SupportWidget: React.FC = () => {
 
       setSuccessMessage(`¡Ticket ${created.id} generado exitosamente!`);
       setAsunto('');
-      setDescripcion('');
+      setDescripción('');
       setActiveTab('list');
       await loadTickets();
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -236,7 +236,7 @@ export const SupportWidget: React.FC = () => {
               </button>
             </div>
 
-            {/* Mensaje de Éxito */}
+            {/* Mensaje de éxito */}
             {successMessage && (
               <div className="mx-5 mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between animate-fadeIn">
                 <div className="flex items-center gap-2">
@@ -289,13 +289,13 @@ export const SupportWidget: React.FC = () => {
                     <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 space-y-3">
                       <p className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
                         <GitPullRequest className="w-4 h-4 text-rose-700" />
-                        <span>Parámetros de Control de Cambios (Semana 11)</span>
+                        <span>Parámetros de Control de Cambios (CAB / RFC) (CAB / RFC)</span>
                       </p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                            Área de Cambio (4 Áreas)
+                            Área de Cambio (4 Categorías ITIL)
                           </label>
                           <select
                             value={areaCambio}
@@ -388,7 +388,7 @@ export const SupportWidget: React.FC = () => {
                       rows={3}
                       placeholder="Describa el motivo, componentes afectados, impacto y consideraciones operativas..."
                       value={descripcion}
-                      onChange={(e) => setDescripcion(e.target.value)}
+                      onChange={(e) => setDescripción(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-[#EDE5DC] bg-white text-[#2C2725] focus:ring-2 focus:ring-[#8C6F55] focus:outline-none resize-none"
                     />
                   </div>

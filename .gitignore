@@ -50,3 +50,6 @@ PROMPT_*.md
 backend/replication/data_slave/
 *.sync.sql
 
+
+# Temporary agent scratch
+scratch/

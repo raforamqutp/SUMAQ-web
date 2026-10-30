@@ -52,3 +52,58 @@ export interface Ticket {
   cabActa?: string;
   cabFechaAprobacion?: string;
 }
+
+
+export interface IncidenciaModuloStat {
+  modulo: string;
+  count: number;
+  percentage: number;
+}
+
+export interface UltimoCambioArea {
+  codigo: string;
+  asunto: string;
+  tipo_cambio: string;
+  impacto_riesgo: string;
+  estado: string;
+  cab_acta_numero?: string;
+  cab_aprobado_por?: string;
+  fecha?: string;
+}
+
+export interface ProblemaDetectado {
+  modulo: string;
+  incidencias_count: number;
+  sugerencia_itil: string;
+  estado_problema: string;
+  tickets_relacionados: string[];
+}
+
+export interface IncidenciaPendiente {
+  codigo: string;
+  asunto: string;
+  modulo: string;
+  tipo: string;
+  prioridad: string;
+  estado: string;
+  solicitante: string;
+  sla_fecha_limite: string;
+}
+
+export interface ITILDashboardMetrics {
+  total: number;
+  abiertos: number;
+  en_proceso: number;
+  pendientes_aprobacion: number;
+  aprobados: number;
+  resueltos: number;
+  sla_cumplimiento_porcentaje: number;
+  total_rfcs: number;
+  rfcs_aprobados: number;
+  rfcs_pendientes: number;
+  incidencias_por_modulo: IncidenciaModuloStat[];
+  ultima_incidencia: any | null;
+  ultimo_cambio_por_area: Record<string, UltimoCambioArea | null>;
+  problemas_detectados: ProblemaDetectado[];
+  incidencias_pendientes: IncidenciaPendiente[];
+}

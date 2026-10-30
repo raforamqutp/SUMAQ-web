@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../../components/Button';
-import { Sparkles, Lock, Mail, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-react';
+import { Sparkles, Lock, Mail, ArrowLeft, ShieldCheck, UserCheck, Terminal } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -17,37 +17,44 @@ export const LoginPage: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/';
 
-  // Autenticación y redirección por rol
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error('Campos obligatorios', 'Por favor ingrese su correo y contraseña.');
+  // Autenticacion y redireccion por rol
+  const performLogin = async (targetEmail: string, targetPass: string) => {
+    if (!targetEmail || !targetPass) {
+      toast.error('Campos obligatorios', 'Por favor ingrese su correo y contrasena.');
       return;
     }
     setLoading(true);
     try {
-      const data = await login(email, password);
-      toast.success('Bienvenido al sistema', `Sesion iniciada como ${data.user.nombre_completo}`);
+      const data = await login(targetEmail, targetPass);
+      toast.success('Bienvenido al sistema', `Sesion iniciada como `);
       if (data.user.rol === 'ADMIN') {
         navigate('/admin');
       } else if (data.user.rol === 'RECEPCIONISTA') {
         navigate('/admin/agenda');
       } else if (data.user.rol === 'TERAPEUTA') {
         navigate('/terapeuta');
+      } else if (data.user.rol === 'SOPORTE_TI') {
+        navigate('/ti');
       } else {
         navigate(from);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Credenciales invalidas o cuenta inactiva.';
+      const msg = err.message || err.response?.data?.error?.message || 'Credenciales invalidas o cuenta inactiva.';
       toast.error('Error de autenticacion', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickLogin = (demoEmail: string, demoPass: string) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLogin(email, password);
+  };
+
+  const handleQuickLogin = async (demoEmail: string, demoPass: string) => {
     setEmail(demoEmail);
     setPassword(demoPass);
+    await performLogin(demoEmail, demoPass);
   };
 
   return (
@@ -127,7 +134,7 @@ export const LoginPage: React.FC = () => {
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8C6F55] text-center mb-3">
               Credenciales de Demostracion por Rol
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin@sumaqspa.pe', 'AdminSumaq2026!')}
@@ -162,6 +169,18 @@ export const LoginPage: React.FC = () => {
                   <span>Terapeuta Elena</span>
                 </div>
                 <p className="text-[10px] text-[#8C6F55] mt-0.5 truncate">elena.morales@sumaqspa.pe</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('soporte.ti@sumaqspa.pe', 'Sumaq2026!')}
+                className="p-2.5 text-left rounded-xl border border-[#DFD0C0] bg-[#F6F2EC] hover:bg-[#EDE5DC] transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#B23B2A]">
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>Soporte TI</span>
+                </div>
+                <p className="text-[10px] text-[#8C6F55] mt-0.5 truncate">soporte.ti@sumaqspa.pe</p>
               </button>
             </div>
           </div>

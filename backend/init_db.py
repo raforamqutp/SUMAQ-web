@@ -191,6 +191,19 @@ def init_database():
     recepcion_user.rol = User.Roles.RECEPCIONISTA
     recepcion_user.save()
 
+    ti_user, _ = User.objects.get_or_create(
+        email='soporte.ti@sumaqspa.pe',
+        defaults={
+            'nombre_completo': 'Ing. Anthony Luque (Soporte TI)',
+            'is_staff': True,
+            'rol': User.Roles.SOPORTE_TI
+        }
+    )
+    ti_user.set_password('Sumaq2026!')
+    ti_user.is_staff = True
+    ti_user.rol = User.Roles.SOPORTE_TI
+    ti_user.save()
+
     u_elena, _ = User.objects.get_or_create(
         email='elena.morales@sumaqspa.pe',
         defaults={

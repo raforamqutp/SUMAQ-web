@@ -11,6 +11,27 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         force = options.get('force', False)
+
+        # 1. Asegurar existencia del usuario de Soporte TI para autenticación y RBAC
+        try:
+            from apps.accounts.models import User
+            ti_user, user_created = User.objects.get_or_create(
+                email='soporte.ti@sumaqspa.pe',
+                defaults={
+                    'nombre_completo': 'Ing. Anthony Luque (Soporte TI)',
+                    'rol': User.Roles.SOPORTE_TI,
+                    'activo': True,
+                }
+            )
+            if user_created or not ti_user.check_password('Sumaq2026!'):
+                ti_user.set_password('Sumaq2026!')
+                ti_user.rol = User.Roles.SOPORTE_TI
+                ti_user.activo = True
+                ti_user.save()
+            self.stdout.write(self.style.SUCCESS('Usuario soporte.ti@sumaqspa.pe listo en base de datos.'))
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'Aviso verificando usuario TI: {e}'))
+
         if Ticket.objects.count() >= 10 and not force:
             self.stdout.write(self.style.SUCCESS(f'Ya existen {Ticket.objects.count()} tickets en la base de datos.'))
             return

@@ -344,8 +344,10 @@ class TicketViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='metricas')
     def metricas(self, request):
         """
-        Dashboard de Métricas ITIL v4 en tiempo real para el Administrador.
+        Dashboard de Métricas ITIL v4 y Gestión de Problemas en tiempo real.
         """
+        from django.db.models import Count
+
         total = Ticket.objects.count()
         abiertos = Ticket.objects.filter(estado=Ticket.Estado.ABIERTO).count()
         en_proceso = Ticket.objects.filter(estado=Ticket.Estado.EN_PROCESO).count()
@@ -367,6 +369,96 @@ class TicketViewSet(viewsets.ModelViewSet):
         
         sla_pct = round((sla_cumplidos / len(tickets_resueltos_objs) * 100), 1) if tickets_resueltos_objs.exists() else 100.0
 
+        # 1. Conteo de incidencias y solicitudes por módulo
+        incidencias_qs = Ticket.objects.exclude(tipo=Ticket.Tipo.SOLICITUD_CAMBIO)
+        modulo_counts = (
+            incidencias_qs.values('modulo')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        total_incidencias = incidencias_qs.count() or 1
+        incidencias_por_modulo = [
+            {
+                "modulo": row['modulo'],
+                "count": row['count'],
+                "percentage": round((row['count'] / total_incidencias) * 100, 1)
+            }
+            for row in modulo_counts
+        ]
+
+        # 2. Última incidencia o solicitud registrada
+        last_inc = incidencias_qs.order_by('-created_at').first()
+        ultima_incidencia = None
+        if last_inc:
+            ultima_incidencia = {
+                "codigo": last_inc.codigo,
+                "asunto": last_inc.asunto,
+                "modulo": last_inc.modulo,
+                "tipo": last_inc.tipo,
+                "prioridad": last_inc.prioridad,
+                "estado": last_inc.estado,
+                "solicitante": last_inc.solicitante_nombre,
+                "created_at": last_inc.created_at.strftime('%Y-%m-%d %H:%M') if last_inc.created_at else ''
+            }
+
+        # 3. Último cambio por cada una de las 4 áreas ITIL (Semana 11)
+        ultimo_cambio_por_area = {}
+        for area_val in [Ticket.AreaCambio.INFRAESTRUCTURA, Ticket.AreaCambio.APLICACIONES, Ticket.AreaCambio.DOCUMENTACION, Ticket.AreaCambio.CALENDARIO]:
+            c = Ticket.objects.filter(tipo=Ticket.Tipo.SOLICITUD_CAMBIO, area_cambio=area_val).order_by('-created_at').first()
+            if c:
+                ultimo_cambio_por_area[area_val] = {
+                    "codigo": c.codigo,
+                    "asunto": c.asunto,
+                    "tipo_cambio": c.tipo_cambio,
+                    "impacto_riesgo": c.impacto_riesgo,
+                    "estado": c.estado,
+                    "cab_acta_numero": c.cab_acta_numero or 'N/A',
+                    "cab_aprobado_por": c.cab_aprobado_por or 'Comité CAB',
+                    "fecha": c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
+                }
+            else:
+                ultimo_cambio_por_area[area_val] = None
+
+        # 4. Detección Proactiva de Problemas (ITIL v4 Problem Management)
+        sugerencias_causa_raiz = {
+            "Punto de Venta / Caja": "Inestabilidad intermitente en driver de impresión térmica o timeout en pasarela POS. Se sugiere migración a colas asíncronas.",
+            "Base de Datos MySQL": "Contención de bloqueos pesimistas en reservas concurrentes. Se sugiere aislamiento analítico en réplica 3309.",
+            "Infraestructura & BD": "Desincronización de réplica o consumo elevado de swap. Se sugiere verificación de binlogs y políticas de backup.",
+            "Frontend & APIs": "Desacoplamiento de estados estáticos hacia endpoints Django REST.",
+            "Usuarios & Roles": "Intentos fallidos de autenticación por rotación de personal de cabinas."
+        }
+        problemas_detectados = []
+        for row in modulo_counts:
+            if row['count'] >= 2:
+                mod_name = row['modulo']
+                tickets_rel = list(incidencias_qs.filter(modulo=mod_name).values_list('codigo', flat=True)[:4])
+                problemas_detectados.append({
+                    "modulo": mod_name,
+                    "incidencias_count": row['count'],
+                    "sugerencia_itil": sugerencias_causa_raiz.get(mod_name, f"Falla recurrente detectada en {mod_name}. Requiere análisis de causa raíz (RCA)."),
+                    "estado_problema": "ANALISIS_CAUSA_RAIZ",
+                    "tickets_relacionados": tickets_rel
+                })
+
+        # 5. Incidencias y solicitudes pendientes prioritarias
+        pendientes_qs = incidencias_qs.filter(
+            estado__in=[Ticket.Estado.ABIERTO, Ticket.Estado.EN_PROCESO, Ticket.Estado.PENDIENTE_APROBACION]
+        ).order_by('-prioridad', 'sla_fecha_limite')[:6]
+
+        incidencias_pendientes = [
+            {
+                "codigo": p.codigo,
+                "asunto": p.asunto,
+                "modulo": p.modulo,
+                "tipo": p.tipo,
+                "prioridad": p.prioridad,
+                "estado": p.estado,
+                "solicitante": p.solicitante_nombre,
+                "sla_fecha_limite": p.sla_fecha_limite.strftime('%Y-%m-%d %H:%M') if p.sla_fecha_limite else 'SLA 24h'
+            }
+            for p in pendientes_qs
+        ]
+
         return Response({
             "total": total,
             "abiertos": abiertos,
@@ -377,5 +469,10 @@ class TicketViewSet(viewsets.ModelViewSet):
             "sla_cumplimiento_porcentaje": sla_pct,
             "total_rfcs": total_rfcs,
             "rfcs_aprobados": rfcs_aprobados,
-            "rfcs_pendientes": rfcs_pendientes
+            "rfcs_pendientes": rfcs_pendientes,
+            "incidencias_por_modulo": incidencias_por_modulo,
+            "ultima_incidencia": ultima_incidencia,
+            "ultimo_cambio_por_area": ultimo_cambio_por_area,
+            "problemas_detectados": problemas_detectados,
+            "incidencias_pendientes": incidencias_pendientes
         })

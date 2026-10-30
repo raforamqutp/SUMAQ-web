@@ -68,7 +68,7 @@ export const AdminLayout: React.FC = () => {
     { name: 'Cabinas', path: '/admin/cabinas', icon: DoorClosed, adminOnly: true },
     { name: 'Usuarios & Roles', path: '/admin/usuarios', icon: UserCog, adminOnly: true },
     { name: 'Reportes Financieros', path: '/admin/reportes', icon: BarChart3, adminOnly: true },
-    { name: 'Mesa de Ayuda (TI)', path: '/ti', icon: LifeBuoy },
+    { name: 'Mesa de Ayuda (TI)', path: '/ti', icon: LifeBuoy, adminOnly: true },
   ];
 
   const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);

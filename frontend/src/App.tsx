@@ -143,7 +143,7 @@ export const App: React.FC = () => {
             <Route
               path="/ti"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'RECEPCIONISTA', 'TERAPEUTA', 'SOPORTE_TI']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'SOPORTE_TI']}>
                   <TIPortalPage />
                 </ProtectedRoute>
               }

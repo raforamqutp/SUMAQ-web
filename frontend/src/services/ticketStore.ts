@@ -1,4 +1,4 @@
-import { Ticket, TicketPriority, TicketType, JiraConfig, AreaCambio, TipoCambio, ImpactoRiesgo } from '../types/tickets';
+import { Ticket, TicketPriority, TicketType, JiraConfig, AreaCambio, TipoCambio, ImpactoRiesgo, ITILDashboardMetrics } from '../types/tickets';
 
 const STORAGE_KEY = 'sumaq_itil_tickets_v1';
 const JIRA_CONFIG_KEY = 'sumaq_jira_config_v1';
@@ -13,7 +13,7 @@ const DEFAULT_JIRA_CONFIG: JiraConfig = {
 
 const SEED_TICKETS: Ticket[] = [
   // =========================================================================
-  // SEMANA 10: SERVICE DESK (Requerimientos de Servicio, Información, Acceso)
+  // MESA DE AYUDA / SERVICE DESK (ITIL v4)
   // =========================================================================
   {
     id: 'REQ-2026-0001',
@@ -33,7 +33,7 @@ const SEED_TICKETS: Ticket[] = [
     aprobadoPorGerencia: true,
     aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Endpoints en /api/ conectando servicios de citas y pagos con axios y React Query.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
     jiraKey: 'KAN-1',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-1'
   },
@@ -55,7 +55,7 @@ const SEED_TICKETS: Ticket[] = [
     aprobadoPorGerencia: true,
     aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Script verificado con Checksum MD5 y Seconds_Behind_Master: 0 en contenedor 3309.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
     jiraKey: 'KAN-8',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-8'
   },
@@ -77,7 +77,7 @@ const SEED_TICKETS: Ticket[] = [
     aprobadoPorGerencia: true,
     aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Esquema de migración makemigrations generado con integridad referencial validada en tests unitarios.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
     jiraKey: 'KAN-7',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-7'
   },
@@ -99,7 +99,7 @@ const SEED_TICKETS: Ticket[] = [
     aprobadoPorGerencia: true,
     aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Seguridad RBAC configurada en común permissions.py y middleware de expiración de sesión.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
     jiraKey: 'KAN-6',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-6'
   },
@@ -122,13 +122,13 @@ const SEED_TICKETS: Ticket[] = [
     resolucionTecnica: '',
     jiraKey: 'KAN-15',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-15',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti'
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti'
   },
   {
     id: 'REQ-2026-0025',
     tipo: 'INCIDENCIA',
     prioridad: 'P2_ALTA',
-    asunto: 'Implementación de arquitectura y monitor de replicación MySQL Master-Slave',
+    asunto: 'Implementación de arquitectura y monitor de réplicación MySQL Master-Slave',
     descripcion: 'Configuración de nodo 3308 como maestro transaccional y 3309 como réplica de lectura para analítica de caja.',
     modulo: 'Base de Datos MySQL',
     solicitanteNombre: 'Bryan Mango (BT)',
@@ -142,13 +142,13 @@ const SEED_TICKETS: Ticket[] = [
     aprobadoPorGerencia: true,
     aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Slave_IO_Running: Yes, Slave_SQL_Running: Yes, Seconds_Behind_Master: 0.',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
     jiraKey: 'KAN-25',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-25'
   },
 
   // =========================================================================
-  // SEMANA 11: CONTROL DE CAMBIOS RFC & COMITÉ CAB (ITIL v4)
+  // CONTROL DE CAMBIOS RFC & COMITÉ CAB (ITIL v4)
   // =========================================================================
   // ÁREA 1: INFRAESTRUCTURA (Redes, Switch Cisco, VLANs 10/20/30)
   {
@@ -187,7 +187,7 @@ const SEED_TICKETS: Ticket[] = [
     tipo: 'SOLICITUD_CAMBIO',
     prioridad: 'P2_ALTA',
     asunto: 'Despliegue de Pasarela de Pagos Niubiz y Replicación Asíncrona MySQL',
-    descripcion: 'Incorporación del SDK de pasarela de pagos para reservas web y activación de replicación transaccional con nodo MySQL Slave 3309 para descarga de lecturas de caja.',
+    descripcion: 'Incorporación del SDK de pasarela de pagos para reservas web y activación de réplicación transaccional con nodo MySQL Slave 3309 para descarga de lecturas de caja.',
     modulo: 'Aplicaciones & BD',
     areaCambio: 'APLICACIONES',
     tipoCambio: 'NORMAL',
@@ -317,7 +317,7 @@ export const TicketStore = {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) {
-        this.saveTickets(SEED_TICKETS);
+        this.saveTickets(SEED_TICKETS, false);
         return SEED_TICKETS;
       }
       const rawParsed = JSON.parse(data) as any[];
@@ -330,7 +330,7 @@ export const TicketStore = {
             merged.push(seed);
           }
         }
-        this.saveTickets(merged);
+        this.saveTickets(merged, false);
         return merged;
       }
       return parsed;
@@ -347,7 +347,7 @@ export const TicketStore = {
         const rawList: any[] = Array.isArray(data) ? data : (data.results || []);
         if (rawList.length > 0) {
           const list: Ticket[] = rawList.map(normalizeTicket);
-          this.saveTickets(list);
+          this.saveTickets(list, false);
           return list;
         }
       }
@@ -357,10 +357,12 @@ export const TicketStore = {
     return this.getTickets();
   },
 
-  saveTickets(tickets: Ticket[]): void {
+  saveTickets(tickets: Ticket[], notify: boolean = true): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
-      window.dispatchEvent(new Event('sumaq_tickets_updated'));
+      if (notify) {
+        window.dispatchEvent(new Event('sumaq_tickets_updated'));
+      }
     } catch (e) {
       console.error('Error saving tickets', e);
     }
@@ -598,7 +600,20 @@ export const TicketStore = {
     return updated;
   },
 
+
+  async getDashboardMetrics(): Promise<ITILDashboardMetrics | null> {
+    try {
+      const resp = await fetch('/api/ti/tickets/métricas/');
+      if (resp.ok) {
+        return (await resp.json()) as ITILDashboardMetrics;
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Fallo al obtener métricas:', e);
+    }
+    return null;
+  },
+
   resetDefaults(): void {
-    this.saveTickets(SEED_TICKETS);
+    this.saveTickets(SEED_TICKETS, false);
   }
 };
