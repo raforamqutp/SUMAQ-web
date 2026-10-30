@@ -603,7 +603,7 @@ export const TicketStore = {
 
   async getDashboardMetrics(): Promise<ITILDashboardMetrics | null> {
     try {
-      const resp = await fetch('/api/ti/tickets/métricas/');
+      const resp = await fetch('/api/ti/tickets/metricas/');
       if (resp.ok) {
         return (await resp.json()) as ITILDashboardMetrics;
       }
