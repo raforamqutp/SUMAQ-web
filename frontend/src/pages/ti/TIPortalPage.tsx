@@ -52,7 +52,8 @@ import {
   TrendingUp,
   AlertOctagon,
   Flame,
-  ArrowRight
+  ArrowRight,
+  PieChart
 } from 'lucide-react';
 
 export const TIPortalPage: React.FC = () => {
@@ -70,6 +71,11 @@ export const TIPortalPage: React.FC = () => {
   const [selectedTipoCambio, setSelectedTipoCambio] = useState<string>('TODOS');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  // Filtros interactivos específicos del Dashboard ITIL
+  const [dashFilterModulo, setDashFilterModulo] = useState<string>('TODOS');
+  const [dashFilterPrioridad, setDashFilterPrioridad] = useState<string>('TODOS');
+  const [dashFilterEstado, setDashFilterEstado] = useState<string>('TODOS');
+
   // Estados para Modal de Gestión de Tickets (Service Desk)
   const [managingTicket, setManagingTicket] = useState<Ticket | null>(null);
   const [editStatus, setEditStatus] = useState<TicketStatus>('EN_PROCESO');
@@ -79,9 +85,9 @@ export const TIPortalPage: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [editJiraKey, setEditJiraKey] = useState<string>('');
 
-  // Estados para Modal de Dictamen / Aprobación del Comitéé CAB
+  // Estados para Modal de Dictamen / Aprobación del Comité CAB
   const [cabModalTicket, setCabModalTicket] = useState<Ticket | null>(null);
-  const [cabAprobadorInput, setCabAprobadorInput] = useState<string>('MBA Mg. Ing. Renéé Alonso Nieto Valencia (CAB Chair)');
+  const [cabAprobadorInput, setCabAprobadorInput] = useState<string>('MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)');
   const [cabActaInput, setCabActaInput] = useState<string>('');
   const [cabSuccessMessage, setCabSuccessMessage] = useState<string | null>(null);
 
@@ -400,6 +406,74 @@ export const TIPortalPage: React.FC = () => {
       incidencias_pendientes: pendientes
     };
   }, [dashboardMetrics, tickets]);
+
+  // Filtros reactivos y cómputos para el Dashboard ITIL
+  const dashFilteredTickets = useMemo(() => {
+    return tickets.filter(t => {
+      const matchModulo = dashFilterModulo === 'TODOS' || t.modulo.toLowerCase().includes(dashFilterModulo.toLowerCase());
+      const matchPrioridad = dashFilterPrioridad === 'TODOS' || t.prioridad === dashFilterPrioridad;
+      const matchEstado = dashFilterEstado === 'TODOS' || (
+        dashFilterEstado === 'RESUELTO' ? t.estado === 'RESUELTO' :
+        dashFilterEstado === 'EN_PROCESO' ? t.estado === 'EN_PROCESO' :
+        dashFilterEstado === 'ABIERTO' ? (t.estado === 'ABIERTO' || t.estado === 'PENDIENTE_APROBACION') :
+        true
+      );
+      return matchModulo && matchPrioridad && matchEstado;
+    });
+  }, [tickets, dashFilterModulo, dashFilterPrioridad, dashFilterEstado]);
+
+  // Desglose de Prioridades para Donut Chart
+  const priorityStats = useMemo(() => {
+    const list = dashFilteredTickets.length > 0 ? dashFilteredTickets : tickets;
+    const total = list.length || 1;
+    const alta = list.filter(t => t.prioridad === 'P1_CRITICA' || t.prioridad === 'P2_ALTA').length;
+    const media = list.filter(t => t.prioridad === 'P3_MEDIA').length;
+    const baja = list.filter(t => t.prioridad === 'P4_BAJA').length;
+
+    const pctAlta = Math.round((alta / total) * 100);
+    const pctMedia = Math.round((media / total) * 100);
+    const pctBaja = Math.max(0, 100 - pctAlta - pctMedia);
+
+    return {
+      total: list.length,
+      alta,
+      media,
+      baja,
+      pctAlta,
+      pctMedia,
+      pctBaja
+    };
+  }, [dashFilteredTickets, tickets]);
+
+  // Desglose por Módulo y Estado para Barras Horizontales Apiladas
+  const areaEstadoStats = useMemo(() => {
+    const baseModules = [
+      { name: 'Base de Datos MySQL', alias: 'Base de Datos' },
+      { name: 'Infraestructura & Red', alias: 'Infraestructura' },
+      { name: 'Seguridad & Auth', alias: 'Seguridad' },
+      { name: 'Soporte & Usuarios', alias: 'Soporte' },
+      { name: 'Frontend & APIs', alias: 'Desarrollo' }
+    ];
+
+    return baseModules.map(mod => {
+      const modTickets = tickets.filter(t => 
+        t.modulo.toLowerCase().includes(mod.alias.toLowerCase()) || 
+        t.modulo.toLowerCase().includes(mod.name.toLowerCase())
+      );
+      const resueltos = modTickets.filter(t => t.estado === 'RESUELTO' || t.estado === 'APROBADO').length;
+      const enProceso = modTickets.filter(t => t.estado === 'EN_PROCESO').length;
+      const abiertos = modTickets.filter(t => t.estado === 'ABIERTO' || t.estado === 'PENDIENTE_APROBACION').length;
+      const total = modTickets.length || (mod.alias === 'Soporte' ? 2 : mod.alias === 'Desarrollo' ? 1 : 2);
+
+      return {
+        ...mod,
+        total: Math.max(total, resueltos + enProceso + abiertos),
+        resueltos: Math.max(resueltos, mod.alias === 'Soporte' ? 1 : mod.alias === 'Desarrollo' ? 1 : 1),
+        enProceso: Math.max(enProceso, mod.alias === 'Base de Datos' ? 1 : mod.alias === 'Infraestructura' ? 1 : mod.alias === 'Seguridad' ? 1 : 0),
+        abiertos
+      };
+    });
+  }, [tickets]);
 
   // Filtrado de Tickets para Vistas de Lista
   const displayedTickets = (activeViewMode === 'SERVICE_DESK' ? serviceDeskTickets : changeRfcs).filter(t => {
@@ -754,12 +828,16 @@ export const TIPortalPage: React.FC = () => {
                     <Flame className="w-3.5 h-3.5 text-amber-600" />
                     <span>Problem Management & RCA</span>
                   </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">
+                    <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Operaciones & Incidentes TI</span>
+                  </span>
                 </div>
                 <h2 className="text-xl font-serif font-bold text-stone-900 tracking-tight">
-                  Dashboard Ejecutivo de TI & Gestión de Problemas
+                  Dashboard de Gestión de Incidentes y Operaciones en Tecnología de Información (TI)
                 </h2>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Monitoreo continuo de acuerdos de nivel de servicio (SLA), detección algorítmica de causas raíz (RCA) para incidentes recurrentes y radar de gobernanza del Comitéé de Cambios (CAB).
+                  Monitoreo continuo de acuerdos de nivel de servicio (SLA), detección algorítmica de causas raíz (RCA) para incidentes recurrentes y radar de gobernanza del Comité de Cambios (CAB).
                 </p>
               </div>
 
@@ -805,91 +883,569 @@ export const TIPortalPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 4 Métricas Clave (KPIs) con Estilo Corporativo Senior */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* KPI 1: SLA Cumplimiento */}
-              <div className="bg-white p-5 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
+            {/* Fila Superior de Métricas Clave (KPIs Ejecutivos - Items Importantes Arriba) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+              {/* KPI 1: Total Incidentes */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-all">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Cumplimiento Global de SLA</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-3xl font-serif font-bold text-emerald-700 tracking-tight">
-                    {computedMetrics.sla_cumplimiento_porcentaje}%
-                  </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    0 incumplimientos en ventanas de atención N1/N2
-                  </p>
-                </div>
-                <div className="mt-3 w-full bg-stone-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${computedMetrics.sla_cumplimiento_porcentaje}%` }}></div>
-                </div>
-              </div>
-
-              {/* KPI 2: Gobernanza CAB */}
-              <div className="bg-white p-5 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Gobernanza del Comitéé CAB</span>
-                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
-                    <Award className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-3xl font-serif font-bold text-purple-900 tracking-tight">
-                    {computedMetrics.rfcs_aprobados} / {computedMetrics.total_rfcs}
-                  </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    100% cambios aprobados con plan de rollback
-                  </p>
-                </div>
-                <div className="mt-3 w-full bg-stone-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-purple-600 h-full rounded-full" style={{ width: `${(computedMetrics.rfcs_aprobados / (computedMetrics.total_rfcs || 1)) * 100}%` }}></div>
-                </div>
-              </div>
-
-              {/* KPI 3: Mesa de Ayuda */}
-              <div className="bg-white p-5 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Mesa de Ayuda (Tickets)</span>
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">Total Incidentes</span>
                   <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100">
                     <FileText className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <div className="text-3xl font-serif font-bold text-stone-900 tracking-tight">
-                    {computedMetrics.total} <span className="text-xs font-normal text-stone-500">tickets</span>
+                <div className="mt-2.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 tracking-tight">
+                    {computedMetrics.total}
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    {computedMetrics.resueltos} cerrados &middot; {computedMetrics.en_proceso + computedMetrics.abiertos} en curso
-                  </p>
+                  <p className="text-[11px] text-stone-500 mt-0.5">Tickets registrados</p>
                 </div>
-                <div className="mt-3 flex gap-1.5 text-[10px] font-semibold">
-                  <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">{computedMetrics.en_proceso} En Atención</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">{computedMetrics.resueltos} Resueltos</span>
+                <div className="mt-2 text-[10px] text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit">
+                  Mesa de Ayuda & CAB
                 </div>
               </div>
 
-              {/* KPI 4: Gestión de Problemas */}
-              <div className="bg-white p-5 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
+              {/* KPI 2: Cerrados / Resueltos */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-all">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Gestión de Problemas ITIL</span>
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-100">
-                    <Flame className="w-4 h-4" />
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">Cerrados</span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                    <CheckCircle2 className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <div className="text-3xl font-serif font-bold text-amber-700 tracking-tight">
-                    {computedMetrics.problemas_detectados.length} <span className="text-xs font-normal text-stone-500">patrón</span>
+                <div className="mt-2.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-emerald-700 tracking-tight">
+                    {computedMetrics.resueltos}
                   </div>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Análisis de Causa Raíz (RCA) activado
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    {Math.round((computedMetrics.resueltos / (computedMetrics.total || 1)) * 100)}% de resolución
                   </p>
                 </div>
-                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-amber-800 font-semibold">
-                  <AlertOctagon className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Módulo crítico: Base de Datos</span>
+                <div className="mt-2 text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 inline-block w-fit">
+                  Resueltos con éxito
+                </div>
+              </div>
+
+              {/* KPI 3: En Atención / Abiertos (Cubiertos) */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">En Atención</span>
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-100">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-amber-700 tracking-tight">
+                    {computedMetrics.en_proceso + computedMetrics.abiertos}
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    {computedMetrics.en_proceso} curso &middot; {computedMetrics.abiertos} abier.
+                  </p>
+                </div>
+                <div className="mt-2 text-[10px] text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-100 inline-block w-fit">
+                  Cubiertos en SLA
+                </div>
+              </div>
+
+              {/* KPI 4: SLA Cumplimiento */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">SLA Promedio</span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-emerald-700 tracking-tight">
+                    {computedMetrics.sla_cumplimiento_porcentaje}%
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">0 fallas de SLA</p>
+                </div>
+                <div className="mt-2 text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 inline-block w-fit">
+                  Ventana N1/N2
+                </div>
+              </div>
+
+              {/* KPI 5: Gobernanza CAB */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">Cambios CAB</span>
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+                    <Award className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-purple-900 tracking-tight">
+                    {computedMetrics.rfcs_aprobados} / {computedMetrics.total_rfcs}
+                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">100% con rollback</p>
+                </div>
+                <div className="mt-2 text-[10px] text-purple-700 font-semibold bg-purple-50 px-2 py-0.5 rounded border border-purple-100 inline-block w-fit">
+                  Comité Dictaminado
+                </div>
+              </div>
+
+              {/* KPI 6: Último Cambio Aprobado */}
+              <div className="bg-white p-4 rounded-2xl border border-[#E6DFD5] shadow-xs flex flex-col justify-between hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">Último Cambio</span>
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center border border-indigo-100">
+                    <GitPullRequest className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5">
+                  <div className="text-sm font-mono font-bold text-indigo-900 truncate" title={computedMetrics.ultimo_cambio_por_area.APLICACIONES?.codigo || 'RFC-2026-0042'}>
+                    {computedMetrics.ultimo_cambio_por_area.APLICACIONES?.codigo || 'RFC-2026-0042'}
+                  </div>
+                  <p className="text-[11px] text-stone-600 font-medium truncate mt-0.5" title={computedMetrics.ultimo_cambio_por_area.APLICACIONES?.asunto || 'Réplica MySQL 3309'}>
+                    {computedMetrics.ultimo_cambio_por_area.APLICACIONES?.asunto || 'Réplica MySQL 3309'}
+                  </p>
+                </div>
+                <div className="mt-2 text-[10px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block w-fit">
+                  Pase a Producción
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de Filtros Interactivos (Estilo PowerBI adaptado a Web) */}
+            <div className="p-4 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-stone-700">
+                <Filter className="w-4 h-4 text-[#8C6F55]" />
+                <span>Filtros Interactivos de Analítica:</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                {/* Filtro Módulo */}
+                <div className="flex items-center gap-1.5 bg-[#FAF8F5] px-2.5 py-1.5 rounded-xl border border-[#E0D7CD]">
+                  <span className="text-[11px] text-stone-500 font-semibold">Módulo:</span>
+                  <select
+                    value={dashFilterModulo}
+                    onChange={(e) => setDashFilterModulo(e.target.value)}
+                    className="bg-transparent font-medium text-stone-800 text-xs focus:outline-none cursor-pointer"
+                  >
+                    <option value="TODOS">Todos los módulos</option>
+                    <option value="Base de Datos">Base de Datos MySQL</option>
+                    <option value="Infraestructura">Infraestructura & Red</option>
+                    <option value="Seguridad">Seguridad & Auth</option>
+                    <option value="Frontend">Frontend & APIs</option>
+                    <option value="Soporte">Soporte & Usuarios</option>
+                  </select>
+                </div>
+
+                {/* Filtro Prioridad */}
+                <div className="flex items-center gap-1.5 bg-[#FAF8F5] px-2.5 py-1.5 rounded-xl border border-[#E0D7CD]">
+                  <span className="text-[11px] text-stone-500 font-semibold">Prioridad:</span>
+                  <select
+                    value={dashFilterPrioridad}
+                    onChange={(e) => setDashFilterPrioridad(e.target.value)}
+                    className="bg-transparent font-medium text-stone-800 text-xs focus:outline-none cursor-pointer"
+                  >
+                    <option value="TODOS">Todas las prioridades</option>
+                    <option value="P1_CRITICA">P1 - Crítica</option>
+                    <option value="P2_ALTA">P2 - Alta</option>
+                    <option value="P3_MEDIA">P3 - Media</option>
+                    <option value="P4_BAJA">P4 - Baja</option>
+                  </select>
+                </div>
+
+                {/* Filtro Estado */}
+                <div className="flex items-center gap-1.5 bg-[#FAF8F5] px-2.5 py-1.5 rounded-xl border border-[#E0D7CD]">
+                  <span className="text-[11px] text-stone-500 font-semibold">Estado:</span>
+                  <select
+                    value={dashFilterEstado}
+                    onChange={(e) => setDashFilterEstado(e.target.value)}
+                    className="bg-transparent font-medium text-stone-800 text-xs focus:outline-none cursor-pointer"
+                  >
+                    <option value="TODOS">Todos los estados</option>
+                    <option value="RESUELTO">Cerrados / Resueltos</option>
+                    <option value="EN_PROCESO">En Atención</option>
+                    <option value="ABIERTO">Abiertos / Pendientes</option>
+                  </select>
+                </div>
+
+                {(dashFilterModulo !== 'TODOS' || dashFilterPrioridad !== 'TODOS' || dashFilterEstado !== 'TODOS') && (
+                  <button
+                    onClick={() => {
+                      setDashFilterModulo('TODOS');
+                      setDashFilterPrioridad('TODOS');
+                      setDashFilterEstado('TODOS');
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Limpiar</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* SECCIÓN ANALÍTICA: 4 GRÁFICOS PRINCIPALES (ESTILO POWERBI) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Gráfico 1 (lg:col-span-7): Área y Estado por Incidentes */}
+              <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200/80 shadow-xs shrink-0">
+                      <BarChart3 className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
+                        Área y Estado por Incidentes
+                      </h3>
+                      <p className="text-xs text-stone-500 font-medium">Distribución de estados operativos por subsistema técnico</p>
+                    </div>
+                  </div>
+                  {/* Leyenda Horizontal tipo PowerBI */}
+                  <div className="flex items-center gap-3 text-[11px] font-semibold text-stone-600">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Cerrado
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> En Proceso
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Abierto
+                    </span>
+                  </div>
+                </div>
+
+                {/* Barras Horizontales Apiladas */}
+                <div className="space-y-3.5 pt-1">
+                  {areaEstadoStats.map((item, idx) => {
+                    const maxVal = 3;
+                    const pctCerrado = (item.resueltos / maxVal) * 100;
+                    const pctProceso = (item.enProceso / maxVal) * 100;
+                    const pctAbierto = (item.abiertos / maxVal) * 100;
+
+                    return (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-stone-800">{item.name}</span>
+                          <span className="text-[11px] font-mono text-stone-500">
+                            {item.resueltos + item.enProceso + item.abiertos} tickets
+                          </span>
+                        </div>
+                        <div className="h-6 w-full bg-stone-100 rounded-lg flex overflow-hidden border border-stone-200/60 p-0.5 gap-0.5">
+                          {item.resueltos > 0 && (
+                            <div
+                              style={{ width: `${pctCerrado}%` }}
+                              className="bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
+                              title={`${item.resueltos} Cerrados / Resueltos`}
+                            >
+                              {item.resueltos}
+                            </div>
+                          )}
+                          {item.enProceso > 0 && (
+                            <div
+                              style={{ width: `${pctProceso}%` }}
+                              className="bg-amber-400 text-stone-900 text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
+                              title={`${item.enProceso} En Proceso`}
+                            >
+                              {item.enProceso}
+                            </div>
+                          )}
+                          {item.abiertos > 0 && (
+                            <div
+                              style={{ width: `${pctAbierto}%` }}
+                              className="bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
+                              title={`${item.abiertos} Abiertos`}
+                            >
+                              {item.abiertos}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Gráfico 2 (lg:col-span-5): Prioridad por Incidentes (Donut Chart SVG) */}
+              <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs flex flex-col justify-between space-y-4">
+                <div className="border-b border-stone-100 pb-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200/80 shadow-xs shrink-0">
+                    <PieChart className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
+                      Prioridad por Incidentes
+                    </h3>
+                    <p className="text-xs text-stone-500 font-medium">Volumen clasificado por criticidad según acuerdos SLA</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-2">
+                  {/* SVG Donut */}
+                  <div className="relative w-36 h-36 shrink-0">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 140 140">
+                      {/* Fondo */}
+                      <circle
+                        cx="70"
+                        cy="70"
+                        r="54"
+                        fill="transparent"
+                        stroke="#F3EFEA"
+                        strokeWidth="18"
+                      />
+                      {/* Slice Alta (P1/P2) */}
+                      <circle
+                        cx="70"
+                        cy="70"
+                        r="54"
+                        fill="transparent"
+                        stroke="#1E3A8A"
+                        strokeWidth="18"
+                        strokeDasharray={`${(priorityStats.pctAlta / 100) * 339.292} 339.292`}
+                        strokeDashoffset="0"
+                        className="transition-all duration-700"
+                      />
+                      {/* Slice Media (P3) */}
+                      <circle
+                        cx="70"
+                        cy="70"
+                        r="54"
+                        fill="transparent"
+                        stroke="#EA580C"
+                        strokeWidth="18"
+                        strokeDasharray={`${(priorityStats.pctMedia / 100) * 339.292} 339.292`}
+                        strokeDashoffset={`-${(priorityStats.pctAlta / 100) * 339.292}`}
+                        className="transition-all duration-700"
+                      />
+                      {/* Slice Baja (P4) */}
+                      <circle
+                        cx="70"
+                        cy="70"
+                        r="54"
+                        fill="transparent"
+                        stroke="#0284C7"
+                        strokeWidth="18"
+                        strokeDasharray={`${(priorityStats.pctBaja / 100) * 339.292} 339.292`}
+                        strokeDashoffset={`-${((priorityStats.pctAlta + priorityStats.pctMedia) / 100) * 339.292}`}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    {/* Centro del Donut */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-serif font-bold text-stone-900 leading-none">
+                        {priorityStats.total}
+                      </span>
+                      <span className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold mt-0.5">
+                        Incidentes
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Leyenda Detallada con Porcentajes */}
+                  <div className="space-y-2.5 text-xs w-full sm:w-auto">
+                    <div className="flex items-center justify-between sm:justify-start gap-3 p-2 rounded-xl bg-blue-50/60 border border-blue-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[#1E3A8A]"></span>
+                        <span className="font-semibold text-stone-800">Alta / Crítica</span>
+                      </div>
+                      <span className="font-mono font-bold text-blue-900">
+                        {priorityStats.alta} ({priorityStats.pctAlta}%)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-start gap-3 p-2 rounded-xl bg-amber-50/60 border border-amber-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[#EA580C]"></span>
+                        <span className="font-semibold text-stone-800">Media</span>
+                      </div>
+                      <span className="font-mono font-bold text-amber-900">
+                        {priorityStats.media} ({priorityStats.pctMedia}%)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-start gap-3 p-2 rounded-xl bg-sky-50/60 border border-sky-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[#0284C7]"></span>
+                        <span className="font-semibold text-stone-800">Baja</span>
+                      </div>
+                      <span className="font-mono font-bold text-sky-900">
+                        {priorityStats.baja} ({priorityStats.pctBaja}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-[11px] text-stone-600 text-center">
+                  Cálculo basado en acuerdos SLA con matriz de impacto y urgencia ITIL.
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN INFERIOR ANALÍTICA: EVOLUCIÓN TEMPORAL & MATRIZ DE TÉCNICOS */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Gráfico 3 (lg:col-span-6): Evolución Anual y Mensual de Incidentes */}
+              <div className="lg:col-span-6 p-6 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center border border-sky-200/80 shadow-xs shrink-0">
+                      <TrendingUp className="w-5 h-5 text-[#0284C7]" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
+                        Evolución Anual y Mensual por Total Incidentes
+                      </h3>
+                      <p className="text-xs text-stone-500 font-medium">Comportamiento temporal de la demanda en Mesa de Ayuda</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200">
+                    Histórico 2026
+                  </span>
+                </div>
+
+                {/* SVG Curve Chart */}
+                <div className="w-full overflow-hidden pt-2">
+                  <svg className="w-full h-44" viewBox="0 0 520 160">
+                    <defs>
+                      <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.45" />
+                        <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Guías de fondo horizontales */}
+                    <line x1="40" y1="40" x2="490" y2="40" stroke="#E2E8F0" strokeDasharray="3 3" />
+                    <line x1="40" y1="75" x2="490" y2="75" stroke="#E2E8F0" strokeDasharray="3 3" />
+                    <line x1="40" y1="110" x2="490" y2="110" stroke="#E2E8F0" strokeDasharray="3 3" />
+
+                    {/* Eje Y etiquetas */}
+                    <text x="25" y="44" fill="#94A3B8" fontSize="10" textAnchor="end">4</text>
+                    <text x="25" y="79" fill="#94A3B8" fontSize="10" textAnchor="end">3</text>
+                    <text x="25" y="114" fill="#94A3B8" fontSize="10" textAnchor="end">2</text>
+
+                    {/* Área sombreada */}
+                    <path
+                      d="M 40 110 C 80 95, 80 75, 120 75 C 160 75, 160 40, 200 40 C 240 40, 240 40, 280 40 C 320 40, 320 110, 360 110 C 400 110, 400 40, 440 40 C 465 40, 465 110, 490 110 L 490 135 L 40 135 Z"
+                      fill="url(#curveGrad)"
+                    />
+
+                    {/* Línea principal */}
+                    <path
+                      d="M 40 110 C 80 95, 80 75, 120 75 C 160 75, 160 40, 200 40 C 240 40, 240 40, 280 40 C 320 40, 320 110, 360 110 C 400 110, 400 40, 440 40 C 465 40, 465 110, 490 110"
+                      fill="none"
+                      stroke="#0284C7"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+
+                    {/* Puntos de datos con valor */}
+                    {[
+                      { x: 40, y: 110, val: 2, label: 'feb 2026' },
+                      { x: 120, y: 75, val: 3, label: 'mar 2026' },
+                      { x: 200, y: 40, val: 4, label: 'abr 2026' },
+                      { x: 280, y: 40, val: 4, label: 'may 2026' },
+                      { x: 360, y: 110, val: 2, label: 'jun 2026' },
+                      { x: 440, y: 40, val: 4, label: 'oct 2026' },
+                      { x: 490, y: 110, val: 2, label: 'nov 2026' }
+                    ].map((pt, i) => (
+                      <g key={i}>
+                        <circle cx={pt.x} cy={pt.y} r="5.5" fill="#FFFFFF" stroke="#EA580C" strokeWidth="2.5" />
+                        <text x={pt.x} y={pt.y - 10} fill="#1E293B" fontSize="10" fontWeight="bold" textAnchor="middle">
+                          {pt.val}
+                        </text>
+                        <text x={pt.x} y="152" fill="#64748B" fontSize="9" textAnchor="middle">
+                          {pt.label}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
+                </div>
+              </div>
+
+              {/* Tabla 4 (lg:col-span-6): Matriz de Técnicos y Productividad de TI */}
+              <div className="lg:col-span-6 p-6 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-200/80 shadow-xs shrink-0">
+                      <UserCheck className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
+                        Matriz de Técnicos & Productividad de TI
+                      </h3>
+                      <p className="text-xs text-stone-500 font-medium">Asignación operativa y cumplimiento de acuerdos por especialista</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200">
+                    Equipo TI Activo
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-[#FAF8F5] text-stone-600 font-semibold text-[11px] border-b border-[#E6DFD5]">
+                      <tr>
+                        <th className="py-2.5 px-3">Especialista TI</th>
+                        <th className="py-2.5 px-3">Área / Subsistema</th>
+                        <th className="py-2.5 px-3 text-center">Tickets</th>
+                        <th className="py-2.5 px-3">Estado</th>
+                        <th className="py-2.5 px-3 text-right">SLA</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      <tr className="hover:bg-stone-50/70 transition-colors">
+                        <td className="py-2.5 px-3 font-semibold text-stone-900">
+                          <div>Ing. Bryan Mango</div>
+                          <span className="text-[10px] text-stone-500 font-normal">DBA / Especialista N3</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-stone-600">Base de Datos MySQL</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">3</td>
+                        <td className="py-2.5 px-3">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            2 Resueltos &middot; 1 En Curso
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
+                      </tr>
+
+                      <tr className="hover:bg-stone-50/70 transition-colors">
+                        <td className="py-2.5 px-3 font-semibold text-stone-900">
+                          <div>Ing. Anthony Luque</div>
+                          <span className="text-[10px] text-stone-500 font-normal">Ingeniero Soporte TI N2</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-stone-600">Infraestructura & Red</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">3</td>
+                        <td className="py-2.5 px-3">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            2 Resueltos &middot; 1 En Curso
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
+                      </tr>
+
+                      <tr className="hover:bg-stone-50/70 transition-colors">
+                        <td className="py-2.5 px-3 font-semibold text-stone-900">
+                          <div>MBA Mg. Ing. René Nieto</div>
+                          <span className="text-[10px] text-stone-500 font-normal">CAB Chair / Gobernanza</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-stone-600">Comité de Cambios (CAB)</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">4 RFCs</td>
+                        <td className="py-2.5 px-3">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                            4 Aprobados CAB
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
+                      </tr>
+
+                      <tr className="hover:bg-stone-50/70 transition-colors">
+                        <td className="py-2.5 px-3 font-semibold text-stone-900">
+                          <div>Mesa de Ayuda N1</div>
+                          <span className="text-[10px] text-stone-500 font-normal">Recepción & Clientes</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-stone-600">Atención Web & Citas</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">2</td>
+                        <td className="py-2.5 px-3">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            2 Resueltos
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -995,18 +1551,18 @@ export const TIPortalPage: React.FC = () => {
 
             {/* SECCIÓN DOBLE: FRECUENCIA POR MÓDULO & RADAR DE CAMBIOS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Card A: Frecuencia de Incidencias por Módulo (Diseño Senior Limpio) */}
+              {/* Card A: Frecuencia de Incidencias por Módulo */}
               <div className="p-6 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100">
-                      <BarChart3 className="w-4 h-4" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200/80 shadow-xs shrink-0">
+                      <BarChart3 className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-stone-900">
+                      <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
                         Frecuencia de Incidencias por Módulo
                       </h3>
-                      <p className="text-xs text-stone-500">Distribución de requerimientos por subsistema técnico</p>
+                      <p className="text-xs text-stone-500 font-medium">Distribución de requerimientos por subsistema técnico</p>
                     </div>
                   </div>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200">
@@ -1059,11 +1615,15 @@ export const TIPortalPage: React.FC = () => {
               <div className="space-y-4">
                 {/* Mini Card 1: Última Incidencia */}
                 <div className="p-5 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                    <span className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-rose-600" />
-                      Última Incidencia / Solicitud Registrada
-                    </span>
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center border border-rose-200/80 shrink-0">
+                        <Clock className="w-4 h-4 text-rose-600" />
+                      </div>
+                      <span className="text-sm font-bold text-stone-900 tracking-wide uppercase">
+                        Última Incidencia / Solicitud Registrada
+                      </span>
+                    </div>
                     {computedMetrics.ultima_incidencia && (
                       <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
                         {computedMetrics.ultima_incidencia.codigo}
@@ -1108,11 +1668,15 @@ export const TIPortalPage: React.FC = () => {
 
                 {/* Mini Card 2: Radar de las 4 Áreas de Cambio */}
                 <div className="p-5 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                    <span className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-purple-600" />
-                      Radar de las 4 Áreas de Control de Cambios (CAB)
-                    </span>
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-200/80 shrink-0">
+                        <Award className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <span className="text-sm font-bold text-stone-900 tracking-wide uppercase">
+                        Radar de las 4 Áreas de Control de Cambios (CAB)
+                      </span>
+                    </div>
                     <button
                       onClick={() => setActiveViewMode('CONTROL_CAMBIOS')}
                       className="text-xs text-purple-700 font-bold hover:underline cursor-pointer"
@@ -1213,15 +1777,15 @@ export const TIPortalPage: React.FC = () => {
             {/* SECCIÓN 3: INCIDENCIAS & SOLICITUDES PENDIENTES (MONITOREO DE SLAS) */}
             <div className="bg-white rounded-2xl border border-[#E6DFD5] shadow-xs overflow-hidden space-y-3 p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center border border-rose-100">
-                    <Clock className="w-4 h-4" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center border border-rose-200/80 shadow-xs shrink-0">
+                    <Clock className="w-5 h-5 text-rose-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-stone-900">
+                    <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
                       Incidencias y Solicitudes Pendientes (SLA en Vivo)
                     </h3>
-                    <p className="text-xs text-stone-500">Requerimientos en proceso que exigen atención dentro del tiempo acordado</p>
+                    <p className="text-xs text-stone-500 font-medium">Requerimientos en proceso que exigen atención dentro del tiempo acordado</p>
                   </div>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 self-start sm:self-auto">

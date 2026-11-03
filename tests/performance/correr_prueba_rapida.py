@@ -11,8 +11,11 @@ import urllib.request
 import urllib.error
 import threading
 import statistics
+import sys
+import os
 
-TARGET_URL = "http://localhost:8000/api/servicios/"
+DEFAULT_TARGET = "http://68.155.146.110/api/servicios/"
+TARGET_URL = sys.argv[1] if len(sys.argv) > 1 else os.getenv("SUMAQ_TARGET_URL", DEFAULT_TARGET)
 NUM_USERS = 20
 REQUESTS_PER_USER = 2
 
