@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -48,6 +48,15 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
+// Redirección inteligente en la raíz /admin según rol (Admin al Dashboard, Recepcionista a la Agenda)
+const AdminIndexRoute: React.FC = () => {
+  const { user } = useAuth();
+  if (user?.rol === 'RECEPCIONISTA') {
+    return <Navigate to="/admin/agenda" replace />;
+  }
+  return <AdminDashboardPage />;
+};
+
 export const App: React.FC = () => {
   return (
     <Router>
@@ -94,8 +103,8 @@ export const App: React.FC = () => {
               <Route
                 index
                 element={
-                  <ProtectedRoute allowedRoles={['ADMIN']}>
-                    <AdminDashboardPage />
+                  <ProtectedRoute allowedRoles={['ADMIN', 'RECEPCIONISTA']}>
+                    <AdminIndexRoute />
                   </ProtectedRoute>
                 }
               />

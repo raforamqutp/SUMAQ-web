@@ -9,6 +9,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isTherapist: boolean;
+  isRecepcionista: boolean;
+  isSupportTI: boolean;
   login: (email: string, pass: string) => Promise<LoginResponseData>;
   logout: () => void;
   loading: boolean;
@@ -90,6 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = !!user && !!token;
   const isAdmin = user?.rol === 'ADMIN';
   const isTherapist = user?.rol === 'TERAPEUTA';
+  const isRecepcionista = user?.rol === 'RECEPCIONISTA';
+  const isSupportTI = user?.rol === 'SOPORTE_TI';
 
   return (
     <AuthContext.Provider
@@ -100,6 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         isAdmin,
         isTherapist,
+        isRecepcionista,
+        isSupportTI,
         login,
         logout,
         loading,

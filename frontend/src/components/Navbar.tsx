@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './Button';
-import { Sparkles, Calendar, User as UserIcon, LogOut, Menu, X, Shield, Clock } from 'lucide-react';
+import { Sparkles, Calendar, User as UserIcon, LogOut, Menu, X, Shield, Clock, Terminal } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, isAdmin, isTherapist, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isTherapist, isRecepcionista, isSupportTI, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -93,10 +93,24 @@ export const Navbar: React.FC = () => {
                     </Button>
                   </Link>
                 )}
+                {isRecepcionista && (
+                  <Link to="/admin/agenda">
+                    <Button variant="secondary" size="sm" icon={<Calendar className="w-3.5 h-3.5" />}>
+                      Panel Recepción
+                    </Button>
+                  </Link>
+                )}
                 {isTherapist && (
                   <Link to="/terapeuta">
                     <Button variant="secondary" size="sm" icon={<Clock className="w-3.5 h-3.5" />}>
                       Mi Agenda
+                    </Button>
+                  </Link>
+                )}
+                {isSupportTI && (
+                  <Link to="/ti">
+                    <Button variant="secondary" size="sm" icon={<Terminal className="w-3.5 h-3.5" />}>
+                      Panel TI
                     </Button>
                   </Link>
                 )}
@@ -193,6 +207,15 @@ export const Navbar: React.FC = () => {
                   Panel Administrador
                 </Link>
               )}
+              {isRecepcionista && (
+                <Link
+                  to="/admin/agenda"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full py-2 text-center text-sm font-semibold bg-[#EDE5DC] text-[#543F30] rounded-xl"
+                >
+                  Panel de Recepción (Agenda)
+                </Link>
+              )}
               {isTherapist && (
                 <Link
                   to="/terapeuta"
@@ -200,6 +223,15 @@ export const Navbar: React.FC = () => {
                   className="block w-full py-2 text-center text-sm font-semibold bg-[#EDE5DC] text-[#543F30] rounded-xl"
                 >
                   Mi Agenda del Día
+                </Link>
+              )}
+              {isSupportTI && (
+                <Link
+                  to="/ti"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full py-2 text-center text-sm font-semibold bg-[#EDE5DC] text-[#543F30] rounded-xl"
+                >
+                  Portal de Operaciones TI
                 </Link>
               )}
               <button
