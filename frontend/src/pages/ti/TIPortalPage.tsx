@@ -53,7 +53,10 @@ import {
   AlertOctagon,
   Flame,
   ArrowRight,
-  PieChart
+  PieChart,
+  Copy,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export const TIPortalPage: React.FC = () => {
@@ -107,6 +110,101 @@ export const TIPortalPage: React.FC = () => {
   const [justUpdated, setJustUpdated] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   const isUpdatingRef = useRef<boolean>(false);
+
+  // Estados y Catálogo de Base de Conocimiento (KDB - Known Error Database / Workarounds)
+  const [isKDBOpen, setIsKDBOpen] = useState<boolean>(true);
+  const [kdbSearchTerm, setKdbSearchTerm] = useState<string>('');
+  const [kdbSelectedCategory, setKdbSelectedCategory] = useState<string>('TODOS');
+  const [copiedKDBId, setCopiedKDBId] = useState<string | null>(null);
+  const [expandedKDBId, setExpandedKDBId] = useState<string | null>('KDB-001');
+
+  const kdbArticles = useMemo(() => [
+    {
+      id: 'KDB-001',
+      codigo: 'KDB-2026-001',
+      titulo: 'Error 502 / 504 Bad Gateway: Microservicio Backend API no responde',
+      categoria: 'INFRAESTRUCTURA',
+      modulo: 'Infraestructura & Azure',
+      impacto: 'Crítico (P1)',
+      sintoma: 'La aplicación muestra pantalla blanca o errores 502/504 al consultar citas o procesar pagos.',
+      causaRaiz: 'Proceso Gunicorn en sumaq-backend saturado por fuga de memoria temporal o timeout en proxy NGINX.',
+      solucionWorkaround: '1. Abrir terminal del servidor Azure o local.\n2. Ejecutar reinicio del contenedor: docker restart sumaq-backend\n3. Verificar salud del servicio: docker logs sumaq-backend --tail 30\n4. Validar respuesta en http://localhost:8000/api/catalogos/. Tiempo de recuperación estimado: < 30 seg.',
+      tiempoEstimado: '< 3 min',
+      jiraRef: 'SUMAQ-KB-101'
+    },
+    {
+      id: 'KDB-002',
+      codigo: 'KDB-2026-002',
+      titulo: 'Error 401 Unauthorized / Token JWT Expirado en Pantalla de Cobro POS',
+      categoria: 'SEGURIDAD',
+      modulo: 'Seguridad & Auth',
+      impacto: 'Alto (P2)',
+      sintoma: 'Las recepcionistas son expulsadas a la pantalla de login con alerta "Sesión caducada" al emitir boleta.',
+      causaRaiz: 'Access token de 120 minutos superó el tiempo de vida o clave de revocación en Redis fue purgada.',
+      solucionWorkaround: '1. Solicitar re-login inmediato de la recepcionista para emitir nuevo Refresh Token.\n2. Si el error persiste, purgar caché de sesiones en Redis ejecutando: docker exec -it sumaq-redis redis-cli FLUSHDB\n3. Validar sincronización horaria del cliente con el servidor.',
+      tiempoEstimado: '< 2 min',
+      jiraRef: 'SUMAQ-KB-102'
+    },
+    {
+      id: 'KDB-003',
+      codigo: 'KDB-2026-003',
+      titulo: 'Desincronización de Kardex / Reporte Financiero en Nodo Slave (Puerto 3309)',
+      categoria: 'BASE_DE_DATOS',
+      modulo: 'Base de Datos MySQL',
+      impacto: 'Medio (P3)',
+      sintoma: 'El informe analítico de caja o inventario no muestra las ventas recientes registradas en el Master.',
+      causaRaiz: 'Hilo de replicación Slave_SQL_Running o Slave_IO_Running detenido por microcorte de red.',
+      solucionWorkaround: '1. Conectar a MySQL Slave (puerto 3309) y verificar estado: SHOW SLAVE STATUS\\G\n2. Si Slave_SQL_Running está en "No", ejecutar: STOP REPLICA; START REPLICA;\n3. Como contingencia operativa inmediata, conmutar la lectura temporal al nodo Master (3308).',
+      tiempoEstimado: '< 5 min',
+      jiraRef: 'SUMAQ-KB-103'
+    },
+    {
+      id: 'KDB-004',
+      codigo: 'KDB-2026-004',
+      titulo: 'Lentitud Extrema (>20s) en Checkout POS y Generación de Boletas PDF',
+      categoria: 'APLICACIONES',
+      modulo: 'Punto de Venta / Caja',
+      impacto: 'Alto (P2)',
+      sintoma: 'Al presionar "Cobrar" en recepción, el modal se congela y demora en mostrar el comprobante descargable.',
+      causaRaiz: 'Saturación en el motor de renderizado de boletas PDF o acumulación excesiva de LocalStorage en navegador.',
+      solucionWorkaround: '1. Instruir al personal de caja presionar Ctrl + F5 para recargar el bundle estático del navegador.\n2. Limpiar recibos temporales en localStorage del navegador.\n3. Si persiste, reiniciar worker NGINX: docker restart sumaq-frontend.',
+      tiempoEstimado: '< 4 min',
+      jiraRef: 'SUMAQ-KB-104'
+    },
+    {
+      id: 'KDB-005',
+      codigo: 'KDB-2026-005',
+      titulo: 'Saturación de CPU al 98% en MySQL Master por Bloqueo Transaccional (Deadlock)',
+      categoria: 'BASE_DE_DATOS',
+      modulo: 'Base de Datos MySQL',
+      impacto: 'Crítico (P1)',
+      sintoma: 'Múltiples clientes y recepcionistas no pueden confirmar reservas; peticiones quedan en espera infinita.',
+      causaRaiz: 'Contención de bloqueos pesimistas entre reservas concurrentes y actualización masiva de stock BOM.',
+      solucionWorkaround: '1. Ingresar a MySQL Master (3308) y ejecutar: SHOW FULL PROCESSLIST;\n2. Identificar el hilo en estado "Waiting for table metadata lock" o con Time > 45 segundos.\n3. Ejecutar comando: KILL <process_id>; para liberar la tabla inmediatamente.',
+      tiempoEstimado: '< 5 min',
+      jiraRef: 'SUMAQ-KB-105'
+    }
+  ], []);
+
+  const filteredKDBArticles = useMemo(() => {
+    return kdbArticles.filter(art => {
+      const matchCategory = kdbSelectedCategory === 'TODOS' || art.categoria === kdbSelectedCategory;
+      const matchSearch = kdbSearchTerm === '' ||
+        art.titulo.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
+        art.sintoma.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
+        art.codigo.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
+        art.modulo.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
+        art.solucionWorkaround.toLowerCase().includes(kdbSearchTerm.toLowerCase());
+      return matchCategory && matchSearch;
+    });
+  }, [kdbArticles, kdbSelectedCategory, kdbSearchTerm]);
+
+  const handleCopyWorkaround = (art: typeof kdbArticles[0]) => {
+    const textToCopy = `[${art.codigo}] ${art.titulo}\nDiagnóstico: ${art.causaRaiz}\nSolución Workaround:\n${art.solucionWorkaround}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedKDBId(art.id);
+    setTimeout(() => setCopiedKDBId(null), 2500);
+  };
 
   const loadData = async (isManualClick: boolean = false) => {
     // Protección contra bucle infinito o peticiones concurrentes
@@ -796,10 +894,28 @@ export const TIPortalPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/80 border border-blue-200 text-blue-900 font-medium">
+            <a
+              href="https://sumaq-dev.atlassian.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/80 hover:bg-blue-100 border border-blue-200 text-blue-900 font-medium transition-colors cursor-pointer"
+              title="Abrir Atlassian Jira Cloud v3 de SUMAQ"
+            >
               <Globe className="w-3.5 h-3.5 text-blue-600 shrink-0" />
               <span>Jira Cloud v3: <strong>sumaq-dev.atlassian.net</strong></span>
-            </span>
+              <ExternalLink className="w-3 h-3 text-blue-400" />
+            </a>
+            <a
+              href={window.location.hostname === 'localhost' ? 'http://localhost:3000' : `http://${window.location.hostname}:3000`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50/80 hover:bg-amber-100 border border-amber-200 text-amber-900 font-medium transition-colors cursor-pointer"
+              title="Abrir Dashboard de Telemetría en Grafana (Puerto 3000)"
+            >
+              <Activity className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Grafana: <strong>Monitoreo :3000</strong></span>
+              <ExternalLink className="w-3 h-3 text-amber-500" />
+            </a>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50/80 border border-emerald-200 text-emerald-900 font-medium">
               <Database className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>MySQL Replicación: Master 3308 / Slave 3309 Activo</span>
@@ -2142,6 +2258,170 @@ export const TIPortalPage: React.FC = () => {
                   <span className="text-xs text-stone-500">completadas</span>
                 </div>
               </div>
+            </div>
+
+            {/* SECCIÓN INTERACTIVA: BASE DE CONOCIMIENTO (KDB / KNOWN ERROR DATABASE - ITIL v4) */}
+            <div className="bg-gradient-to-r from-amber-50/70 via-white to-blue-50/50 p-5 rounded-2xl border border-amber-200/80 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
+                    <BookOpen className="w-5 h-5 text-amber-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-bold text-stone-900">
+                        Base de Conocimiento (KDB) &middot; Soluciones Estándar & Workarounds N1
+                      </h3>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md font-mono font-bold border border-indigo-200">
+                        ITIL KEDB v4
+                      </span>
+                      <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-mono font-bold border border-blue-200 flex items-center gap-1">
+                        <Globe className="w-3 h-3" /> Jira Service Desk KDB
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-600 mt-0.5">
+                      Diccionario operativo de errores conocidos, causas raíz y procedimientos rápidos probados para que Nivel 1 resuelva incidentes recurrentes en &le; 5 minutos.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <button
+                    onClick={() => setIsKDBOpen(!isKDBOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold border border-stone-200 shadow-2xs transition-all cursor-pointer"
+                  >
+                    <span>{isKDBOpen ? 'Ocultar KDB' : 'Explorar KDB (5 Soluciones)'}</span>
+                    {isKDBOpen ? <ChevronUp className="w-3.5 h-3.5 text-stone-500" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-500" />}
+                  </button>
+                </div>
+              </div>
+
+              {isKDBOpen && (
+                <div className="space-y-4 pt-2 border-t border-amber-200/60 animate-fadeIn">
+                  {/* Filtro y Búsqueda de Artículos KDB */}
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[240px]">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar solución rápida por síntoma, error (502, 401, deadlock, kardex)..."
+                        value={kdbSearchTerm}
+                        onChange={(e) => setKdbSearchTerm(e.target.value)}
+                        className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-stone-900 shadow-2xs"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
+                      {['TODOS', 'INFRAESTRUCTURA', 'SEGURIDAD', 'BASE_DE_DATOS', 'APLICACIONES'].map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setKdbSelectedCategory(cat)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                            kdbSelectedCategory === cat
+                              ? 'bg-amber-600 text-white shadow-2xs'
+                              : 'bg-white hover:bg-stone-100 text-stone-600 border border-stone-200'
+                          }`}
+                        >
+                          {cat === 'TODOS' ? 'Todos' :
+                           cat === 'BASE_DE_DATOS' ? 'Base de Datos' :
+                           cat === 'INFRAESTRUCTURA' ? 'Infraestructura' :
+                           cat === 'SEGURIDAD' ? 'Seguridad & Auth' : 'Aplicaciones'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Grid de Tarjetas de Soluciones KDB */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {filteredKDBArticles.map((art) => {
+                      const isExpanded = expandedKDBId === art.id;
+                      const isCopied = copiedKDBId === art.id;
+
+                      return (
+                        <div
+                          key={art.id}
+                          className="bg-white rounded-xl border border-stone-200 p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="font-mono text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                {art.codigo}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
+                                  {art.tiempoEstimado}
+                                </span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                  art.impacto.includes('P1') ? 'bg-red-100 text-red-800 border border-red-200' :
+                                  art.impacto.includes('P2') ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                  'bg-blue-100 text-blue-800 border border-blue-200'
+                                }`}>
+                                  {art.impacto}
+                                </span>
+                              </div>
+                            </div>
+
+                            <h4 className="text-xs font-bold text-stone-900 leading-snug">
+                              {art.titulo}
+                            </h4>
+
+                            <div className="mt-2.5 space-y-1.5 text-[11px]">
+                              <p className="text-stone-600">
+                                <strong className="text-red-700 font-semibold">Síntoma: </strong>
+                                {art.sintoma}
+                              </p>
+                              <p className="text-stone-600">
+                                <strong className="text-stone-800 font-semibold">Causa Raíz: </strong>
+                                {art.causaRaiz}
+                              </p>
+                            </div>
+
+                            {/* Detalle del Workaround */}
+                            <div className="mt-3 p-2.5 rounded-lg bg-stone-900 text-stone-100 text-[10px] font-mono leading-relaxed overflow-x-auto border border-stone-800">
+                              <div className="flex items-center justify-between text-stone-400 mb-1 border-b border-stone-800 pb-1">
+                                <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                                  <Zap className="w-3 h-3 text-amber-400" /> Receta de Resolución N1
+                                </span>
+                                <span className="text-[9px] text-stone-400 font-mono">{art.jiraRef}</span>
+                              </div>
+                              <pre className="whitespace-pre-wrap font-mono text-[10.5px] text-emerald-300">
+                                {art.solucionWorkaround}
+                              </pre>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-stone-400 font-medium">
+                              Módulo: <strong>{art.modulo}</strong>
+                            </span>
+                            <button
+                              onClick={() => handleCopyWorkaround(art)}
+                              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                                isCopied
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                              }`}
+                              title="Copiar solución técnica para aplicarla al ticket"
+                            >
+                              {isCopied ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  <span>¡Copiado!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3 text-stone-500" />
+                                  <span>Copiar Workaround</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Barra de Filtros */}
