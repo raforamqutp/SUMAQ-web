@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Ticket
+from .models import Ticket, KdbArticle
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -110,3 +110,24 @@ class TicketResolverSerializer(serializers.Serializer):
     asignado_a = serializers.CharField(max_length=150, required=False, allow_blank=True)
     github_url = serializers.URLField(required=False, allow_blank=True)
     jira_key = serializers.CharField(max_length=50, required=False, allow_blank=True)
+
+
+class KdbArticleSerializer(serializers.ModelSerializer):
+    vecesUtilizado = serializers.IntegerField(source='veces_utilizado', read_only=True)
+    solucionWorkaround = serializers.CharField(source='solucion_workaround')
+    causaRaiz = serializers.CharField(source='causa_raiz')
+    tiempoEstimado = serializers.CharField(source='tiempo_estimado')
+    jiraRef = serializers.CharField(source='jira_ref', allow_blank=True)
+
+    class Meta:
+        model = KdbArticle
+        fields = [
+            'id', 'codigo', 'titulo', 'categoria', 'modulo', 'prioridad',
+            'sintoma', 'causa_raiz', 'causaRaiz',
+            'solucion_workaround', 'solucionWorkaround',
+            'tiempo_estimado', 'tiempoEstimado',
+            'jira_ref', 'jiraRef', 'activo',
+            'veces_utilizado', 'vecesUtilizado',
+            'created_at', 'updated_at'
+        ]
+

@@ -11,16 +11,18 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Ticket
+from .models import Ticket, KdbArticle
 from .serializers import (
     TicketSerializer,
     TicketCreateSerializer,
     TicketAprobarSerializer,
     TicketCabAprobarSerializer,
-    TicketResolverSerializer
+    TicketResolverSerializer,
+    KdbArticleSerializer
 )
 
 
+# Implementación: jira
 def _call_jira_api(endpoint, method='POST', payload=None):
     """
     Helper utilitario para interactuar con Jira Cloud API v3 de forma segura y tolerante a fallos.
@@ -195,6 +197,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         return Response(TicketSerializer(ticket).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='aprobar')
+    # Implementación: polp-aprobacion
     def aprobar(self, request, pk=None):
         """
         Aprobación formal de Solicitud de Acceso por Gerencia General (Dueño - Rol ADMIN).
@@ -241,6 +244,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='cab-aprobar')
+    # Implementación: cab
     def cab_aprobar(self, request, pk=None):
         """
         Aprobación formal de Solicitud de Cambio (RFC) por el Comité CAB (Change Advisory Board).
@@ -476,3 +480,35 @@ class TicketViewSet(viewsets.ModelViewSet):
             "problemas_detectados": problemas_detectados,
             "incidencias_pendientes": incidencias_pendientes
         })
+
+
+class KdbArticleViewSet(viewsets.ModelViewSet):
+    queryset = KdbArticle.objects.filter(activo=True).order_by('codigo')
+    serializer_class = KdbArticleSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        categoria = self.request.query_params.get('categoria')
+        prioridad = self.request.query_params.get('prioridad')
+        modulo = self.request.query_params.get('modulo')
+        search = self.request.query_params.get('search')
+
+        if categoria and categoria != 'TODOS':
+            qs = qs.filter(categoria=categoria)
+        if prioridad and prioridad != 'TODOS':
+            qs = qs.filter(prioridad=prioridad)
+        if modulo and modulo != 'TODOS':
+            qs = qs.filter(modulo=modulo)
+        if search:
+            qs = qs.filter(
+                models.Q(codigo__icontains=search) |
+                models.Q(titulo__icontains=search) |
+                models.Q(sintoma__icontains=search) |
+                models.Q(causa_raiz__icontains=search) |
+                models.Q(solucion_workaround__icontains=search) |
+                models.Q(modulo__icontains=search)
+            )
+        return qs
+

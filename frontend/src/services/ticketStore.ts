@@ -1,4 +1,4 @@
-import { Ticket, TicketPriority, TicketType, JiraConfig, AreaCambio, TipoCambio, ImpactoRiesgo, ITILDashboardMetrics } from '../types/tickets';
+import { Ticket, TicketPriority, TicketType, JiraConfig, AreaCambio, TipoCambio, ImpactoRiesgo, ITILDashboardMetrics, KdbArticle } from '../types/tickets';
 
 const STORAGE_KEY = 'sumaq_itil_tickets_v1';
 const JIRA_CONFIG_KEY = 'sumaq_jira_config_v1';
@@ -611,6 +611,25 @@ export const TicketStore = {
       console.warn('[TicketStore] Fallo al obtener métricas:', e);
     }
     return null;
+  },
+
+  async getKdbArticles(params?: { search?: string; categoria?: string; prioridad?: string }): Promise<KdbArticle[]> {
+    try {
+      const query = new URLSearchParams();
+      if (params?.search) query.append('search', params.search);
+      if (params?.categoria && params.categoria !== 'TODOS') query.append('categoria', params.categoria);
+      if (params?.prioridad && params.prioridad !== 'TODOS') query.append('prioridad', params.prioridad);
+
+      const qs = query.toString();
+      const url = `/api/ti/kdb/${qs ? '?' + qs : ''}`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        return (await resp.json()) as KdbArticle[];
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error obteniendo artículos KDB:', e);
+    }
+    return [];
   },
 
   resetDefaults(): void {

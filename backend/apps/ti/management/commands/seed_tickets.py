@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from apps.ti.models import Ticket
+from apps.ti.models import Ticket, KdbArticle
 
 class Command(BaseCommand):
     help = 'Semillero de tickets iniciales para Service Desk (Semana 10) y Control de Cambios RFC/CAB (Semana 11) - ITIL v4'
@@ -300,4 +300,80 @@ class Command(BaseCommand):
             s["sla_fecha_limite"] = now + timedelta(hours=s["sla_horas"])
             Ticket.objects.update_or_create(codigo=s["codigo"], defaults=s)
 
-        self.stdout.write(self.style.SUCCESS(f'Se sincronizaron exitosamente {len(seeds)} tickets (Mesa de Ayuda y Control de Cambios RFC) en la base de datos.'))
+        # Sembrado de Base de Conocimiento KDB (ITIL v4)
+        kdb_seeds = [
+            {
+                "codigo": "KDB-2026-001",
+                "titulo": "Error 502 / 504 Bad Gateway: Microservicio Backend API no responde",
+                "categoria": KdbArticle.Categoria.INFRAESTRUCTURA,
+                "modulo": "Infraestructura & Azure",
+                "prioridad": KdbArticle.Prioridad.P1_CRITICA,
+                "sintoma": "La aplicación muestra pantalla blanca o errores 502/504 al consultar citas o procesar pagos.",
+                "causa_raiz": "Proceso Gunicorn en sumaq-backend saturado por fuga de memoria temporal o timeout en proxy NGINX.",
+                "solucion_workaround": "1. Abrir terminal del servidor Azure o local.\n2. Ejecutar reinicio del contenedor: docker restart sumaq-backend\n3. Verificar salud del servicio: docker logs sumaq-backend --tail 30\n4. Validar respuesta en http://localhost:8000/api/catalogos/. Tiempo de recuperación estimado: < 30 seg.",
+                "tiempo_estimado": "< 3 min",
+                "jira_ref": "SUMAQ-KB-101",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-002",
+                "titulo": "Error 401 Unauthorized / Token JWT Expirado en Pantalla de Cobro POS",
+                "categoria": KdbArticle.Categoria.SEGURIDAD,
+                "modulo": "Seguridad & Auth",
+                "prioridad": KdbArticle.Prioridad.P2_ALTA,
+                "sintoma": "Las recepcionistas son expulsadas a la pantalla de login con alerta 'Sesión caducada' al emitir boleta.",
+                "causa_raiz": "Access token de 120 minutos superó el tiempo de vida o clave de revocación en Redis fue purgada.",
+                "solucion_workaround": "1. Solicitar re-login inmediato de la recepcionista para emitir nuevo Refresh Token.\n2. Si el error persiste, purgar caché de sesiones en Redis ejecutando: docker exec -it sumaq-redis redis-cli FLUSHDB\n3. Validar sincronización horaria del cliente con el servidor.",
+                "tiempo_estimado": "< 2 min",
+                "jira_ref": "SUMAQ-KB-102",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-003",
+                "titulo": "Desincronización de Kardex / Reporte Financiero en Nodo Slave (Puerto 3309)",
+                "categoria": KdbArticle.Categoria.BASE_DE_DATOS,
+                "modulo": "Base de Datos MySQL",
+                "prioridad": KdbArticle.Prioridad.P3_MEDIA,
+                "sintoma": "El informe analítico de caja o inventario no muestra las ventas recientes registradas en el Master.",
+                "causa_raiz": "Hilo de replicación Slave_SQL_Running o Slave_IO_Running detenido por microcorte de red.",
+                "solucion_workaround": "1. Conectar a MySQL Slave (puerto 3309) y verificar estado: SHOW SLAVE STATUS\\G\n2. Si Slave_SQL_Running está en 'No', ejecutar: STOP REPLICA; START REPLICA;\n3. Como contingencia operativa inmediata, conmutar la lectura temporal al nodo Master (3308).",
+                "tiempo_estimado": "< 5 min",
+                "jira_ref": "SUMAQ-KB-103",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-004",
+                "titulo": "Lentitud Extrema (>20s) en Checkout POS y Generación de Boletas PDF",
+                "categoria": KdbArticle.Categoria.APLICACIONES,
+                "modulo": "Punto de Venta / Caja",
+                "prioridad": KdbArticle.Prioridad.P2_ALTA,
+                "sintoma": "Al presionar 'Cobrar' en recepción, el modal se congela y demora en mostrar el comprobante descargable.",
+                "causa_raiz": "Saturación en el motor de renderizado de boletas PDF o acumulación excesiva de LocalStorage en navegador.",
+                "solucion_workaround": "1. Instruir al personal de caja presionar Ctrl + F5 para recargar el bundle estático del navegador.\n2. Limpiar recibos temporales en localStorage del navegador.\n3. Si persiste, reiniciar worker NGINX: docker restart sumaq-frontend.",
+                "tiempo_estimado": "< 4 min",
+                "jira_ref": "SUMAQ-KB-104",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-005",
+                "titulo": "Saturación de CPU al 98% en MySQL Master por Bloqueo Transaccional (Deadlock)",
+                "categoria": KdbArticle.Categoria.BASE_DE_DATOS,
+                "modulo": "Base de Datos MySQL",
+                "prioridad": KdbArticle.Prioridad.P1_CRITICA,
+                "sintoma": "Múltiples clientes y recepcionistas no pueden confirmar reservas; peticiones quedan en espera infinita.",
+                "causa_raiz": "Contención de bloqueos pesimistas entre reservas concurrentes y actualización masiva de stock BOM.",
+                "solucion_workaround": "1. Ingresar a MySQL Master (3308) y ejecutar: SHOW FULL PROCESSLIST;\n2. Identificar el hilo en estado 'Waiting for table metadata lock' o con Time > 45 segundos.\n3. Ejecutar comando: KILL <process_id>; para liberar la tabla inmediatamente.",
+                "tiempo_estimado": "< 5 min",
+                "jira_ref": "SUMAQ-KB-105",
+                "activo": True
+            }
+        ]
+
+        for k in kdb_seeds:
+            KdbArticle.objects.update_or_create(codigo=k["codigo"], defaults=k)
+
+        # Vincular tickets de prueba a los artículos de KDB para reflejar uso real
+        Ticket.objects.filter(modulo="Base de Datos MySQL").update(kdb_codigo="KDB-2026-003")
+
+        self.stdout.write(self.style.SUCCESS(f'Se sincronizaron exitosamente {len(seeds)} tickets y {len(kdb_seeds)} artículos KDB en la base de datos.'))
+

@@ -107,3 +107,26 @@ export interface ITILDashboardMetrics {
   problemas_detectados: ProblemaDetectado[];
   incidencias_pendientes: IncidenciaPendiente[];
 }
+
+export interface KdbArticle {
+  id: number;
+  codigo: string;
+  titulo: string;
+  categoria: string;
+  modulo: string;
+  prioridad: TicketPriority | string;
+  sintoma: string;
+  causaRaiz: string;
+  causa_raiz?: string;
+  solucionWorkaround: string;
+  solucion_workaround?: string;
+  tiempoEstimado: string;
+  tiempo_estimado?: string;
+  jiraRef?: string;
+  jira_ref?: string;
+  activo: boolean;
+  vecesUtilizado?: number;
+  veces_utilizado?: number;
+  created_at?: string;
+  updated_at?: string;
+}

@@ -14,7 +14,8 @@ import {
   IncidenciaModuloStat,
   UltimoCambioArea,
   ProblemaDetectado,
-  IncidenciaPendiente
+  IncidenciaPendiente,
+  KdbArticle
 } from '../../types/tickets';
 import {
   Terminal,
@@ -115,94 +116,41 @@ export const TIPortalPage: React.FC = () => {
   const [isKDBOpen, setIsKDBOpen] = useState<boolean>(true);
   const [kdbSearchTerm, setKdbSearchTerm] = useState<string>('');
   const [kdbSelectedCategory, setKdbSelectedCategory] = useState<string>('TODOS');
+  const [kdbSelectedPriority, setKdbSelectedPriority] = useState<string>('TODOS');
   const [copiedKDBId, setCopiedKDBId] = useState<string | null>(null);
-  const [expandedKDBId, setExpandedKDBId] = useState<string | null>('KDB-001');
+  const [expandedKDBId, setExpandedKDBId] = useState<string | null>('KDB-2026-001');
+  const [kdbArticles, setKdbArticles] = useState<KdbArticle[]>([]);
+  const [isLoadingKDB, setIsLoadingKDB] = useState<boolean>(false);
 
-  const kdbArticles = useMemo(() => [
-    {
-      id: 'KDB-001',
-      codigo: 'KDB-2026-001',
-      titulo: 'Error 502 / 504 Bad Gateway: Microservicio Backend API no responde',
-      categoria: 'INFRAESTRUCTURA',
-      modulo: 'Infraestructura & Azure',
-      impacto: 'Crítico (P1)',
-      sintoma: 'La aplicación muestra pantalla blanca o errores 502/504 al consultar citas o procesar pagos.',
-      causaRaiz: 'Proceso Gunicorn en sumaq-backend saturado por fuga de memoria temporal o timeout en proxy NGINX.',
-      solucionWorkaround: '1. Abrir terminal del servidor Azure o local.\n2. Ejecutar reinicio del contenedor: docker restart sumaq-backend\n3. Verificar salud del servicio: docker logs sumaq-backend --tail 30\n4. Validar respuesta en http://localhost:8000/api/catalogos/. Tiempo de recuperación estimado: < 30 seg.',
-      tiempoEstimado: '< 3 min',
-      jiraRef: 'SUMAQ-KB-101'
-    },
-    {
-      id: 'KDB-002',
-      codigo: 'KDB-2026-002',
-      titulo: 'Error 401 Unauthorized / Token JWT Expirado en Pantalla de Cobro POS',
-      categoria: 'SEGURIDAD',
-      modulo: 'Seguridad & Auth',
-      impacto: 'Alto (P2)',
-      sintoma: 'Las recepcionistas son expulsadas a la pantalla de login con alerta "Sesión caducada" al emitir boleta.',
-      causaRaiz: 'Access token de 120 minutos superó el tiempo de vida o clave de revocación en Redis fue purgada.',
-      solucionWorkaround: '1. Solicitar re-login inmediato de la recepcionista para emitir nuevo Refresh Token.\n2. Si el error persiste, purgar caché de sesiones en Redis ejecutando: docker exec -it sumaq-redis redis-cli FLUSHDB\n3. Validar sincronización horaria del cliente con el servidor.',
-      tiempoEstimado: '< 2 min',
-      jiraRef: 'SUMAQ-KB-102'
-    },
-    {
-      id: 'KDB-003',
-      codigo: 'KDB-2026-003',
-      titulo: 'Desincronización de Kardex / Reporte Financiero en Nodo Slave (Puerto 3309)',
-      categoria: 'BASE_DE_DATOS',
-      modulo: 'Base de Datos MySQL',
-      impacto: 'Medio (P3)',
-      sintoma: 'El informe analítico de caja o inventario no muestra las ventas recientes registradas en el Master.',
-      causaRaiz: 'Hilo de replicación Slave_SQL_Running o Slave_IO_Running detenido por microcorte de red.',
-      solucionWorkaround: '1. Conectar a MySQL Slave (puerto 3309) y verificar estado: SHOW SLAVE STATUS\\G\n2. Si Slave_SQL_Running está en "No", ejecutar: STOP REPLICA; START REPLICA;\n3. Como contingencia operativa inmediata, conmutar la lectura temporal al nodo Master (3308).',
-      tiempoEstimado: '< 5 min',
-      jiraRef: 'SUMAQ-KB-103'
-    },
-    {
-      id: 'KDB-004',
-      codigo: 'KDB-2026-004',
-      titulo: 'Lentitud Extrema (>20s) en Checkout POS y Generación de Boletas PDF',
-      categoria: 'APLICACIONES',
-      modulo: 'Punto de Venta / Caja',
-      impacto: 'Alto (P2)',
-      sintoma: 'Al presionar "Cobrar" en recepción, el modal se congela y demora en mostrar el comprobante descargable.',
-      causaRaiz: 'Saturación en el motor de renderizado de boletas PDF o acumulación excesiva de LocalStorage en navegador.',
-      solucionWorkaround: '1. Instruir al personal de caja presionar Ctrl + F5 para recargar el bundle estático del navegador.\n2. Limpiar recibos temporales en localStorage del navegador.\n3. Si persiste, reiniciar worker NGINX: docker restart sumaq-frontend.',
-      tiempoEstimado: '< 4 min',
-      jiraRef: 'SUMAQ-KB-104'
-    },
-    {
-      id: 'KDB-005',
-      codigo: 'KDB-2026-005',
-      titulo: 'Saturación de CPU al 98% en MySQL Master por Bloqueo Transaccional (Deadlock)',
-      categoria: 'BASE_DE_DATOS',
-      modulo: 'Base de Datos MySQL',
-      impacto: 'Crítico (P1)',
-      sintoma: 'Múltiples clientes y recepcionistas no pueden confirmar reservas; peticiones quedan en espera infinita.',
-      causaRaiz: 'Contención de bloqueos pesimistas entre reservas concurrentes y actualización masiva de stock BOM.',
-      solucionWorkaround: '1. Ingresar a MySQL Master (3308) y ejecutar: SHOW FULL PROCESSLIST;\n2. Identificar el hilo en estado "Waiting for table metadata lock" o con Time > 45 segundos.\n3. Ejecutar comando: KILL <process_id>; para liberar la tabla inmediatamente.',
-      tiempoEstimado: '< 5 min',
-      jiraRef: 'SUMAQ-KB-105'
+  const fetchKDB = async () => {
+    setIsLoadingKDB(true);
+    try {
+      const data = await TicketStore.getKdbArticles({
+        search: kdbSearchTerm,
+        categoria: kdbSelectedCategory,
+        prioridad: kdbSelectedPriority
+      });
+      setKdbArticles(data);
+      if (data.length > 0 && !expandedKDBId) {
+        setExpandedKDBId(data[0].codigo);
+      }
+    } catch (err) {
+      console.warn('[TIPortal] Error cargando KDB:', err);
+    } finally {
+      setIsLoadingKDB(false);
     }
-  ], []);
+  };
 
-  const filteredKDBArticles = useMemo(() => {
-    return kdbArticles.filter(art => {
-      const matchCategory = kdbSelectedCategory === 'TODOS' || art.categoria === kdbSelectedCategory;
-      const matchSearch = kdbSearchTerm === '' ||
-        art.titulo.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
-        art.sintoma.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
-        art.codigo.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
-        art.modulo.toLowerCase().includes(kdbSearchTerm.toLowerCase()) ||
-        art.solucionWorkaround.toLowerCase().includes(kdbSearchTerm.toLowerCase());
-      return matchCategory && matchSearch;
-    });
-  }, [kdbArticles, kdbSelectedCategory, kdbSearchTerm]);
+  useEffect(() => {
+    fetchKDB();
+  }, [kdbSearchTerm, kdbSelectedCategory, kdbSelectedPriority]);
 
-  const handleCopyWorkaround = (art: typeof kdbArticles[0]) => {
-    const textToCopy = `[${art.codigo}] ${art.titulo}\nDiagnóstico: ${art.causaRaiz}\nSolución Workaround:\n${art.solucionWorkaround}`;
+  const handleCopyWorkaround = (art: KdbArticle) => {
+    const causa = art.causaRaiz || art.causa_raiz || '';
+    const solucion = art.solucionWorkaround || art.solucion_workaround || '';
+    const textToCopy = `[${art.codigo}] ${art.titulo}\nDiagnóstico: ${causa}\nSolución Workaround:\n${solucion}`;
     navigator.clipboard.writeText(textToCopy);
-    setCopiedKDBId(art.id);
+    setCopiedKDBId(art.codigo);
     setTimeout(() => setCopiedKDBId(null), 2500);
   };
 
@@ -264,6 +212,7 @@ export const TIPortalPage: React.FC = () => {
     await loadData();
   };
 
+  // Implementación: cab-modal
   const handleOpenCabModal = (t: Ticket) => {
     setCabModalTicket(t);
     setCabAprobadorInput('MBA Mg. Ing. Renéé Alonso Nieto Valencia (CAB Chair)');
@@ -1722,7 +1671,14 @@ export const TIPortalPage: React.FC = () => {
                     Diagnóstico ITIL:
                   </p>
                   <p className="mt-1">
-                    El módulo con mayor volumen de fallas es <strong>Base de Datos MySQL</strong> (33.3%). Esto sustenta y valida el pase a producción del cambio <strong>RFC-2026-0042</strong> para la réplica de lectura en el puerto 3309.
+                    {computedMetrics.incidencias_por_modulo && computedMetrics.incidencias_por_modulo.length > 0 ? (
+                      <>
+                        El módulo con mayor volumen de fallas es <strong>{computedMetrics.incidencias_por_modulo[0].modulo}</strong> ({computedMetrics.incidencias_por_modulo[0].percentage}%). 
+                        Esto sustenta la priorización operativa y focalización de recursos de soporte en este subsistema.
+                      </>
+                    ) : (
+                      <>No hay incidencias registradas en el periodo actual para formular diagnóstico.</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -1808,19 +1764,25 @@ export const TIPortalPage: React.FC = () => {
                         <span className="text-[11px] font-bold text-indigo-900 flex items-center gap-1">
                           <Network className="w-3 h-3 text-indigo-600" /> Infraestructura
                         </span>
-                        <span className="font-mono text-[10px] font-black text-indigo-700">
-                          {computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA?.codigo || 'RFC-0050'}
-                        </span>
+                        {computedMetrics.ultimo_cambio_por_area?.INFRAESTRUCTURA && (
+                          <span className="font-mono text-[10px] font-black text-indigo-700">
+                            {computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA.codigo}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-stone-700 line-clamp-1 font-medium">
-                        {computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA?.asunto || 'Switch Administrable & VLANs 10, 20, 30'}
+                        {computedMetrics.ultimo_cambio_por_area?.INFRAESTRUCTURA?.asunto || 'Sin cambios en esta área'}
                       </p>
-                      <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
-                        <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Aprobado CAB</span>
-                        <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA?.cab_acta_numero || 'ACTA-CAB-2026-050'}>
-                          {computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA?.cab_acta_numero || 'ACTA-CAB-2026-050'}
-                        </span>
-                      </div>
+                      {computedMetrics.ultimo_cambio_por_area?.INFRAESTRUCTURA && (
+                        <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
+                          <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                            {computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA.estado || 'Registrado'}
+                          </span>
+                          <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA.cab_acta_numero || ''}>
+                            {computedMetrics.ultimo_cambio_por_area.INFRAESTRUCTURA.cab_acta_numero || 'Sin Acta'}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 2. Aplicaciones & BD */}
@@ -1829,19 +1791,25 @@ export const TIPortalPage: React.FC = () => {
                         <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
                           <Database className="w-3 h-3 text-blue-600" /> Aplicaciones & BD
                         </span>
-                        <span className="font-mono text-[10px] font-black text-blue-700">
-                          {computedMetrics.ultimo_cambio_por_area.APLICACIONES?.codigo || 'RFC-0042'}
-                        </span>
+                        {computedMetrics.ultimo_cambio_por_area?.APLICACIONES && (
+                          <span className="font-mono text-[10px] font-black text-blue-700">
+                            {computedMetrics.ultimo_cambio_por_area.APLICACIONES.codigo}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-stone-700 line-clamp-1 font-medium">
-                        {computedMetrics.ultimo_cambio_por_area.APLICACIONES?.asunto || 'Pasarela Niubiz & Réplica Asíncrona'}
+                        {computedMetrics.ultimo_cambio_por_area?.APLICACIONES?.asunto || 'Sin cambios en esta área'}
                       </p>
-                      <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
-                        <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Aprobado CAB</span>
-                        <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.APLICACIONES?.cab_acta_numero || 'ACTA-CAB-2026-042'}>
-                          {computedMetrics.ultimo_cambio_por_area.APLICACIONES?.cab_acta_numero || 'ACTA-CAB-2026-042'}
-                        </span>
-                      </div>
+                      {computedMetrics.ultimo_cambio_por_area?.APLICACIONES && (
+                        <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
+                          <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                            {computedMetrics.ultimo_cambio_por_area.APLICACIONES.estado || 'Registrado'}
+                          </span>
+                          <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.APLICACIONES.cab_acta_numero || ''}>
+                            {computedMetrics.ultimo_cambio_por_area.APLICACIONES.cab_acta_numero || 'Sin Acta'}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 3. Documentación */}
@@ -1850,19 +1818,25 @@ export const TIPortalPage: React.FC = () => {
                         <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
                           <BookOpen className="w-3 h-3 text-amber-600" /> Documentación
                         </span>
-                        <span className="font-mono text-[10px] font-black text-amber-700">
-                          {computedMetrics.ultimo_cambio_por_area.DOCUMENTACION?.codigo || 'RFC-0043'}
-                        </span>
+                        {computedMetrics.ultimo_cambio_por_area?.DOCUMENTACION && (
+                          <span className="font-mono text-[10px] font-black text-amber-700">
+                            {computedMetrics.ultimo_cambio_por_area.DOCUMENTACION.codigo}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-stone-700 line-clamp-1 font-medium">
-                        {computedMetrics.ultimo_cambio_por_area.DOCUMENTACION?.asunto || 'Topología de Red & Contingencia'}
+                        {computedMetrics.ultimo_cambio_por_area?.DOCUMENTACION?.asunto || 'Sin cambios en esta área'}
                       </p>
-                      <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
-                        <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Implementado</span>
-                        <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.DOCUMENTACION?.cab_acta_numero || 'ACTA-CAB-2026-043'}>
-                          {computedMetrics.ultimo_cambio_por_area.DOCUMENTACION?.cab_acta_numero || 'ACTA-CAB-2026-043'}
-                        </span>
-                      </div>
+                      {computedMetrics.ultimo_cambio_por_area?.DOCUMENTACION && (
+                        <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
+                          <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                            {computedMetrics.ultimo_cambio_por_area.DOCUMENTACION.estado || 'Registrado'}
+                          </span>
+                          <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.DOCUMENTACION.cab_acta_numero || ''}>
+                            {computedMetrics.ultimo_cambio_por_area.DOCUMENTACION.cab_acta_numero || 'Sin Acta'}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 4. Calendario */}
@@ -1871,19 +1845,25 @@ export const TIPortalPage: React.FC = () => {
                         <span className="text-[11px] font-bold text-rose-900 flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-rose-600" /> Calendario Freeze
                         </span>
-                        <span className="font-mono text-[10px] font-black text-rose-700">
-                          {computedMetrics.ultimo_cambio_por_area.CALENDARIO?.codigo || 'RFC-0030'}
-                        </span>
+                        {computedMetrics.ultimo_cambio_por_area?.CALENDARIO && (
+                          <span className="font-mono text-[10px] font-black text-rose-700">
+                            {computedMetrics.ultimo_cambio_por_area.CALENDARIO.codigo}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-stone-700 line-clamp-1 font-medium">
-                        {computedMetrics.ultimo_cambio_por_area.CALENDARIO?.asunto || 'Change Freeze Campaña San Valentín'}
+                        {computedMetrics.ultimo_cambio_por_area?.CALENDARIO?.asunto || 'Sin cambios en esta área'}
                       </p>
-                      <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
-                        <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">Aprobado CAB</span>
-                        <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.CALENDARIO?.cab_acta_numero || 'ACTA-CAB-2026-030'}>
-                          {computedMetrics.ultimo_cambio_por_area.CALENDARIO?.cab_acta_numero || 'ACTA-CAB-2026-030'}
-                        </span>
-                      </div>
+                      {computedMetrics.ultimo_cambio_por_area?.CALENDARIO && (
+                        <div className="flex items-center justify-between text-[10px] text-stone-500 pt-1">
+                          <span className="font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                            {computedMetrics.ultimo_cambio_por_area.CALENDARIO.estado || 'Registrado'}
+                          </span>
+                          <span className="truncate max-w-[110px]" title={computedMetrics.ultimo_cambio_por_area.CALENDARIO.cab_acta_numero || ''}>
+                            {computedMetrics.ultimo_cambio_por_area.CALENDARIO.cab_acta_numero || 'Sin Acta'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2290,7 +2270,7 @@ export const TIPortalPage: React.FC = () => {
                     onClick={() => setIsKDBOpen(!isKDBOpen)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold border border-stone-200 shadow-2xs transition-all cursor-pointer"
                   >
-                    <span>{isKDBOpen ? 'Ocultar KDB' : 'Explorar KDB (5 Soluciones)'}</span>
+                    <span>{isKDBOpen ? 'Ocultar KDB' : `Explorar KDB (${kdbArticles.length} Soluciones)`}</span>
                     {isKDBOpen ? <ChevronUp className="w-3.5 h-3.5 text-stone-500" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-500" />}
                   </button>
                 </div>
@@ -2299,127 +2279,179 @@ export const TIPortalPage: React.FC = () => {
               {isKDBOpen && (
                 <div className="space-y-4 pt-2 border-t border-amber-200/60 animate-fadeIn">
                   {/* Filtro y Búsqueda de Artículos KDB */}
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 flex-wrap">
-                    <div className="relative flex-1 min-w-[240px]">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-                      <input
-                        type="text"
-                        placeholder="Buscar solución rápida por síntoma, error (502, 401, deadlock, kardex)..."
-                        value={kdbSearchTerm}
-                        onChange={(e) => setKdbSearchTerm(e.target.value)}
-                        className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-stone-900 shadow-2xs"
-                      />
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 flex-wrap">
+                      <div className="relative flex-1 min-w-[240px]">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar solución en BD por síntoma, error (502, 401, deadlock, kardex)..."
+                          value={kdbSearchTerm}
+                          onChange={(e) => setKdbSearchTerm(e.target.value)}
+                          className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-stone-900 shadow-2xs"
+                        />
+                      </div>
+
+                      {/* Filtro por Categoría */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
+                        {['TODOS', 'INFRAESTRUCTURA', 'SEGURIDAD', 'BASE_DE_DATOS', 'APLICACIONES'].map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setKdbSelectedCategory(cat)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                              kdbSelectedCategory === cat
+                                ? 'bg-amber-600 text-white shadow-2xs'
+                                : 'bg-white hover:bg-stone-100 text-stone-600 border border-stone-200'
+                            }`}
+                          >
+                            {cat === 'TODOS' ? 'Todas las Categorías' :
+                             cat === 'BASE_DE_DATOS' ? 'Base de Datos' :
+                             cat === 'INFRAESTRUCTURA' ? 'Infraestructura' :
+                             cat === 'SEGURIDAD' ? 'Seguridad & Auth' : 'Aplicaciones'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
-                      {['TODOS', 'INFRAESTRUCTURA', 'SEGURIDAD', 'BASE_DE_DATOS', 'APLICACIONES'].map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => setKdbSelectedCategory(cat)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                            kdbSelectedCategory === cat
-                              ? 'bg-amber-600 text-white shadow-2xs'
-                              : 'bg-white hover:bg-stone-100 text-stone-600 border border-stone-200'
-                          }`}
-                        >
-                          {cat === 'TODOS' ? 'Todos' :
-                           cat === 'BASE_DE_DATOS' ? 'Base de Datos' :
-                           cat === 'INFRAESTRUCTURA' ? 'Infraestructura' :
-                           cat === 'SEGURIDAD' ? 'Seguridad & Auth' : 'Aplicaciones'}
-                        </button>
-                      ))}
+                    {/* Filtro por Nivel de Prioridad */}
+                    <div className="flex items-center gap-2 pt-1 text-xs overflow-x-auto">
+                      <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                        <Filter className="w-3 h-3 text-stone-400" /> Prioridad:
+                      </span>
+                      {[
+                        { id: 'TODOS', label: 'Todas' },
+                        { id: 'P1_CRITICA', label: 'P1 - Crítica', color: 'border-red-300 text-red-800 hover:bg-red-50' },
+                        { id: 'P2_ALTA', label: 'P2 - Alta', color: 'border-orange-300 text-orange-800 hover:bg-orange-50' },
+                        { id: 'P3_MEDIA', label: 'P3 - Media', color: 'border-blue-300 text-blue-800 hover:bg-blue-50' },
+                        { id: 'P4_BAJA', label: 'P4 - Baja', color: 'border-stone-300 text-stone-800 hover:bg-stone-50' }
+                      ].map((p) => {
+                        const isSelected = kdbSelectedPriority === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => setKdbSelectedPriority(p.id)}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                                : `bg-white ${p.color || 'border-stone-200 text-stone-600 hover:bg-stone-100'}`
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Grid de Tarjetas de Soluciones KDB */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {filteredKDBArticles.map((art) => {
-                      const isExpanded = expandedKDBId === art.id;
-                      const isCopied = copiedKDBId === art.id;
+                  {isLoadingKDB ? (
+                    <div className="p-8 text-center bg-white rounded-xl border border-stone-200 text-stone-500 text-xs">
+                      Consultando artículos en la Base de Conocimiento...
+                    </div>
+                  ) : kdbArticles.length === 0 ? (
+                    <div className="p-8 text-center bg-white rounded-xl border border-dashed border-stone-300 text-stone-500 text-xs">
+                      No se encontraron artículos en la Base de Conocimiento para los filtros aplicados.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {kdbArticles.map((art) => {
+                        const isCopied = copiedKDBId === art.codigo;
+                        const prioridadStr = String(art.prioridad || '');
+                        const causa = art.causaRaiz || art.causa_raiz || '';
+                        const solucion = art.solucionWorkaround || art.solucion_workaround || '';
+                        const tiempo = art.tiempoEstimado || art.tiempo_estimado || '< 5 min';
+                        const jira = art.jiraRef || art.jira_ref || '';
+                        const veces = art.vecesUtilizado ?? art.veces_utilizado ?? 0;
 
-                      return (
-                        <div
-                          key={art.id}
-                          className="bg-white rounded-xl border border-stone-200 p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <span className="font-mono text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                {art.codigo}
+                        return (
+                          <div
+                            key={art.codigo}
+                            className="bg-white rounded-xl border border-stone-200 p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <span className="font-mono text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                  {art.codigo}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
+                                    {tiempo}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                    prioridadStr.includes('P1') ? 'bg-red-100 text-red-800 border border-red-200' :
+                                    prioridadStr.includes('P2') ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                    'bg-blue-100 text-blue-800 border border-blue-200'
+                                  }`}>
+                                    {prioridadStr.replace('_', ' ')}
+                                  </span>
+                                  {veces > 0 && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200" title="Número de tickets resueltos con este procedimiento en BD">
+                                      {veces} uso{veces > 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <h4 className="text-xs font-bold text-stone-900 leading-snug">
+                                {art.titulo}
+                              </h4>
+
+                              <div className="mt-2.5 space-y-1.5 text-[11px]">
+                                <p className="text-stone-600">
+                                  <strong className="text-red-700 font-semibold">Síntoma: </strong>
+                                  {art.sintoma}
+                                </p>
+                                <p className="text-stone-600">
+                                  <strong className="text-stone-800 font-semibold">Causa Raíz: </strong>
+                                  {causa}
+                                </p>
+                              </div>
+
+                              {/* Detalle del Workaround */}
+                              <div className="mt-3 p-2.5 rounded-lg bg-stone-900 text-stone-100 text-[10px] font-mono leading-relaxed overflow-x-auto border border-stone-800">
+                                <div className="flex items-center justify-between text-stone-400 mb-1 border-b border-stone-800 pb-1">
+                                  <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                                    <Zap className="w-3 h-3 text-amber-400" /> Receta de Resolución N1
+                                  </span>
+                                  {jira && <span className="text-[9px] text-stone-400 font-mono">{jira}</span>}
+                                </div>
+                                <pre className="whitespace-pre-wrap font-mono text-[10.5px] text-emerald-300">
+                                  {solucion}
+                                </pre>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                              <span className="text-[10px] text-stone-400 font-medium">
+                                Módulo: <strong>{art.modulo}</strong>
                               </span>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
-                                  {art.tiempoEstimado}
-                                </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                  art.impacto.includes('P1') ? 'bg-red-100 text-red-800 border border-red-200' :
-                                  art.impacto.includes('P2') ? 'bg-orange-100 text-orange-800 border border-orange-200' :
-                                  'bg-blue-100 text-blue-800 border border-blue-200'
-                                }`}>
-                                  {art.impacto}
-                                </span>
-                              </div>
-                            </div>
-
-                            <h4 className="text-xs font-bold text-stone-900 leading-snug">
-                              {art.titulo}
-                            </h4>
-
-                            <div className="mt-2.5 space-y-1.5 text-[11px]">
-                              <p className="text-stone-600">
-                                <strong className="text-red-700 font-semibold">Síntoma: </strong>
-                                {art.sintoma}
-                              </p>
-                              <p className="text-stone-600">
-                                <strong className="text-stone-800 font-semibold">Causa Raíz: </strong>
-                                {art.causaRaiz}
-                              </p>
-                            </div>
-
-                            {/* Detalle del Workaround */}
-                            <div className="mt-3 p-2.5 rounded-lg bg-stone-900 text-stone-100 text-[10px] font-mono leading-relaxed overflow-x-auto border border-stone-800">
-                              <div className="flex items-center justify-between text-stone-400 mb-1 border-b border-stone-800 pb-1">
-                                <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-400">
-                                  <Zap className="w-3 h-3 text-amber-400" /> Receta de Resolución N1
-                                </span>
-                                <span className="text-[9px] text-stone-400 font-mono">{art.jiraRef}</span>
-                              </div>
-                              <pre className="whitespace-pre-wrap font-mono text-[10.5px] text-emerald-300">
-                                {art.solucionWorkaround}
-                              </pre>
+                              <button
+                                onClick={() => handleCopyWorkaround(art)}
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                                  isCopied
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                                }`}
+                                title="Copiar solución técnica para aplicarla al ticket"
+                              >
+                                {isCopied ? (
+                                  <>
+                                    <Check className="w-3 h-3" />
+                                    <span>¡Copiado!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3 text-stone-500" />
+                                    <span>Copiar Workaround</span>
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
-
-                          <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
-                            <span className="text-[10px] text-stone-400 font-medium">
-                              Módulo: <strong>{art.modulo}</strong>
-                            </span>
-                            <button
-                              onClick={() => handleCopyWorkaround(art)}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                                isCopied
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
-                              }`}
-                              title="Copiar solución técnica para aplicarla al ticket"
-                            >
-                              {isCopied ? (
-                                <>
-                                  <Check className="w-3 h-3" />
-                                  <span>¡Copiado!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3 text-stone-500" />
-                                  <span>Copiar Workaround</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

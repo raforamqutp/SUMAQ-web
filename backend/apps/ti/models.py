@@ -85,6 +85,7 @@ class Ticket(models.Model):
     jira_key = models.CharField('Clave Jira Cloud', max_length=50, blank=True, default='')
     jira_url = models.URLField('URL Jira Cloud', blank=True, default='')
     github_url = models.URLField('URL GitHub RFC/PR', blank=True, default='')
+    kdb_codigo = models.CharField('Código KDB Vinculado', max_length=50, blank=True, default='', db_index=True)
 
     created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
     updated_at = models.DateTimeField('Última Actualización', auto_now=True)
@@ -99,6 +100,7 @@ class Ticket(models.Model):
         return f"[{self.codigo}] {self.asunto} ({self.estado})"
 
     def save(self, *args, **kwargs):
+        # Implementación: sla
         # Asignar SLA automáticamente si no está definido
         if not self.sla_horas or self.sla_horas <= 0:
             if self.prioridad == self.Prioridad.P1_CRITICA:
@@ -110,6 +112,7 @@ class Ticket(models.Model):
             elif self.prioridad == self.Prioridad.P4_BAJA:
                 self.sla_horas = 48
 
+        # Implementación: polp
         # Si es solicitud de acceso o de cambio y no ha sido aprobada, marcar pendiente de aprobación
         if self.tipo in (self.Tipo.SOLICITUD_ACCESO, self.Tipo.SOLICITUD_CAMBIO) and not self.aprobado_por_gerencia and not self.cab_aprobado_por and self.estado == self.Estado.ABIERTO:
             self.estado = self.Estado.PENDIENTE_APROBACION
@@ -119,3 +122,47 @@ class Ticket(models.Model):
             self.sla_fecha_limite = base_time + timedelta(hours=self.sla_horas)
 
         super().save(*args, **kwargs)
+
+
+class KdbArticle(models.Model):
+    class Categoria(models.TextChoices):
+        INFRAESTRUCTURA = 'INFRAESTRUCTURA', 'Infraestructura'
+        SEGURIDAD = 'SEGURIDAD', 'Seguridad'
+        BASE_DE_DATOS = 'BASE_DE_DATOS', 'Base de Datos'
+        APLICACIONES = 'APLICACIONES', 'Aplicaciones'
+        REDES = 'REDES', 'Redes'
+
+    class Prioridad(models.TextChoices):
+        P1_CRITICA = 'P1_CRITICA', 'P1 - Crítica'
+        P2_ALTA = 'P2_ALTA', 'P2 - Alta'
+        P3_MEDIA = 'P3_MEDIA', 'P3 - Media'
+        P4_BAJA = 'P4_BAJA', 'P4 - Baja'
+
+    codigo = models.CharField('Código KDB', max_length=50, unique=True, db_index=True)
+    titulo = models.CharField('Título', max_length=255)
+    categoria = models.CharField('Categoría', max_length=50, choices=Categoria.choices, default=Categoria.INFRAESTRUCTURA)
+    modulo = models.CharField('Módulo Afectado', max_length=100)
+    prioridad = models.CharField('Prioridad', max_length=20, choices=Prioridad.choices, default=Prioridad.P2_ALTA)
+    sintoma = models.TextField('Síntoma')
+    causa_raiz = models.TextField('Causa Raíz')
+    solucion_workaround = models.TextField('Solución Workaround')
+    tiempo_estimado = models.CharField('Tiempo Estimado', max_length=50, default='< 5 min')
+    jira_ref = models.CharField('Referencia Jira', max_length=50, blank=True, default='')
+    activo = models.BooleanField('Activo', default=True)
+
+    created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Última Actualización', auto_now=True)
+
+    class Meta:
+        db_table = 'ti_kdb_articulos'
+        verbose_name = 'Artículo KDB'
+        verbose_name_plural = 'Artículos KDB'
+        ordering = ['codigo']
+
+    def __str__(self):
+        return f"[{self.codigo}] {self.titulo}"
+
+    @property
+    def veces_utilizado(self):
+        return Ticket.objects.filter(kdb_codigo=self.codigo).count()
+
