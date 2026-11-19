@@ -1,4 +1,4 @@
-import { Ticket, TicketPriority, TicketType, JiraConfig, AreaCambio, TipoCambio, ImpactoRiesgo, ITILDashboardMetrics, KdbArticle } from '../types/tickets';
+import { Ticket, TicketPriority, TicketType, JiraConfig, AreaCambio, TipoCambio, ImpactoRiesgo, ITILDashboardMetrics, KdbArticle, MonitoringEvent, MonitoringHealthResponse } from '../types/tickets';
 
 const STORAGE_KEY = 'sumaq_itil_tickets_v1';
 const JIRA_CONFIG_KEY = 'sumaq_jira_config_v1';
@@ -19,7 +19,7 @@ const SEED_TICKETS: Ticket[] = [
     id: 'REQ-2026-0001',
     tipo: 'SOLICITUD_SERVICIO',
     prioridad: 'P3_MEDIA',
-    asunto: 'Desacoplamiento total de datos simulados hacia API REST real',
+    asunto: 'Integración de servicios frontend hacia endpoints Django REST',
     descripcion: 'Reemplazo de estados estáticos en frontend por endpoints Django /api/ en citas, inventario y finanzas.',
     modulo: 'Frontend & APIs',
     solicitanteNombre: 'Rafael Ramirez Quiroz (RQ)',
@@ -630,6 +630,98 @@ export const TicketStore = {
       console.warn('[TicketStore] Error obteniendo artículos KDB:', e);
     }
     return [];
+  },
+
+  async getMonitoringEvents(params?: {
+    nivel?: string;
+    componente?: string;
+    genera_incidente?: string;
+    estado?: string;
+    search?: string;
+  }): Promise<MonitoringEvent[]> {
+    try {
+      const query = new URLSearchParams();
+      if (params?.nivel && params.nivel !== 'TODOS') query.append('nivel', params.nivel);
+      if (params?.componente && params.componente !== 'TODOS') query.append('componente', params.componente);
+      if (params?.genera_incidente && params.genera_incidente !== 'TODOS') query.append('genera_incidente', params.genera_incidente);
+      if (params?.estado && params.estado !== 'TODOS') query.append('estado', params.estado);
+      if (params?.search) query.append('search', params.search);
+
+      const qs = query.toString();
+      const url = `/api/ti/monitoring/${qs ? '?' + qs : ''}`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        return (await resp.json()) as MonitoringEvent[];
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error obteniendo eventos de monitoreo:', e);
+    }
+    return [];
+  },
+
+  async getMonitoringHealth(): Promise<MonitoringHealthResponse | null> {
+    try {
+      const resp = await fetch('/api/ti/monitoring/health/');
+      if (resp.ok) {
+        return (await resp.json()) as MonitoringHealthResponse;
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error obteniendo telemetría de salud:', e);
+    }
+    return null;
+  },
+
+  async evaluateMonitoringReading(payload: {
+    componente: string;
+    metrica: string;
+    valor_numerico: number;
+    unidad: string;
+    proceso_negocio?: string;
+    descripcion?: string;
+  }): Promise<{ success: boolean; evento?: MonitoringEvent; ticket_generado?: Ticket }> {
+    try {
+      const resp = await fetch('/api/ti/monitoring/evaluar/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.ticket_generado) {
+          const normalized = normalizeTicket(data.ticket_generado);
+          const current = this.getTickets();
+          this.saveTickets([normalized, ...current]);
+        }
+        return {
+          success: true,
+          evento: data.evento as MonitoringEvent,
+          ticket_generado: data.ticket_generado ? normalizeTicket(data.ticket_generado) : undefined
+        };
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error evaluando lectura de monitoreo:', e);
+    }
+    return { success: false };
+  },
+
+  async mitigateMonitoringEvent(
+    id: number,
+    payload: { accion_respuesta?: string; estado?: string }
+  ): Promise<MonitoringEvent | null> {
+    try {
+      const resp = await fetch(`/api/ti/monitoring/${id}/mitigar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return (data.evento || null) as MonitoringEvent | null;
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error mitigando evento:', e);
+    }
+    return null;
   },
 
   resetDefaults(): void {

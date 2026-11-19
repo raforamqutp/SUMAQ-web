@@ -130,3 +130,118 @@ export interface KdbArticle {
   created_at?: string;
   updated_at?: string;
 }
+
+export type MonitoringEventLevel = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+
+export type MonitoringComponent =
+  | 'MYSQL_MASTER'
+  | 'MYSQL_SLAVE'
+  | 'REDIS_CACHE'
+  | 'BACKEND_API'
+  | 'NGINX_GATEWAY'
+  | 'PASARELA_NIUBIZ'
+  | 'SEGURIDAD_AUTH'
+  | 'HOST_SISTEMA';
+
+export type MonitoringEventStatus = 'ACTIVO' | 'MITIGADO' | 'ESCALADO' | 'CERRADO';
+
+export interface MonitoringEvent {
+  id: number;
+  codigo: string;
+  nivel: MonitoringEventLevel;
+  nivelDisplay?: string;
+  componente: MonitoringComponent | string;
+  componenteDisplay?: string;
+  metrica: string;
+  valorRegistrado: string;
+  valor_registrado?: string;
+  valorNumerico: number;
+  valor_numerico?: number;
+  umbralReferencia: string;
+  umbral_referencia?: string;
+  descripcion: string;
+  procesoNegocio: string;
+  proceso_negocio?: string;
+  generaIncidente: boolean;
+  genera_incidente?: boolean;
+  justificacionIncidente: string;
+  justificacion_incidente?: string;
+  impacto: 'BAJO' | 'MEDIO' | 'ALTO';
+  urgencia: 'BAJA' | 'MEDIA' | 'ALTA';
+  prioridadAsignada: string;
+  prioridad_asignada?: string;
+  responsable: string;
+  accionRespuesta: string;
+  accion_respuesta?: string;
+  tiempoRespuestaMax: string;
+  tiempo_respuesta_max?: string;
+  estado: MonitoringEventStatus;
+  estadoDisplay?: string;
+  ticketCodigo: string;
+  ticket_codigo?: string;
+  fechaDeteccion?: string;
+  created_at?: string;
+}
+
+export interface PoliticaMonitoreo {
+  metrica: string;
+  componente: string;
+  umbral_info: string;
+  umbral_warning: string;
+  umbral_error: string;
+  umbral_critical: string;
+  intervalo: string;
+}
+
+export interface MonitoringHealthResponse {
+  timestamp: string;
+  servicios: {
+    database: {
+      nombre: string;
+      engine: string;
+      online: boolean;
+      latencia_ms: number;
+      nivel: MonitoringEventLevel;
+      umbral: string;
+      registros_ti: number;
+    };
+    memory: {
+      nombre: string;
+      used_pct: number;
+      used_gb: number;
+      total_gb: number;
+      free_gb: number;
+      nivel: MonitoringEventLevel;
+      umbral: string;
+    };
+    disk: {
+      nombre: string;
+      used_pct: number;
+      used_gb: number;
+      total_gb: number;
+      free_gb: number;
+      nivel: MonitoringEventLevel;
+      umbral: string;
+    };
+    cache_api: {
+      nombre: string;
+      online: boolean;
+      redis_socket: boolean;
+      latencia_ms: number;
+      nivel: MonitoringEventLevel;
+      umbral: string;
+    };
+  };
+  resumen_eventos: {
+    total: number;
+    info: number;
+    warning: number;
+    error: number;
+    critical: number;
+    incidentes_generados: number;
+    activos: number;
+    mitigados: number;
+  };
+  politicas_monitoreo: PoliticaMonitoreo[];
+}
+

@@ -1,13 +1,13 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
-from apps.ti.models import Ticket, KdbArticle
+from apps.ti.models import Ticket, KdbArticle, MonitoringEvent
 
 class Command(BaseCommand):
-    help = 'Semillero de tickets iniciales para Service Desk (Semana 10) y Control de Cambios RFC/CAB (Semana 11) - ITIL v4'
+    help = 'Semillero de registros iniciales para Service Desk, Control de Cambios y Monitoreo de Eventos - ITIL v4'
 
     def add_arguments(self, parser):
-        parser.add_argument('--force', action='store_true', help='Recrea o actualiza los tickets sembrados')
+        parser.add_argument('--force', action='store_true', help='Recrea o actualiza los registros sembrados')
 
     def handle(self, *args, **options):
         force = options.get('force', False)
@@ -32,8 +32,13 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.WARNING(f'Aviso verificando usuario TI: {e}'))
 
-        if Ticket.objects.count() >= 10 and not force:
-            self.stdout.write(self.style.SUCCESS(f'Ya existen {Ticket.objects.count()} tickets en la base de datos.'))
+        if (
+            Ticket.objects.count() >= 13
+            and KdbArticle.objects.count() >= 5
+            and MonitoringEvent.objects.count() >= 8
+            and not force
+        ):
+            self.stdout.write(self.style.SUCCESS(f'Ya existen {Ticket.objects.count()} tickets y {MonitoringEvent.objects.count()} eventos en la base de datos.'))
             return
 
         now = timezone.now()
@@ -45,7 +50,7 @@ class Command(BaseCommand):
                 "codigo": "REQ-2026-0001",
                 "tipo": Ticket.Tipo.SOLICITUD_SERVICIO,
                 "prioridad": Ticket.Prioridad.P3_MEDIA,
-                "asunto": "Desacoplamiento total de datos simulados hacia API REST real",
+                "asunto": "Integración de servicios frontend hacia endpoints Django REST",
                 "descripcion": "Reemplazo de estados estáticos en frontend por endpoints Django /api/ en citas, inventario y finanzas.",
                 "modulo": "Frontend & APIs",
                 "solicitante_nombre": "Rafael Ramirez Quiroz (RQ)",
@@ -372,8 +377,289 @@ class Command(BaseCommand):
         for k in kdb_seeds:
             KdbArticle.objects.update_or_create(codigo=k["codigo"], defaults=k)
 
-        # Vincular tickets de prueba a los artículos de KDB para reflejar uso real
+        # Vincular tickets existentes a los artículos de KDB
         Ticket.objects.filter(modulo="Base de Datos MySQL").update(kdb_codigo="KDB-2026-003")
 
-        self.stdout.write(self.style.SUCCESS(f'Se sincronizaron exitosamente {len(seeds)} tickets y {len(kdb_seeds)} artículos KDB en la base de datos.'))
+        # Tickets de Incidente generados por el Motor de Monitoreo de Eventos
+        incident_tickets_seeds = [
+            {
+                "codigo": "INC-2026-0028",
+                "tipo": Ticket.Tipo.INCIDENCIA,
+                "prioridad": Ticket.Prioridad.P2_ALTA,
+                "asunto": "[Alerta ERROR] Latencia de Respuesta en MySQL Master (3308) (2150.0 ms)",
+                "descripcion": (
+                    "Incidente generado automáticamente por el motor de monitoreo de eventos (EVT-2026-0005).\n"
+                    "Componente: MySQL Master (3308)\n"
+                    "Métrica: Latencia de Respuesta = 2150.0 ms (Umbral: Error 1000-2500ms)\n"
+                    "Proceso de Negocio: Agendamiento y Disponibilidad de Terapeutas\n"
+                    "Plan de Respuesta Inmediata: Terminar consultas bloqueadas, liberar conexiones en estado Sleep y conmutar lecturas analíticas a réplica 3309."
+                ),
+                "modulo": "Base de Datos MySQL",
+                "solicitante_nombre": "Motor de Monitoreo SUMAQ",
+                "solicitante_email": "monitoreo.ti@sumaqspa.pe",
+                "solicitante_rol": "ADMIN",
+                "sla_horas": 8,
+                "sla_fecha_limite": now + timedelta(hours=8),
+                "estado": Ticket.Estado.EN_PROCESO,
+                "asignado_a": "Bryan Mango (DBA / Infraestructura L2)",
+                "aprobado_por_gerencia": True,
+                "aprobador_nombre": "Rafael Ramirez (Gerente General)",
+                "resolucion_tecnica": "Aislamiento de lecturas de reportes hacia contenedor Slave 3309 en curso.",
+                "jira_key": "KAN-28",
+                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-28",
+                "kdb_codigo": "KDB-2026-005"
+            },
+            {
+                "codigo": "INC-2026-0029",
+                "tipo": Ticket.Tipo.INCIDENCIA,
+                "prioridad": Ticket.Prioridad.P1_CRITICA,
+                "asunto": "[Alerta CRITICAL] Ocupación de Almacenamiento en Disco en Servidor Host (95.4%)",
+                "descripcion": (
+                    "Incidente generado automáticamente por el motor de monitoreo de eventos (EVT-2026-0006).\n"
+                    "Componente: Recursos de Servidor / Host\n"
+                    "Métrica: Ocupación de Disco = 95.4% (Umbral Crítico: >95%)\n"
+                    "Proceso de Negocio: Continuidad Transaccional y Persistencia MySQL\n"
+                    "Plan de Respuesta Inmediata: Purgar binlogs antiguos ya replicados (PURGE BINARY LOGS), rotar logs de Nginx y liberar partición."
+                ),
+                "modulo": "Infraestructura & BD",
+                "solicitante_nombre": "Motor de Monitoreo SUMAQ",
+                "solicitante_email": "monitoreo.ti@sumaqspa.pe",
+                "solicitante_rol": "ADMIN",
+                "sla_horas": 2,
+                "sla_fecha_limite": now + timedelta(hours=2),
+                "estado": Ticket.Estado.RESUELTO,
+                "asignado_a": "Rafael Ramirez (SysAdmin / Cloud L3)",
+                "aprobado_por_gerencia": True,
+                "aprobador_nombre": "Rafael Ramirez (Gerente General)",
+                "resolucion_tecnica": "Ejecución de PURGE BINARY LOGS en nodo 3308 y compresión de respaldos; ocupación reducida al 64.2%.",
+                "fecha_resolucion": now - timedelta(minutes=15),
+                "jira_key": "KAN-29",
+                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-29",
+                "kdb_codigo": "KDB-2026-001"
+            },
+            {
+                "codigo": "INC-2026-0031",
+                "tipo": Ticket.Tipo.INCIDENCIA,
+                "prioridad": Ticket.Prioridad.P1_CRITICA,
+                "asunto": "[Alerta CRITICAL] Indisponibilidad HTTP 502 en Servidor Web Nginx (98.0%)",
+                "descripcion": (
+                    "Incidente generado automáticamente por el motor de monitoreo de eventos (EVT-2026-0007).\n"
+                    "Componente: Servidor Web Nginx\n"
+                    "Métrica: Tasa de Errores HTTP 5xx = 98.0% (Umbral Crítico: >95%)\n"
+                    "Proceso de Negocio: Portal de Reservas Web y Checkout POS\n"
+                    "Plan de Respuesta Inmediata: Reinicio automático de workers Gunicorn en sumaq-backend mediante política Docker healthcheck."
+                ),
+                "modulo": "Infraestructura & BD",
+                "solicitante_nombre": "Motor de Monitoreo SUMAQ",
+                "solicitante_email": "monitoreo.ti@sumaqspa.pe",
+                "solicitante_rol": "ADMIN",
+                "sla_horas": 2,
+                "sla_fecha_limite": now + timedelta(hours=2),
+                "estado": Ticket.Estado.RESUELTO,
+                "asignado_a": "Anthony Luque (DevOps / Backend L2)",
+                "aprobado_por_gerencia": True,
+                "aprobador_nombre": "Rafael Ramirez (Gerente General)",
+                "resolucion_tecnica": "Contenedor sumaq-backend reiniciado vía healthcheck en 22 segundos. Respuesta 200 OK restablecida.",
+                "fecha_resolucion": now - timedelta(minutes=10),
+                "jira_key": "KAN-31",
+                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-31",
+                "kdb_codigo": "KDB-2026-001"
+            }
+        ]
+
+        created_inc_tickets = {}
+        for inc_data in incident_tickets_seeds:
+            t_obj, _ = Ticket.objects.update_or_create(codigo=inc_data["codigo"], defaults=inc_data)
+            created_inc_tickets[inc_data["codigo"]] = t_obj
+
+        # Sembrado de Bitácora Cronológica de Eventos de Monitoreo (09:00 a 09:25)
+        event_seeds = [
+            {
+                "codigo": "EVT-2026-0001",
+                "nivel": MonitoringEvent.Nivel.INFO,
+                "componente": MonitoringEvent.Componente.BACKEND_API,
+                "metrica": "Verificación de Salud de Servicios (Heartbeat)",
+                "valor_registrado": "62.0%",
+                "valor_numerico": 62.0,
+                "umbral_referencia": "Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%",
+                "descripcion": "[09:00] Inicio de jornada operativa en SUMAQ Spa. Servicios Django REST, MySQL 3308 y Redis 6379 operando dentro de parámetros normales.",
+                "proceso_negocio": "Operación General Spa",
+                "genera_incidente": False,
+                "justificacion_incidente": "Operación normal verificada. Se almacena registro en bitácora de auditoría sin requerir ticket.",
+                "impacto": MonitoringEvent.NivelImpacto.BAJO,
+                "urgencia": MonitoringEvent.NivelUrgencia.BAJA,
+                "prioridad_asignada": "N/A",
+                "responsable": "Monitoreo Automatizado TI",
+                "accion_respuesta": "Registro en bitácora estructurada. Sin intervención manual.",
+                "tiempo_respuesta_max": "N/A",
+                "estado": MonitoringEvent.Estado.CERRADO,
+                "ticket_vinculado": None,
+                "ticket_codigo": ""
+            },
+            {
+                "codigo": "EVT-2026-0002",
+                "nivel": MonitoringEvent.Nivel.INFO,
+                "componente": MonitoringEvent.Componente.BACKEND_API,
+                "metrica": "Uso de CPU del Servidor",
+                "valor_registrado": "72.0%",
+                "valor_numerico": 72.0,
+                "umbral_referencia": "Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%",
+                "descripcion": "[09:05] Incremento de uso de CPU al 72.0% en contenedor sumaq-backend durante apertura simultánea de agendas de terapeutas.",
+                "proceso_negocio": "Consulta de Catálogo y Agenda",
+                "genera_incidente": False,
+                "justificacion_incidente": "El consumo de CPU (72.0%) se mantiene dentro de la banda informativa (60%-75%) sin degradar tiempos de respuesta.",
+                "impacto": MonitoringEvent.NivelImpacto.BAJO,
+                "urgencia": MonitoringEvent.NivelUrgencia.BAJA,
+                "prioridad_asignada": "N/A",
+                "responsable": "Monitoreo Automatizado TI",
+                "accion_respuesta": "Seguimiento automático de curva de carga por agente de telemetría.",
+                "tiempo_respuesta_max": "N/A",
+                "estado": MonitoringEvent.Estado.CERRADO,
+                "ticket_vinculado": None,
+                "ticket_codigo": ""
+            },
+            {
+                "codigo": "EVT-2026-0003",
+                "nivel": MonitoringEvent.Nivel.WARNING,
+                "componente": MonitoringEvent.Componente.HOST_SISTEMA,
+                "metrica": "Consumo de Memoria RAM",
+                "valor_registrado": "84.5%",
+                "valor_numerico": 84.5,
+                "umbral_referencia": "Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%",
+                "descripcion": "[09:08] Memoria RAM del servidor alcanza el 84.5% debido a generación concurrente de reportes financieros de sedes.",
+                "proceso_negocio": "Administración y Reportes",
+                "genera_incidente": False,
+                "justificacion_incidente": "Al encontrarse en umbral de advertencia (75%-85%) sin interrumpir transacciones de clientes, se ejecuta liberación preventiva de caché.",
+                "impacto": MonitoringEvent.NivelImpacto.BAJO,
+                "urgencia": MonitoringEvent.NivelUrgencia.MEDIA,
+                "prioridad_asignada": "N/A",
+                "responsable": "Anthony Luque (DevOps / L2)",
+                "accion_respuesta": "Liberación preventiva de objetos expirados en memoria caché y supervisión de workers.",
+                "tiempo_respuesta_max": "30 min",
+                "estado": MonitoringEvent.Estado.MITIGADO,
+                "ticket_vinculado": None,
+                "ticket_codigo": ""
+            },
+            {
+                "codigo": "EVT-2026-0004",
+                "nivel": MonitoringEvent.Nivel.WARNING,
+                "componente": MonitoringEvent.Componente.SEGURIDAD_AUTH,
+                "metrica": "Intentos Fallidos de Inicio de Sesión",
+                "valor_registrado": "25.0 intentos",
+                "valor_numerico": 25.0,
+                "umbral_referencia": "Normal: <10/min | Warning: 10-30/min | Error: 30-60/min | Crítico: >60/min",
+                "descripcion": "[09:12] Detección de 25 intentos fallidos de inicio de sesión en menos de 2 minutos sobre el endpoint /api/auth/login/.",
+                "proceso_negocio": "Seguridad de Acceso y Autenticación",
+                "genera_incidente": False,
+                "justificacion_incidente": "Mitigado automáticamente por el middleware de Rate Limiting que bloqueó temporalmente la IP origen sin comprometer cuentas.",
+                "impacto": MonitoringEvent.NivelImpacto.BAJO,
+                "urgencia": MonitoringEvent.NivelUrgencia.MEDIA,
+                "prioridad_asignada": "N/A",
+                "responsable": "Bryan Mango (Seguridad TI L2)",
+                "accion_respuesta": "Bloqueo temporal de IP por 15 minutos mediante política de Rate Limiting y registro en auditoría.",
+                "tiempo_respuesta_max": "15 min",
+                "estado": MonitoringEvent.Estado.MITIGADO,
+                "ticket_vinculado": None,
+                "ticket_codigo": ""
+            },
+            {
+                "codigo": "EVT-2026-0005",
+                "nivel": MonitoringEvent.Nivel.ERROR,
+                "componente": MonitoringEvent.Componente.MYSQL_MASTER,
+                "metrica": "Latencia de Respuesta Base de Datos",
+                "valor_registrado": "2150.0 ms",
+                "valor_numerico": 2150.0,
+                "umbral_referencia": "Normal: <400ms | Warning: 400-1000ms | Error: 1000-2500ms | Crítico: >2500ms",
+                "descripcion": "[09:15] Lentitud severa en consultas a MySQL Master (3308) con latencia de 2,150 ms por contención de bloqueos en tabla de citas.",
+                "proceso_negocio": "Agendamiento y Disponibilidad de Terapeutas",
+                "genera_incidente": True,
+                "justificacion_incidente": "Degrada directamente la calidad del servicio en recepción durante hora pico, superando el umbral de error (>1000 ms).",
+                "impacto": MonitoringEvent.NivelImpacto.MEDIO,
+                "urgencia": MonitoringEvent.NivelUrgencia.ALTA,
+                "prioridad_asignada": Ticket.Prioridad.P2_ALTA,
+                "responsable": "Bryan Mango (DBA / Infraestructura L2)",
+                "accion_respuesta": "Terminar consultas bloqueadas, liberar conexiones en estado Sleep y conmutar lecturas analíticas a réplica 3309.",
+                "tiempo_respuesta_max": "15 min",
+                "estado": MonitoringEvent.Estado.ESCALADO,
+                "ticket_vinculado": created_inc_tickets.get("INC-2026-0028"),
+                "ticket_codigo": "INC-2026-0028"
+            },
+            {
+                "codigo": "EVT-2026-0006",
+                "nivel": MonitoringEvent.Nivel.CRITICAL,
+                "componente": MonitoringEvent.Componente.HOST_SISTEMA,
+                "metrica": "Ocupación de Almacenamiento en Disco",
+                "valor_registrado": "95.4%",
+                "valor_numerico": 95.4,
+                "umbral_referencia": "Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%",
+                "descripcion": "[09:18] Partición de datos alcanza el 95.4% de capacidad por acumulación de archivos binlog de replicación y logs sin rotar.",
+                "proceso_negocio": "Continuidad Transaccional y Persistencia MySQL",
+                "genera_incidente": True,
+                "justificacion_incidente": "Supera el umbral crítico (>95%), con riesgo inminente de bloqueo de escritura en la base de datos transaccional.",
+                "impacto": MonitoringEvent.NivelImpacto.ALTO,
+                "urgencia": MonitoringEvent.NivelUrgencia.ALTA,
+                "prioridad_asignada": Ticket.Prioridad.P1_CRITICA,
+                "responsable": "Rafael Ramirez (SysAdmin / Cloud L3)",
+                "accion_respuesta": "Purgar binlogs antiguos ya replicados (PURGE BINARY LOGS), rotar logs de Nginx y liberar partición.",
+                "tiempo_respuesta_max": "5 min",
+                "estado": MonitoringEvent.Estado.CERRADO,
+                "ticket_vinculado": created_inc_tickets.get("INC-2026-0029"),
+                "ticket_codigo": "INC-2026-0029"
+            },
+            {
+                "codigo": "EVT-2026-0007",
+                "nivel": MonitoringEvent.Nivel.CRITICAL,
+                "componente": MonitoringEvent.Componente.NGINX_GATEWAY,
+                "metrica": "Tasa de Errores HTTP 5xx (502 Bad Gateway)",
+                "valor_registrado": "98.0%",
+                "valor_numerico": 98.0,
+                "umbral_referencia": "Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%",
+                "descripcion": "[09:20] Caída de respuesta en servidor web Nginx al agotarse el pool de workers de Gunicorn tras bloqueo de E/S en disco.",
+                "proceso_negocio": "Portal de Reservas Web y Checkout POS",
+                "genera_incidente": True,
+                "justificacion_incidente": "Interrupción total del servicio de reservas y cobros en todas las sedes. Impacto Alto y Urgencia Alta (Prioridad P1).",
+                "impacto": MonitoringEvent.NivelImpacto.ALTO,
+                "urgencia": MonitoringEvent.NivelUrgencia.ALTA,
+                "prioridad_asignada": Ticket.Prioridad.P1_CRITICA,
+                "responsable": "Anthony Luque (DevOps / Backend L2)",
+                "accion_respuesta": "Reinicio automático de contenedor sumaq-backend mediante Docker healthcheck y restablecimiento de pool.",
+                "tiempo_respuesta_max": "5 min",
+                "estado": MonitoringEvent.Estado.CERRADO,
+                "ticket_vinculado": created_inc_tickets.get("INC-2026-0031"),
+                "ticket_codigo": "INC-2026-0031"
+            },
+            {
+                "codigo": "EVT-2026-0008",
+                "nivel": MonitoringEvent.Nivel.INFO,
+                "componente": MonitoringEvent.Componente.BACKEND_API,
+                "metrica": "Recuperación y Estabilización de Servicio",
+                "valor_registrado": "64.2%",
+                "valor_numerico": 64.2,
+                "umbral_referencia": "Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%",
+                "descripcion": "[09:25] Recuperación automática completada. Contenedor backend operativo, espacio en disco en 64.2% y latencia MySQL en 18 ms.",
+                "proceso_negocio": "Operación General Spa",
+                "genera_incidente": False,
+                "justificacion_incidente": "Evento de confirmación de restablecimiento y vuelta a la normalidad tras ejecución del plan de respuesta.",
+                "impacto": MonitoringEvent.NivelImpacto.BAJO,
+                "urgencia": MonitoringEvent.NivelUrgencia.BAJA,
+                "prioridad_asignada": "N/A",
+                "responsable": "Monitoreo Automatizado TI",
+                "accion_respuesta": "Verificación post-recuperación exitosa y cierre de alertas activas.",
+                "tiempo_respuesta_max": "N/A",
+                "estado": MonitoringEvent.Estado.CERRADO,
+                "ticket_vinculado": None,
+                "ticket_codigo": ""
+            }
+        ]
+
+        for ev in event_seeds:
+            MonitoringEvent.objects.update_or_create(codigo=ev["codigo"], defaults=ev)
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Se sincronizaron exitosamente {len(seeds) + len(incident_tickets_seeds)} tickets, '
+                f'{len(kdb_seeds)} artículos KDB y {len(event_seeds)} eventos de monitoreo en la base de datos.'
+            )
+        )
+
 

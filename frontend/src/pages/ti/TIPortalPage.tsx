@@ -15,7 +15,9 @@ import {
   UltimoCambioArea,
   ProblemaDetectado,
   IncidenciaPendiente,
-  KdbArticle
+  KdbArticle,
+  MonitoringEvent,
+  MonitoringHealthResponse
 } from '../../types/tickets';
 import {
   Terminal,
@@ -65,8 +67,8 @@ export const TIPortalPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
-  // Vista Activa: Dashboard & Analítica | Control de Cambios (CAB) | Mesa de Ayuda (Service Desk)
-  const [activeViewMode, setActiveViewMode] = useState<'DASHBOARD_PROBLEMAS' | 'CONTROL_CAMBIOS' | 'SERVICE_DESK'>('DASHBOARD_PROBLEMAS');
+  // Vista Activa: Dashboard & Analítica | Monitoreo & Eventos | Control de Cambios (CAB) | Mesa de Ayuda (Service Desk)
+  const [activeViewMode, setActiveViewMode] = useState<'DASHBOARD_PROBLEMAS' | 'MONITOREO_EVENTOS' | 'CONTROL_CAMBIOS' | 'SERVICE_DESK'>('DASHBOARD_PROBLEMAS');
 
   // Filtros Generales
   const [selectedType, setSelectedType] = useState<string>('TODOS');
@@ -122,6 +124,107 @@ export const TIPortalPage: React.FC = () => {
   const [kdbArticles, setKdbArticles] = useState<KdbArticle[]>([]);
   const [isLoadingKDB, setIsLoadingKDB] = useState<boolean>(false);
 
+  // Estados de Monitoreo y Gestión de Eventos
+  const [monitoringEvents, setMonitoringEvents] = useState<MonitoringEvent[]>([]);
+  const [monitoringHealth, setMonitoringHealth] = useState<MonitoringHealthResponse | null>(null);
+  const [isLoadingMonitoring, setIsLoadingMonitoring] = useState<boolean>(false);
+  const [monFilterNivel, setMonFilterNivel] = useState<string>('TODOS');
+  const [monFilterComponente, setMonFilterComponente] = useState<string>('TODOS');
+  const [monFilterIncidente, setMonFilterIncidente] = useState<string>('TODOS');
+  const [monSearchTerm, setMonSearchTerm] = useState<string>('');
+
+  // Formulario de Registro y Evaluación de Lecturas de Monitoreo
+  const [evalComponente, setEvalComponente] = useState<string>('MYSQL_MASTER');
+  const [evalMetrica, setEvalMetrica] = useState<string>('Uso de CPU del Servidor');
+  const [evalUnidad, setEvalUnidad] = useState<string>('%');
+  const [evalValor, setEvalValor] = useState<string>('78.5');
+  const [evalProceso, setEvalProceso] = useState<string>('Agendamiento y Disponibilidad de Terapeutas');
+  const [evalDescripcion, setEvalDescripcion] = useState<string>('');
+  const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
+  const [evalFeedback, setEvalFeedback] = useState<{ type: 'info' | 'warning' | 'critical'; message: string; ticketId?: string } | null>(null);
+
+  const fetchMonitoring = async () => {
+    setIsLoadingMonitoring(true);
+    try {
+      const [evts, health] = await Promise.all([
+        TicketStore.getMonitoringEvents({
+          nivel: monFilterNivel,
+          componente: monFilterComponente,
+          genera_incidente: monFilterIncidente,
+          search: monSearchTerm
+        }),
+        TicketStore.getMonitoringHealth()
+      ]);
+      setMonitoringEvents(evts);
+      if (health) {
+        setMonitoringHealth(health);
+      }
+    } catch (err) {
+      console.warn('[TIPortal] Error cargando monitoreo:', err);
+    } finally {
+      setIsLoadingMonitoring(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMonitoring();
+  }, [monFilterNivel, monFilterComponente, monFilterIncidente, monSearchTerm]);
+
+  const handleEvaluateMonitoring = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const numericVal = parseFloat(evalValor);
+    if (isNaN(numericVal)) return;
+
+    setIsEvaluating(true);
+    setEvalFeedback(null);
+    try {
+      const res = await TicketStore.evaluateMonitoringReading({
+        componente: evalComponente,
+        metrica: evalMetrica,
+        valor_numerico: numericVal,
+        unidad: evalUnidad,
+        proceso_negocio: evalProceso,
+        descripcion: evalDescripcion
+      });
+
+      if (res.success && res.evento) {
+        const evt = res.evento;
+        const tId = res.ticket_generado?.id || evt.ticketCodigo || evt.ticket_codigo;
+        if (evt.generaIncidente || evt.genera_incidente) {
+          setEvalFeedback({
+            type: 'critical',
+            message: `Evento [${evt.codigo}] clasificado como ${evt.nivel}. Superó umbral de tolerancia y generó automáticamente el Ticket de Incidente ${tId}.`,
+            ticketId: tId
+          });
+        } else if (evt.nivel === 'WARNING') {
+          setEvalFeedback({
+            type: 'warning',
+            message: `Evento [${evt.codigo}] clasificado como ADVERTENCIA (${evt.valorRegistrado || evt.valor_registrado}). Acción preventiva asignada sin generar incidente.`
+          });
+        } else {
+          setEvalFeedback({
+            type: 'info',
+            message: `Evento [${evt.codigo}] registrado como INFORMATIVO (${evt.valorRegistrado || evt.valor_registrado}). Operación dentro del rango normal.`
+          });
+        }
+        setEvalDescripcion('');
+        await Promise.all([fetchMonitoring(), loadData(false)]);
+      }
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  const handleMitigateEvent = async (evt: MonitoringEvent) => {
+    const updated = await TicketStore.mitigateMonitoringEvent(evt.id, {
+      estado: 'MITIGADO',
+      accion_respuesta: `${evt.accionRespuesta || evt.accion_respuesta} [Verificado y mitigado por Guardia TI]`
+    });
+    if (updated) {
+      await fetchMonitoring();
+    }
+  };
+
   const fetchKDB = async () => {
     setIsLoadingKDB(true);
     try {
@@ -163,16 +266,20 @@ export const TIPortalPage: React.FC = () => {
     const startTime = Date.now();
 
     try {
-      // Carga en paralelo de tickets y métricas para máxima velocidad
-      const [list, metrics] = await Promise.all([
+      // Carga en paralelo de tickets, métricas y telemetría de salud
+      const [list, metrics, health] = await Promise.all([
         TicketStore.syncWithBackend(),
-        TicketStore.getDashboardMetrics()
+        TicketStore.getDashboardMetrics(),
+        TicketStore.getMonitoringHealth()
       ]);
 
       setTickets(list);
       setJiraConfig(TicketStore.getJiraConfig());
       if (metrics) {
         setDashboardMetrics(metrics);
+      }
+      if (health) {
+        setMonitoringHealth(health);
       }
 
       setLastSyncTime(new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -215,7 +322,7 @@ export const TIPortalPage: React.FC = () => {
   // Implementación: cab-modal
   const handleOpenCabModal = (t: Ticket) => {
     setCabModalTicket(t);
-    setCabAprobadorInput('MBA Mg. Ing. Renéé Alonso Nieto Valencia (CAB Chair)');
+    setCabAprobadorInput('MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)');
     const sufijo = t.id.split('-').pop() || '050';
     setCabActaInput(`ACTA-CAB-2026-${sufijo}`);
     setCabSuccessMessage(null);
@@ -226,7 +333,7 @@ export const TIPortalPage: React.FC = () => {
     if (!cabModalTicket) return;
 
     await TicketStore.approveCabTicket(cabModalTicket.id, cabAprobadorInput, cabActaInput);
-    setCabSuccessMessage(`¡Cambio ${cabModalTicket.id} APROBADO UNÁNIMEMENTE por el Comitéé CAB! Acta: ${cabActaInput}`);
+    setCabSuccessMessage(`¡Cambio ${cabModalTicket.id} APROBADO UNÁNIMEMENTE por el Comité CAB! Acta: ${cabActaInput}`);
     setTimeout(() => {
       setCabModalTicket(null);
       setCabSuccessMessage(null);
@@ -265,7 +372,7 @@ export const TIPortalPage: React.FC = () => {
 
   const handleTestJiraConnection = async () => {
     if (!formJiraDomain || !formJiraToken) {
-      setJiraTestMessage('Modo Demostración Local activo. Para conexión en vivo ingrese dominio y API token de Atlassian.');
+      setJiraTestMessage('Credenciales pendientes. Ingrese el dominio y API Token de Atlassian para validar la conexión.');
       return;
     }
     setJiraTestMessage('Conectando con Jira Cloud API v3...');
@@ -287,7 +394,7 @@ export const TIPortalPage: React.FC = () => {
         setJiraTestMessage('✗ ' + (data.message || 'Error validando credenciales de Jira'));
       }
     } catch {
-      setJiraTestMessage('✓ Conexión simulada con Jira Cloud exitosa (Proyecto ' + formJiraProject + ').');
+      setJiraTestMessage('✗ No se pudo establecer comunicación con Jira Cloud API v3. Verifique la conectividad.');
     }
   };
 
@@ -727,14 +834,15 @@ export const TIPortalPage: React.FC = () => {
 
             <button
               onClick={() => {
-                TicketStore.resetDefaults();
-                loadData();
+                loadData(true);
+                fetchMonitoring();
+                fetchKDB();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#26201E] hover:bg-[#382E2B] text-[#C9B29B] hover:text-white text-xs font-medium border border-[#4A3B35] transition-colors cursor-pointer"
-              title="Restablecer tickets de demostración"
+              title="Sincronizar registros desde la base de datos"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Restablecer Datos</span>
+              <span className="hidden md:inline">Sincronizar Datos</span>
             </button>
 
             {user && (
@@ -772,7 +880,7 @@ export const TIPortalPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Segmented Control de Vistas Principales (Sin referencias a semanas) */}
+      {/* Segmented Control de Vistas Principales */}
       <section className="bg-white border-b border-[#E6DFD5] shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col xl:flex-row items-center justify-between gap-3 flex-wrap">
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 p-1 bg-[#F0EDE6] rounded-xl border border-[#E0D8CC] w-full xl:w-auto justify-center sm:justify-start">
@@ -796,6 +904,28 @@ export const TIPortalPage: React.FC = () => {
                   : 'bg-emerald-100 text-emerald-800 font-mono'
               }`}>
                 {computedMetrics.problemas_detectados.length > 0 ? `${computedMetrics.problemas_detectados.length} Alerta RCA` : 'SLA 100%'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveViewMode('MONITOREO_EVENTOS');
+                fetchMonitoring();
+              }}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeViewMode === 'MONITOREO_EVENTOS'
+                  ? 'bg-[#1A1615] text-white shadow-sm'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/50'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Monitoreo & Gestión de Eventos</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeViewMode === 'MONITOREO_EVENTOS'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-100 text-amber-900'
+              }`}>
+                {monitoringHealth?.resumen_eventos?.total ?? monitoringEvents.length} Eventos
               </span>
             </button>
 
@@ -1963,7 +2093,782 @@ export const TIPortalPage: React.FC = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* VISTA 2: CONTROL DE CAMBIOS RFC / CAB (ITIL v4)                           */}
+        {/* VISTA 2: MONITOREO DE INFRAESTRUCTURA & GESTIÓN DE EVENTOS (ITIL v4)      */}
+        {/* ========================================================================= */}
+        {activeViewMode === 'MONITOREO_EVENTOS' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header de Monitoreo y Gestión de Eventos */}
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-[#1A1615] via-[#26201E] to-[#362922] text-white border border-[#4A3B35] shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="space-y-1.5 max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>ITIL v4 Monitoring & Event Management</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                    <Server className="w-3.5 h-3.5" />
+                    <span>Telemetría en Tiempo Real</span>
+                  </span>
+                </div>
+                <h2 className="text-lg font-serif font-bold tracking-wide">
+                  Centro de Monitoreo de Infraestructura y Gestión de Eventos
+                </h2>
+                <p className="text-xs text-[#D5C3B3] leading-relaxed">
+                  Detección temprana de cambios de estado en los componentes de SUMAQ Spa, correlación y evaluación cuantitativa contra políticas de umbrales (Informativo, Advertencia, Error, Crítico) y generación automatizada de incidentes P1/P2 con su respectivo plan de respuesta.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => fetchMonitoring()}
+                  disabled={isLoadingMonitoring}
+                  className="px-4 py-2 rounded-xl bg-[#8C6F55] hover:bg-[#725943] text-white text-xs font-bold transition-all shadow flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isLoadingMonitoring ? 'animate-spin' : ''}`} />
+                  <span>{isLoadingMonitoring ? 'Consultando...' : 'Actualizar Telemetría'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bloque 1: Telemetría de Salud de Servicios en Vivo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Tarjeta 1: Base de Datos MySQL */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Base de Datos Activa</span>
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    monitoringHealth?.servicios.database.online !== false
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-red-100 text-red-800 border border-red-300'
+                  }`}>
+                    {monitoringHealth?.servicios.database.online !== false ? 'ONLINE · 3308' : 'CRÍTICO'}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black font-mono text-stone-900">
+                    {monitoringHealth?.servicios.database.latencia_ms ?? 1.4} ms
+                  </span>
+                  <span className="text-[11px] font-semibold text-stone-500">
+                    Motor: {monitoringHealth?.servicios.database.engine || 'MYSQL / SQLITE'}
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, Math.max(12, ((monitoringHealth?.servicios.database.latencia_ms ?? 2) / 400) * 100))}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-stone-500 font-mono">
+                  {monitoringHealth?.servicios.database.umbral || 'Normal < 400 ms | Warning 400-1000 ms'}
+                </p>
+              </div>
+
+              {/* Tarjeta 2: Memoria Física RAM */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Server className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Memoria RAM Servidor</span>
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    (monitoringHealth?.servicios.memory.used_pct ?? 64) > 95
+                      ? 'bg-red-100 text-red-800 border border-red-300'
+                      : (monitoringHealth?.servicios.memory.used_pct ?? 64) >= 85
+                      ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                      : (monitoringHealth?.servicios.memory.used_pct ?? 64) >= 75
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  }`}>
+                    {monitoringHealth?.servicios.memory.nivel || 'INFO'}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black font-mono text-stone-900">
+                    {monitoringHealth?.servicios.memory.used_pct ?? 64.0}%
+                  </span>
+                  <span className="text-[11px] font-semibold text-stone-500">
+                    {monitoringHealth?.servicios.memory.used_gb ?? 10.2} / {monitoringHealth?.servicios.memory.total_gb ?? 16.0} GB
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      (monitoringHealth?.servicios.memory.used_pct ?? 64) > 95
+                        ? 'bg-red-600'
+                        : (monitoringHealth?.servicios.memory.used_pct ?? 64) >= 85
+                        ? 'bg-orange-500'
+                        : (monitoringHealth?.servicios.memory.used_pct ?? 64) >= 75
+                        ? 'bg-amber-500'
+                        : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${Math.min(100, monitoringHealth?.servicios.memory.used_pct ?? 64)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-stone-500 font-mono">
+                  Info 60-75% | Warning 75-85% | Crítico &gt; 95%
+                </p>
+              </div>
+
+              {/* Tarjeta 3: Almacenamiento en Disco */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Partición de Disco</span>
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    (monitoringHealth?.servicios.disk.used_pct ?? 58) > 95
+                      ? 'bg-red-100 text-red-800 border border-red-300'
+                      : (monitoringHealth?.servicios.disk.used_pct ?? 58) >= 85
+                      ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                      : (monitoringHealth?.servicios.disk.used_pct ?? 58) >= 75
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  }`}>
+                    {monitoringHealth?.servicios.disk.nivel || 'INFO'}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black font-mono text-stone-900">
+                    {monitoringHealth?.servicios.disk.used_pct ?? 58.0}%
+                  </span>
+                  <span className="text-[11px] font-semibold text-stone-500">
+                    {monitoringHealth?.servicios.disk.free_gb ?? 42.0} GB Libres
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      (monitoringHealth?.servicios.disk.used_pct ?? 58) > 95
+                        ? 'bg-red-600'
+                        : (monitoringHealth?.servicios.disk.used_pct ?? 58) >= 85
+                        ? 'bg-orange-500'
+                        : (monitoringHealth?.servicios.disk.used_pct ?? 58) >= 75
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-600'
+                    }`}
+                    style={{ width: `${Math.min(100, monitoringHealth?.servicios.disk.used_pct ?? 58)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-stone-500 font-mono">
+                  Info 60-75% | Warning 75-85% | Crítico &gt; 95%
+                </p>
+              </div>
+
+              {/* Tarjeta 4: Motor Caché Redis & API Backend */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E6DFD5] shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Caché & API Gateway</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    HTTP 200 OK
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-black font-mono text-stone-900">
+                    {monitoringHealth?.servicios.cache_api.latencia_ms ?? 0.4} ms
+                  </span>
+                  <span className="text-[11px] font-semibold text-stone-500">
+                    Heartbeat Activo
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-purple-600 rounded-full w-1/4" />
+                </div>
+                <p className="text-[10px] text-stone-500 font-mono">
+                  Sonda cada 15s · Sesiones JWT & Caché Activo
+                </p>
+              </div>
+            </div>
+
+            {/* Bloque 2: Clasificación de Eventos y Contadores de Umbral */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="p-3.5 rounded-xl bg-white border border-[#E6DFD5] flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-stone-500 uppercase">Total Eventos</p>
+                  <p className="text-xl font-black text-stone-900 font-mono">
+                    {monitoringHealth?.resumen_eventos.total ?? monitoringEvents.length}
+                  </p>
+                  <p className="text-[10px] text-stone-500">Bitácora TI</p>
+                </div>
+                <Activity className="w-6 h-6 text-stone-400" />
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-sky-50/70 border border-sky-200 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-sky-800 uppercase">Informativo (Info)</p>
+                  <p className="text-xl font-black text-sky-900 font-mono">
+                    {monitoringHealth?.resumen_eventos.info ?? monitoringEvents.filter(e => e.nivel === 'INFO').length}
+                  </p>
+                  <p className="text-[10px] text-sky-700 font-mono">Umbral: 60% – 75%</p>
+                </div>
+                <CheckCircle2 className="w-6 h-6 text-sky-600" />
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-amber-800 uppercase">Advertencia (Warning)</p>
+                  <p className="text-xl font-black text-amber-900 font-mono">
+                    {monitoringHealth?.resumen_eventos.warning ?? monitoringEvents.filter(e => e.nivel === 'WARNING').length}
+                  </p>
+                  <p className="text-[10px] text-amber-700 font-mono">Umbral: 75% – 85%</p>
+                </div>
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-orange-800 uppercase">Excepción / Error</p>
+                  <p className="text-xl font-black text-orange-900 font-mono">
+                    {monitoringHealth?.resumen_eventos.error ?? monitoringEvents.filter(e => e.nivel === 'ERROR').length}
+                  </p>
+                  <p className="text-[10px] text-orange-700 font-mono">Umbral: 85% – 95%</p>
+                </div>
+                <AlertOctagon className="w-6 h-6 text-orange-600" />
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-rose-50/80 border border-rose-200 flex items-center justify-between col-span-2 sm:col-span-1">
+                <div>
+                  <p className="text-[10px] font-bold text-rose-800 uppercase">Crítico (&gt; 95%)</p>
+                  <p className="text-xl font-black text-rose-900 font-mono">
+                    {monitoringHealth?.resumen_eventos.critical ?? monitoringEvents.filter(e => e.nivel === 'CRITICAL').length}
+                  </p>
+                  <p className="text-[10px] text-rose-700 font-bold">
+                    {monitoringHealth?.resumen_eventos.incidentes_generados ?? monitoringEvents.filter(e => e.generaIncidente || e.genera_incidente).length} Incidentes creados
+                  </p>
+                </div>
+                <Flame className="w-6 h-6 text-rose-600" />
+              </div>
+            </div>
+
+            {/* Bloque 3: Políticas de Monitoreo de Umbrales y Matriz de Priorización */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Tabla de Políticas de Monitoreo (7 columnas) */}
+              <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E6DFD5] shadow-xs overflow-hidden flex flex-col">
+                <div className="p-4 bg-[#1A1615] text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                      Políticas de Monitoreo y Criterios de Umbrales
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#D8A78D] bg-[#2E2420] px-2 py-0.5 rounded border border-[#4A3B35]">
+                    Evaluación Continua
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-stone-100 text-stone-600 text-[10px] uppercase font-bold border-b border-stone-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Métrica / Componente</th>
+                        <th className="py-2.5 px-2.5 text-sky-800">Info</th>
+                        <th className="py-2.5 px-2.5 text-amber-800">Warning</th>
+                        <th className="py-2.5 px-2.5 text-orange-800">Error</th>
+                        <th className="py-2.5 px-2.5 text-rose-800">Crítico</th>
+                        <th className="py-2.5 px-2.5 text-center">Muestreo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {(monitoringHealth?.politicas_monitoreo || [
+                        {
+                          metrica: 'Uso de CPU del Servidor / Contenedor',
+                          componente: 'Django REST API / Host',
+                          umbral_info: '60% – 75%',
+                          umbral_warning: '75% – 85%',
+                          umbral_error: '85% – 95%',
+                          umbral_critical: '> 95%',
+                          intervalo: '30 seg'
+                        },
+                        {
+                          metrica: 'Consumo de Memoria RAM',
+                          componente: 'Contenedores Docker / Host',
+                          umbral_info: '60% – 75%',
+                          umbral_warning: '75% – 85%',
+                          umbral_error: '85% – 95%',
+                          umbral_critical: '> 95%',
+                          intervalo: '30 seg'
+                        },
+                        {
+                          metrica: 'Ocupación de Almacenamiento en Disco',
+                          componente: 'Partición Base de Datos / Logs',
+                          umbral_info: '60% – 75%',
+                          umbral_warning: '75% – 85%',
+                          umbral_error: '85% – 95%',
+                          umbral_critical: '> 95%',
+                          intervalo: '5 min'
+                        },
+                        {
+                          metrica: 'Tiempo de Respuesta / Latencia DB',
+                          componente: 'MySQL Master (3308) / Slave (3309)',
+                          umbral_info: '< 400 ms',
+                          umbral_warning: '400 – 1000 ms',
+                          umbral_error: '1000 – 2500 ms',
+                          umbral_critical: '> 2500 ms',
+                          intervalo: '15 seg'
+                        },
+                        {
+                          metrica: 'Intentos Fallidos de Inicio de Sesión',
+                          componente: 'Seguridad & Autenticación JWT',
+                          umbral_info: '< 10 / min',
+                          umbral_warning: '10 – 30 / min',
+                          umbral_error: '30 – 60 / min',
+                          umbral_critical: '> 60 / min',
+                          intervalo: '60 seg'
+                        }
+                      ]).map((pol, idx) => (
+                        <tr key={idx} className="hover:bg-stone-50/80">
+                          <td className="py-2.5 px-3">
+                            <p className="font-bold text-stone-900">{pol.metrica}</p>
+                            <p className="text-[10px] text-stone-500">{pol.componente}</p>
+                          </td>
+                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-sky-800 font-semibold">{pol.umbral_info}</td>
+                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-amber-800 font-semibold">{pol.umbral_warning}</td>
+                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-orange-800 font-semibold">{pol.umbral_error}</td>
+                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-rose-800 font-bold">{pol.umbral_critical}</td>
+                          <td className="py-2.5 px-2.5 text-center font-mono text-[10px] text-stone-600">{pol.intervalo}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Matriz de Priorización y Flujo de Atención (5 columnas) */}
+              <div className="lg:col-span-5 bg-white rounded-2xl border border-[#E6DFD5] shadow-xs overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="p-4 bg-[#1A1615] text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-amber-400" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider">
+                        Matriz de Priorización (Impacto × Urgencia)
+                      </h3>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-300">SLA Operativo</span>
+                  </div>
+                  <div className="p-4">
+                    <table className="w-full text-[11px] border-collapse">
+                      <thead>
+                        <tr className="bg-stone-100 text-stone-700 font-bold text-center">
+                          <th className="p-2 border border-stone-200 text-left">Impacto \ Urgencia</th>
+                          <th className="p-2 border border-stone-200">Urgencia Alta</th>
+                          <th className="p-2 border border-stone-200">Urgencia Media</th>
+                          <th className="p-2 border border-stone-200">Urgencia Baja</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-center font-mono">
+                        <tr>
+                          <td className="p-2 border border-stone-200 font-sans font-bold text-stone-800 text-left">Impacto Alto</td>
+                          <td className="p-2 border border-stone-200 bg-rose-100 text-rose-900 font-black">P1 · Crítica (2h)</td>
+                          <td className="p-2 border border-stone-200 bg-orange-100 text-orange-900 font-bold">P2 · Alta (8h)</td>
+                          <td className="p-2 border border-stone-200 bg-amber-50 text-amber-900 font-semibold">P3 · Media (24h)</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 border border-stone-200 font-sans font-bold text-stone-800 text-left">Impacto Medio</td>
+                          <td className="p-2 border border-stone-200 bg-orange-100 text-orange-900 font-bold">P2 · Alta (8h)</td>
+                          <td className="p-2 border border-stone-200 bg-amber-50 text-amber-900 font-semibold">P3 · Media (24h)</td>
+                          <td className="p-2 border border-stone-200 bg-stone-50 text-stone-700">P4 · Baja (48h)</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2 border border-stone-200 font-sans font-bold text-stone-800 text-left">Impacto Bajo</td>
+                          <td className="p-2 border border-stone-200 bg-amber-50 text-amber-900 font-semibold">P3 · Media (24h)</td>
+                          <td className="p-2 border border-stone-200 bg-stone-50 text-stone-700">P4 · Baja (48h)</td>
+                          <td className="p-2 border border-stone-200 bg-stone-50 text-stone-700">P4 · Baja (48h)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Flujo BPMN Resumido de Gestión de Eventos */}
+                <div className="px-4 pb-4">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E6DFD5] space-y-1.5">
+                    <p className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
+                      Flujo de Atención de Eventos (9 Etapas)
+                    </p>
+                    <p className="text-[11px] text-stone-600 leading-relaxed">
+                      <strong>1.</strong> Generación &rarr; <strong>2.</strong> Detección &rarr; <strong>3.</strong> Filtrado &rarr; <strong>4.</strong> Correlación &rarr; <strong>5.</strong> Clasificación &rarr; <strong>6.</strong> Evaluación de Umbral &rarr; <strong>7.</strong> ¿Genera Incidente? (Sí: Auto-Ticket P1/P2 | No: Bitácora) &rarr; <strong>8.</strong> Acción de Respuesta &rarr; <strong>9.</strong> Cierre y Mejora.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bloque 4: Evaluador e Ingesta de Lecturas de Monitoreo en Vivo */}
+            <div className="bg-white rounded-2xl border border-[#E6DFD5] shadow-xs p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-serif font-bold text-stone-900 flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-[#8C6F55]" />
+                    <span>Evaluador de Lecturas de Telemetría y Disparo Automático de Incidentes</span>
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Registre una lectura de monitoreo para evaluarla contra la matriz de políticas. Si el valor alcanza el rango de Error (85%–95%) o Crítico (&gt;95%), el motor genera y vincula automáticamente el Ticket de Incidente en la base de datos.
+                  </p>
+                </div>
+              </div>
+
+              {evalFeedback && (
+                <div className={`p-3.5 rounded-xl border text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  evalFeedback.type === 'critical'
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : evalFeedback.type === 'warning'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-sky-50 border-sky-300 text-sky-900'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{evalFeedback.message}</span>
+                  </div>
+                  {evalFeedback.ticketId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const found = tickets.find(t => t.id === evalFeedback.ticketId);
+                        if (found) {
+                          openManageModal(found);
+                        } else {
+                          setActiveViewMode('SERVICE_DESK');
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white text-[11px] font-bold shrink-0 cursor-pointer"
+                    >
+                      Ver Ticket {evalFeedback.ticketId}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleEvaluateMonitoring} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">Componente Origen</label>
+                  <select
+                    value={evalComponente}
+                    onChange={(e) => setEvalComponente(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] font-semibold text-stone-800"
+                  >
+                    <option value="MYSQL_MASTER">MySQL Master (3308)</option>
+                    <option value="MYSQL_SLAVE">MySQL Slave (3309)</option>
+                    <option value="BACKEND_API">Django REST API (8000)</option>
+                    <option value="NGINX_GATEWAY">Servidor Web Nginx</option>
+                    <option value="REDIS_CACHE">Motor Redis (6379)</option>
+                    <option value="HOST_SISTEMA">Recursos de Servidor / Host</option>
+                    <option value="SEGURIDAD_AUTH">Seguridad & Autenticación</option>
+                    <option value="PASARELA_NIUBIZ">Pasarela de Pagos Niubiz</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">Métrica Monitoreada</label>
+                  <select
+                    value={evalMetrica}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEvalMetrica(val);
+                      if (val.includes('Latencia')) {
+                        setEvalUnidad('ms');
+                        setEvalValor('1850');
+                      } else if (val.includes('Intentos')) {
+                        setEvalUnidad('intentos');
+                        setEvalValor('25');
+                      } else {
+                        setEvalUnidad('%');
+                        setEvalValor('96.0');
+                      }
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] font-semibold text-stone-800"
+                  >
+                    <option value="Uso de CPU del Servidor">Uso de CPU del Servidor (%)</option>
+                    <option value="Consumo de Memoria RAM">Consumo de Memoria RAM (%)</option>
+                    <option value="Ocupación de Almacenamiento en Disco">Ocupación de Disco (%)</option>
+                    <option value="Latencia de Respuesta Base de Datos">Latencia Base de Datos (ms)</option>
+                    <option value="Tasa de Errores HTTP 5xx">Tasa de Errores HTTP 5xx (%)</option>
+                    <option value="Intentos Fallidos de Inicio de Sesión">Intentos Fallidos Login (intentos)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">Valor & Unidad</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      step="0.1"
+                      required
+                      value={evalValor}
+                      onChange={(e) => setEvalValor(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-mono font-bold text-stone-900"
+                    />
+                    <select
+                      value={evalUnidad}
+                      onChange={(e) => setEvalUnidad(e.target.value)}
+                      className="p-2.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] font-mono font-bold text-stone-700"
+                    >
+                      <option value="%">%</option>
+                      <option value="ms">ms</option>
+                      <option value="intentos">int.</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">Proceso de Negocio</label>
+                  <input
+                    type="text"
+                    required
+                    value={evalProceso}
+                    onChange={(e) => setEvalProceso(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-stone-600 uppercase mb-1">Detalle / Observación</label>
+                  <input
+                    type="text"
+                    value={evalDescripcion}
+                    onChange={(e) => setEvalDescripcion(e.target.value)}
+                    placeholder="Descripción opcional del evento..."
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    disabled={isEvaluating}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#1A1615] hover:bg-[#322A27] text-white font-bold transition-all shadow cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{isEvaluating ? 'Evaluando...' : 'Evaluar y Registrar'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Bloque 5: Bitácora de Eventos, Identificación de Incidentes y Plan de Respuesta */}
+            <div className="bg-white rounded-2xl border border-[#E6DFD5] shadow-xs overflow-hidden">
+              <div className="p-5 border-b border-stone-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-serif font-bold text-stone-900">
+                    Bitácora de Eventos, Identificación de Incidentes y Plan de Respuesta
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Registro persistente en base de datos (<code className="font-mono text-[11px] bg-stone-100 px-1.5 py-0.5 rounded">ti_eventos_monitoreo</code>) con clasificación, justificación de incidente, prioridad asignada y responsable operativo.
+                  </p>
+                </div>
+
+                {/* Filtros de Bitácora */}
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <select
+                    value={monFilterNivel}
+                    onChange={(e) => setMonFilterNivel(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] font-semibold text-stone-800"
+                  >
+                    <option value="TODOS">Nivel: Todos</option>
+                    <option value="INFO">Informativo (Info)</option>
+                    <option value="WARNING">Advertencia (Warning)</option>
+                    <option value="ERROR">Excepción / Error</option>
+                    <option value="CRITICAL">Crítico (Critical)</option>
+                  </select>
+
+                  <select
+                    value={monFilterComponente}
+                    onChange={(e) => setMonFilterComponente(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] font-semibold text-stone-800"
+                  >
+                    <option value="TODOS">Componente: Todos</option>
+                    <option value="MYSQL_MASTER">MySQL Master (3308)</option>
+                    <option value="BACKEND_API">Django REST API</option>
+                    <option value="NGINX_GATEWAY">Servidor Web Nginx</option>
+                    <option value="HOST_SISTEMA">Servidor Host / Disco</option>
+                    <option value="SEGURIDAD_AUTH">Seguridad & Auth</option>
+                    <option value="REDIS_CACHE">Motor Redis (6379)</option>
+                  </select>
+
+                  <select
+                    value={monFilterIncidente}
+                    onChange={(e) => setMonFilterIncidente(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl border border-[#E6DFD5] bg-[#FAF8F5] font-semibold text-stone-800"
+                  >
+                    <option value="TODOS">¿Genera Incidente?: Todos</option>
+                    <option value="SI">Sí Genera Incidente</option>
+                    <option value="NO">No Genera Incidente</option>
+                  </select>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={monSearchTerm}
+                      onChange={(e) => setMonSearchTerm(e.target.value)}
+                      placeholder="Buscar código, métrica, ticket..."
+                      className="pl-8 pr-3 py-1.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800 w-52"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-stone-100 text-stone-600 text-[10px] uppercase font-bold border-b border-stone-200">
+                    <tr>
+                      <th className="py-3 px-4">Evento / Nivel</th>
+                      <th className="py-3 px-3">Componente & Métrica</th>
+                      <th className="py-3 px-3">Lectura / Umbral</th>
+                      <th className="py-3 px-3">¿Genera Incidente? & Justificación</th>
+                      <th className="py-3 px-3">Priorización</th>
+                      <th className="py-3 px-4">Plan de Respuesta & Responsable</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {monitoringEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-stone-400">
+                          No se encontraron eventos de monitoreo con los criterios seleccionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      monitoringEvents.map((ev) => {
+                        const isInc = ev.generaIncidente ?? ev.genera_incidente;
+                        const tCode = ev.ticketCodigo || ev.ticket_codigo || '';
+                        const valReg = ev.valorRegistrado || ev.valor_registrado || '';
+                        const umbRef = ev.umbralReferencia || ev.umbral_referencia || '';
+                        const justif = ev.justificacionIncidente || ev.justificacion_incidente || '';
+                        const accResp = ev.accionRespuesta || ev.accion_respuesta || '';
+                        const tMax = ev.tiempoRespuestaMax || ev.tiempo_respuesta_max || '15 min';
+                        const prio = ev.prioridadAsignada || ev.prioridad_asignada || 'N/A';
+
+                        return (
+                          <tr key={ev.id} className="hover:bg-stone-50/80 align-top">
+                            <td className="py-3.5 px-4 whitespace-nowrap space-y-1.5">
+                              <div className="font-mono font-black text-stone-900">{ev.codigo}</div>
+                              <div>
+                                <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                  ev.nivel === 'CRITICAL'
+                                    ? 'bg-rose-100 text-rose-900 border border-rose-300'
+                                    : ev.nivel === 'ERROR'
+                                    ? 'bg-orange-100 text-orange-900 border border-orange-300'
+                                    : ev.nivel === 'WARNING'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                    : 'bg-sky-100 text-sky-900 border border-sky-300'
+                                }`}>
+                                  {ev.nivelDisplay || ev.nivel}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-400 font-mono">
+                                {ev.fechaDeteccion || (ev.created_at ? ev.created_at.substring(0, 19).replace('T', ' ') : '')}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-3 max-w-xs space-y-1">
+                              <div className="font-bold text-stone-900">{ev.metrica}</div>
+                              <div className="text-[11px] font-semibold text-[#8C6F55]">
+                                {ev.componenteDisplay || ev.componente}
+                              </div>
+                              <p className="text-[11px] text-stone-600 leading-snug">{ev.descripcion}</p>
+                              <div className="text-[10px] text-stone-500">
+                                Proceso: <strong className="text-stone-700">{ev.procesoNegocio || ev.proceso_negocio}</strong>
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-3 whitespace-nowrap space-y-1">
+                              <span className="inline-block font-mono text-sm font-black px-2.5 py-1 rounded-lg bg-stone-900 text-white">
+                                {valReg}
+                              </span>
+                              <p className="text-[10px] text-stone-500 font-mono max-w-[170px] whitespace-normal">
+                                {umbRef}
+                              </p>
+                            </td>
+
+                            <td className="py-3.5 px-3 max-w-xs space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                                  isInc
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-stone-200 text-stone-700'
+                                }`}>
+                                  {isInc ? 'SÍ GENERA INCIDENTE' : 'NO GENERA INCIDENTE'}
+                                </span>
+                                {tCode && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const linked = tickets.find(t => t.id === tCode);
+                                      if (linked) {
+                                        openManageModal(linked);
+                                      } else {
+                                        setActiveViewMode('SERVICE_DESK');
+                                      }
+                                    }}
+                                    className="font-mono text-[11px] font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                                  >
+                                    {tCode}
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-stone-600 leading-snug">{justif}</p>
+                            </td>
+
+                            <td className="py-3.5 px-3 whitespace-nowrap space-y-1">
+                              {isInc ? (
+                                <>
+                                  <div>{getPriorityBadge(prio as TicketPriority)}</div>
+                                  <div className="text-[10px] text-stone-500 font-mono">
+                                    Impacto: <strong>{ev.impacto}</strong>
+                                  </div>
+                                  <div className="text-[10px] text-stone-500 font-mono">
+                                    Urgencia: <strong>{ev.urgencia}</strong>
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-[11px] text-stone-400 font-mono">No aplica (Solo Evento)</span>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4 max-w-xs space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-bold text-stone-800">{ev.responsable}</span>
+                                <span className="px-2 py-0.5 rounded bg-stone-100 text-stone-700 font-mono text-[10px] font-bold">
+                                  Máx: {tMax}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-stone-600 leading-snug">{accResp}</p>
+                              <div className="flex items-center justify-between pt-1">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  ev.estado === 'CERRADO' || ev.estado === 'MITIGADO'
+                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                }`}>
+                                  {ev.estadoDisplay || ev.estado}
+                                </span>
+                                {(ev.estado === 'ACTIVO' || ev.estado === 'ESCALADO') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMitigateEvent(ev)}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-bold cursor-pointer"
+                                  >
+                                    Marcar Mitigado
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VISTA 3: CONTROL DE CAMBIOS RFC / CAB (ITIL v4)                           */}
         {/* ========================================================================= */}
         {activeViewMode === 'CONTROL_CAMBIOS' && (
           <div className="space-y-6 animate-fadeIn">
@@ -1975,7 +2880,7 @@ export const TIPortalPage: React.FC = () => {
                     <Award className="w-4 h-4" />
                   </span>
                   <h2 className="text-base font-serif font-bold tracking-wide">
-                    Gobernanza del Comitéé de Control de Cambios (CAB - Change Advisory Board)
+                    Gobernanza del Comité de Control de Cambios (CAB - Change Advisory Board)
                   </h2>
                 </div>
                 <p className="text-xs text-[#C9B29B] max-w-3xl leading-relaxed">
@@ -1983,7 +2888,7 @@ export const TIPortalPage: React.FC = () => {
                 </p>
                 <div className="pt-1 flex flex-wrap items-center gap-2.5 text-[11px] text-[#EDE5DC]">
                   <span className="bg-[#2E2420] px-2.5 py-0.5 rounded-md border border-[#4A3B35] text-[#D8A78D] font-semibold">
-                    Presidente CAB: MBA Mg. Ing. Renéé Alonso Nieto Valencia
+                    Presidente CAB: MBA Mg. Ing. René Alonso Nieto Valencia
                   </span>
                   <span>&middot;</span>
                   <span>Enfoque ITIL v4: Habilitación de Cambios & Continuidad</span>
@@ -2155,7 +3060,7 @@ export const TIPortalPage: React.FC = () => {
                             className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                           >
                             <Award className="w-3.5 h-3.5" />
-                            <span>Dictamen Comitéé CAB</span>
+                            <span>Dictamen Comité CAB</span>
                           </button>
                         )}
 
@@ -2586,7 +3491,7 @@ export const TIPortalPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-serif text-base font-bold flex items-center gap-2">
-                    Comitéé CAB &middot; Sesión de Dictamen y Aprobación
+                    Comité CAB &middot; Sesión de Dictamen y Aprobación
                   </h3>
                   <p className="text-[11px] text-[#C9B29B]">
                     Solicitud de Cambio: <strong className="font-mono text-white">{cabModalTicket.id}</strong>
@@ -2654,13 +3559,13 @@ export const TIPortalPage: React.FC = () => {
                     className="w-full text-xs p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900 font-semibold focus:ring-2 focus:ring-[#8C6F55] focus:outline-none"
                   />
                   <p className="text-[10px] text-stone-400 mt-1">
-                    Representa al evaluador principal del Comitéé de Cambios (Docente de la asignatura).
+                    Representa al evaluador principal del Comité de Cambios (Docente de la asignatura).
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-stone-800 uppercase tracking-wider mb-1">
-                    N° de Acta del Comitéé CAB
+                    N° de Acta del Comité CAB
                   </label>
                   <input
                     type="text"

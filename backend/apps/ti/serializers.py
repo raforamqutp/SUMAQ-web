@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Ticket, KdbArticle
+from .models import Ticket, KdbArticle, MonitoringEvent
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -130,4 +130,53 @@ class KdbArticleSerializer(serializers.ModelSerializer):
             'veces_utilizado', 'vecesUtilizado',
             'created_at', 'updated_at'
         ]
+
+
+class MonitoringEventSerializer(serializers.ModelSerializer):
+    valorRegistrado = serializers.CharField(source='valor_registrado')
+    valorNumerico = serializers.FloatField(source='valor_numerico')
+    umbralReferencia = serializers.CharField(source='umbral_referencia')
+    procesoNegocio = serializers.CharField(source='proceso_negocio')
+    generaIncidente = serializers.BooleanField(source='genera_incidente')
+    justificacionIncidente = serializers.CharField(source='justificacion_incidente', allow_blank=True)
+    prioridadAsignada = serializers.CharField(source='prioridad_asignada', allow_blank=True)
+    accionRespuesta = serializers.CharField(source='accion_respuesta', allow_blank=True)
+    tiempoRespuestaMax = serializers.CharField(source='tiempo_respuesta_max')
+    ticketCodigo = serializers.CharField(source='ticket_codigo', allow_blank=True)
+    componenteDisplay = serializers.CharField(source='get_componente_display', read_only=True)
+    nivelDisplay = serializers.CharField(source='get_nivel_display', read_only=True)
+    estadoDisplay = serializers.CharField(source='get_estado_display', read_only=True)
+    fechaDeteccion = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MonitoringEvent
+        fields = [
+            'id', 'codigo', 'nivel', 'nivelDisplay', 'componente', 'componenteDisplay',
+            'metrica', 'valor_registrado', 'valorRegistrado', 'valor_numerico', 'valorNumerico',
+            'umbral_referencia', 'umbralReferencia', 'descripcion',
+            'proceso_negocio', 'procesoNegocio',
+            'genera_incidente', 'generaIncidente',
+            'justificacion_incidente', 'justificacionIncidente',
+            'impacto', 'urgencia', 'prioridad_asignada', 'prioridadAsignada',
+            'responsable', 'accion_respuesta', 'accionRespuesta',
+            'tiempo_respuesta_max', 'tiempoRespuestaMax',
+            'estado', 'estadoDisplay',
+            'ticket_vinculado', 'ticket_codigo', 'ticketCodigo',
+            'fechaDeteccion', 'created_at', 'updated_at'
+        ]
+
+    def get_fechaDeteccion(self, obj):
+        if obj.created_at:
+            return obj.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        return ""
+
+
+class MonitoringEvaluateSerializer(serializers.Serializer):
+    componente = serializers.ChoiceField(choices=MonitoringEvent.Componente.choices)
+    metrica = serializers.CharField(max_length=100)
+    valor_numerico = serializers.FloatField()
+    unidad = serializers.CharField(max_length=20, required=False, default='%')
+    proceso_negocio = serializers.CharField(max_length=120, required=False, default='Operación General Spa')
+    descripcion = serializers.CharField(required=False, allow_blank=True, default='')
+
 

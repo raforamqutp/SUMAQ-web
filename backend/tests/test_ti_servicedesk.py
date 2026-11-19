@@ -1,6 +1,6 @@
 import pytest
 from rest_framework.test import APIClient
-from apps.ti.models import Ticket
+from apps.ti.models import Ticket, MonitoringEvent
 
 @pytest.mark.django_db
 def test_crear_ticket_servicedesk_itil():
@@ -146,3 +146,87 @@ def test_aprobacion_formal_comite_cab_rene_nieto():
     assert rfc.cab_aprobado_por == cab_chair
     assert rfc.cab_acta_numero == acta_num
     assert rfc.cab_fecha_aprobacion is not None
+
+
+@pytest.mark.django_db
+def test_telemetria_salud_monitoreo_ti():
+    client = APIClient()
+    res = client.get('/api/ti/monitoring/health/')
+    assert res.status_code == 200
+    data = res.json()
+    assert 'servicios' in data
+    assert 'database' in data['servicios']
+    assert 'memory' in data['servicios']
+    assert 'disk' in data['servicios']
+    assert 'cache_api' in data['servicios']
+    assert data['servicios']['database']['online'] is True
+    assert len(data['politicas_monitoreo']) >= 5
+
+
+@pytest.mark.django_db
+def test_evaluacion_evento_warning_no_genera_incidente():
+    client = APIClient()
+    payload = {
+        "componente": "HOST_SISTEMA",
+        "metrica": "Consumo de Memoria RAM",
+        "valor_numerico": 78.5,
+        "unidad": "%",
+        "proceso_negocio": "Administración y Reportes",
+        "descripcion": "Uso de memoria en banda de advertencia"
+    }
+    res = client.post('/api/ti/monitoring/evaluar/', payload, format='json')
+    assert res.status_code == 201
+    data = res.json()
+    assert data['success'] is True
+    assert data['evento']['nivel'] == 'WARNING'
+    assert data['evento']['genera_incidente'] is False
+    assert data['evento']['prioridad_asignada'] == 'N/A'
+    assert data['ticket_generado'] is None
+
+
+@pytest.mark.django_db
+def test_evaluacion_evento_critico_genera_ticket_incidente_p1():
+    client = APIClient()
+    payload = {
+        "componente": "MYSQL_MASTER",
+        "metrica": "Uso de CPU del Servidor",
+        "valor_numerico": 97.2,
+        "unidad": "%",
+        "proceso_negocio": "Agendamiento y Cobranza POS",
+        "descripcion": "Saturación crítica en nodo maestro 3308"
+    }
+    res = client.post('/api/ti/monitoring/evaluar/', payload, format='json')
+    assert res.status_code == 201
+    data = res.json()
+    assert data['success'] is True
+    assert data['evento']['nivel'] == 'CRITICAL'
+    assert data['evento']['genera_incidente'] is True
+    assert data['evento']['prioridad_asignada'] == 'P1_CRITICA'
+    assert data['ticket_generado'] is not None
+    assert data['ticket_generado']['codigo'].startswith('INC-')
+    assert data['ticket_generado']['prioridad'] == 'P1_CRITICA'
+    assert data['evento']['ticket_codigo'] == data['ticket_generado']['codigo']
+
+
+@pytest.mark.django_db
+def test_mitigar_evento_monitoreo():
+    client = APIClient()
+    ev = MonitoringEvent.objects.create(
+        codigo="EVT-2026-TEST",
+        nivel=MonitoringEvent.Nivel.WARNING,
+        componente=MonitoringEvent.Componente.REDIS_CACHE,
+        metrica="Consumo de Memoria RAM",
+        valor_registrado="81.0%",
+        valor_numerico=81.0,
+        descripcion="Prueba de mitigación",
+        estado=MonitoringEvent.Estado.ACTIVO
+    )
+    res = client.post(f'/api/ti/monitoring/{ev.id}/mitigar/', {
+        "estado": "MITIGADO",
+        "accion_respuesta": "Caché liberado exitosamente"
+    }, format='json')
+    assert res.status_code == 200
+    ev.refresh_from_db()
+    assert ev.estado == MonitoringEvent.Estado.MITIGADO
+    assert "liberado" in ev.accion_respuesta
+

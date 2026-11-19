@@ -166,3 +166,107 @@ class KdbArticle(models.Model):
     def veces_utilizado(self):
         return Ticket.objects.filter(kdb_codigo=self.codigo).count()
 
+
+class MonitoringEvent(models.Model):
+    class Nivel(models.TextChoices):
+        INFO = 'INFO', 'Informativo'
+        WARNING = 'WARNING', 'Advertencia'
+        ERROR = 'ERROR', 'Excepción / Error'
+        CRITICAL = 'CRITICAL', 'Crítico'
+
+    class Componente(models.TextChoices):
+        MYSQL_MASTER = 'MYSQL_MASTER', 'MySQL Master (3308)'
+        MYSQL_SLAVE = 'MYSQL_SLAVE', 'MySQL Slave (3309)'
+        REDIS_CACHE = 'REDIS_CACHE', 'Motor Redis (6379)'
+        BACKEND_API = 'BACKEND_API', 'Django REST API (8000)'
+        NGINX_GATEWAY = 'NGINX_GATEWAY', 'Servidor Web Nginx'
+        PASARELA_NIUBIZ = 'PASARELA_NIUBIZ', 'Pasarela de Pagos Niubiz'
+        SEGURIDAD_AUTH = 'SEGURIDAD_AUTH', 'Seguridad & Autenticación'
+        HOST_SISTEMA = 'HOST_SISTEMA', 'Recursos de Servidor / Host'
+
+    class Estado(models.TextChoices):
+        ACTIVO = 'ACTIVO', 'Activo / En Evaluación'
+        MITIGADO = 'MITIGADO', 'Mitigado / Auto-recuperado'
+        ESCALADO = 'ESCALADO', 'Escalado a Incidente'
+        CERRADO = 'CERRADO', 'Cerrado / Normalizado'
+
+    class NivelImpacto(models.TextChoices):
+        BAJO = 'BAJO', 'Bajo'
+        MEDIO = 'MEDIO', 'Medio'
+        ALTO = 'ALTO', 'Alto'
+
+    class NivelUrgencia(models.TextChoices):
+        BAJA = 'BAJA', 'Baja'
+        MEDIA = 'MEDIA', 'Media'
+        ALTA = 'ALTA', 'Alta'
+
+    codigo = models.CharField('Código de Evento', max_length=40, unique=True, db_index=True)
+    nivel = models.CharField('Nivel de Evento', max_length=20, choices=Nivel.choices, default=Nivel.INFO, db_index=True)
+    componente = models.CharField('Componente / Origen', max_length=40, choices=Componente.choices, default=Componente.BACKEND_API, db_index=True)
+    metrica = models.CharField('Métrica Evaluada', max_length=100)
+    valor_registrado = models.CharField('Valor Registrado', max_length=60)
+    valor_numerico = models.FloatField('Valor Numérico', default=0.0)
+    umbral_referencia = models.CharField('Umbral de Referencia', max_length=120, default='Info: 60-75% | Warning: 75-85% | Error: 85-95% | Crítico: >95%')
+    descripcion = models.TextField('Descripción del Evento')
+    proceso_negocio = models.CharField('Proceso de Negocio Afectado', max_length=120, default='Operación General Spa')
+
+    genera_incidente = models.BooleanField('Genera Incidente', default=False)
+    justificacion_incidente = models.TextField('Justificación Técnica', blank=True, default='')
+    impacto = models.CharField('Impacto', max_length=20, choices=NivelImpacto.choices, default=NivelImpacto.BAJO)
+    urgencia = models.CharField('Urgencia', max_length=20, choices=NivelUrgencia.choices, default=NivelUrgencia.BAJA)
+    prioridad_asignada = models.CharField('Prioridad Asignada', max_length=20, blank=True, default='N/A')
+
+    responsable = models.CharField('Rol Responsable', max_length=150, default='Monitoreo Automatizado TI')
+    accion_respuesta = models.TextField('Acción de Respuesta', blank=True, default='')
+    tiempo_respuesta_max = models.CharField('Tiempo Máximo de Respuesta', max_length=40, default='15 min')
+    estado = models.CharField('Estado del Evento', max_length=30, choices=Estado.choices, default=Estado.ACTIVO)
+
+    ticket_vinculado = models.ForeignKey(
+        Ticket,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='eventos_monitoreo',
+        verbose_name='Ticket de Incidente Vinculado'
+    )
+    ticket_codigo = models.CharField('Código de Ticket Vinculado', max_length=40, blank=True, default='')
+
+    created_at = models.DateTimeField('Fecha de Detección', auto_now_add=True)
+    updated_at = models.DateTimeField('Última Actualización', auto_now=True)
+
+    class Meta:
+        db_table = 'ti_eventos_monitoreo'
+        verbose_name = 'Evento de Monitoreo'
+        verbose_name_plural = 'Eventos de Monitoreo'
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f"[{self.codigo}] {self.nivel} - {self.metrica} ({self.valor_registrado})"
+
+    @staticmethod
+    def calcular_prioridad_matriz(impacto: str, urgencia: str) -> str:
+        matriz = {
+            ('ALTO', 'ALTA'): Ticket.Prioridad.P1_CRITICA,
+            ('ALTO', 'MEDIA'): Ticket.Prioridad.P2_ALTA,
+            ('ALTO', 'BAJA'): Ticket.Prioridad.P3_MEDIA,
+            ('MEDIO', 'ALTA'): Ticket.Prioridad.P2_ALTA,
+            ('MEDIO', 'MEDIA'): Ticket.Prioridad.P3_MEDIA,
+            ('MEDIO', 'BAJA'): Ticket.Prioridad.P4_BAJA,
+            ('BAJO', 'ALTA'): Ticket.Prioridad.P3_MEDIA,
+            ('BAJO', 'MEDIA'): Ticket.Prioridad.P4_BAJA,
+            ('BAJO', 'BAJA'): Ticket.Prioridad.P4_BAJA,
+        }
+        return matriz.get((impacto, urgencia), Ticket.Prioridad.P3_MEDIA)
+
+    def save(self, *args, **kwargs):
+        if self.genera_incidente and (not self.prioridad_asignada or self.prioridad_asignada == 'N/A'):
+            self.prioridad_asignada = self.calcular_prioridad_matriz(self.impacto, self.urgencia)
+        elif not self.genera_incidente:
+            self.prioridad_asignada = 'N/A'
+
+        if self.ticket_vinculado and not self.ticket_codigo:
+            self.ticket_codigo = self.ticket_vinculado.codigo
+
+        super().save(*args, **kwargs)
+
+
