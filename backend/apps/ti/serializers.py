@@ -17,9 +17,10 @@ class TicketSerializer(serializers.ModelSerializer):
     fechaAprobacion = serializers.SerializerMethodField()
     resolucionTecnica = serializers.CharField(source='resolucion_tecnica', allow_blank=True)
     fechaResolucion = serializers.SerializerMethodField()
-    jiraKey = serializers.CharField(source='jira_key', allow_blank=True)
-    jiraUrl = serializers.CharField(source='jira_url', allow_blank=True)
-    githubUrl = serializers.CharField(source='github_url', allow_blank=True)
+    jiraKey = serializers.CharField(source='jira_key', allow_blank=True, required=False)
+    jiraUrl = serializers.CharField(source='jira_url', allow_blank=True, required=False)
+    githubUrl = serializers.CharField(source='github_url', allow_blank=True, required=False)
+    kdbCodigo = serializers.CharField(source='kdb_codigo', allow_blank=True, required=False)
 
     # Campos Control de Cambios (Semana 11 - ITIL v4)
     areaCambio = serializers.CharField(source='area_cambio', allow_null=True, required=False)
@@ -47,6 +48,7 @@ class TicketSerializer(serializers.ModelSerializer):
             'fechaResolucion', 'fecha_resolucion',
             'jiraKey', 'jira_key', 'jiraUrl', 'jira_url',
             'githubUrl', 'github_url',
+            'kdbCodigo', 'kdb_codigo',
             # Semana 11
             'areaCambio', 'area_cambio',
             'tipoCambio', 'tipo_cambio',
@@ -90,7 +92,7 @@ class TicketCreateSerializer(serializers.ModelSerializer):
         fields = [
             'tipo', 'prioridad', 'modulo', 'asunto', 'descripcion',
             'solicitante_nombre', 'solicitante_email', 'solicitante_rol',
-            'asignado_a',
+            'asignado_a', 'kdb_codigo',
             'area_cambio', 'tipo_cambio', 'impacto_riesgo',
             'ventana_mantenimiento', 'plan_rollback'
         ]
@@ -110,14 +112,18 @@ class TicketResolverSerializer(serializers.Serializer):
     asignado_a = serializers.CharField(max_length=150, required=False, allow_blank=True)
     github_url = serializers.URLField(required=False, allow_blank=True)
     jira_key = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    kdb_codigo = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
 
 class KdbArticleSerializer(serializers.ModelSerializer):
+    codigo = serializers.CharField(max_length=50, required=False, allow_blank=True)
     vecesUtilizado = serializers.IntegerField(source='veces_utilizado', read_only=True)
-    solucionWorkaround = serializers.CharField(source='solucion_workaround')
-    causaRaiz = serializers.CharField(source='causa_raiz')
-    tiempoEstimado = serializers.CharField(source='tiempo_estimado')
-    jiraRef = serializers.CharField(source='jira_ref', allow_blank=True)
+    tickets_vinculados = serializers.ListField(child=serializers.CharField(), read_only=True)
+    ticketsVinculados = serializers.ListField(child=serializers.CharField(), source='tickets_vinculados', read_only=True)
+    solucionWorkaround = serializers.CharField(source='solucion_workaround', required=False)
+    causaRaiz = serializers.CharField(source='causa_raiz', required=False)
+    tiempoEstimado = serializers.CharField(source='tiempo_estimado', required=False)
+    jiraRef = serializers.CharField(source='jira_ref', allow_blank=True, required=False)
 
     class Meta:
         model = KdbArticle
@@ -128,8 +134,22 @@ class KdbArticleSerializer(serializers.ModelSerializer):
             'tiempo_estimado', 'tiempoEstimado',
             'jira_ref', 'jiraRef', 'activo',
             'veces_utilizado', 'vecesUtilizado',
+            'tickets_vinculados', 'ticketsVinculados',
             'created_at', 'updated_at'
         ]
+        extra_kwargs = {
+            'causa_raiz': {'required': False},
+            'solucion_workaround': {'required': False},
+            'tiempo_estimado': {'required': False},
+            'jira_ref': {'required': False},
+        }
+
+    def create(self, validated_data):
+        if not validated_data.get('codigo'):
+            validated_data['codigo'] = KdbArticle.generar_siguiente_codigo()
+        if not validated_data.get('tiempo_estimado'):
+            validated_data['tiempo_estimado'] = '< 5 min'
+        return super().create(validated_data)
 
 
 class MonitoringEventSerializer(serializers.ModelSerializer):

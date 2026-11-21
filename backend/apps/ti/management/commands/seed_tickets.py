@@ -1,13 +1,15 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from datetime import timedelta
 from apps.ti.models import Ticket, KdbArticle, MonitoringEvent
 
+
 class Command(BaseCommand):
-    help = 'Semillero de registros iniciales para Service Desk, Control de Cambios y Monitoreo de Eventos - ITIL v4'
+    help = 'Semillero y sincronización normalizada desde Jira Cloud para Service Desk, Control de Cambios y Monitoreo - ITIL v4'
 
     def add_arguments(self, parser):
-        parser.add_argument('--force', action='store_true', help='Recrea o actualiza los registros sembrados')
+        parser.add_argument('--force', action='store_true', help='Fuerza la resincronización con Jira Cloud y actualiza registros base')
 
     def handle(self, *args, **options):
         force = options.get('force', False)
@@ -33,19 +35,123 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'Aviso verificando usuario TI: {e}'))
 
         if (
-            Ticket.objects.count() >= 13
+            Ticket.objects.count() >= 15
             and KdbArticle.objects.count() >= 5
             and MonitoringEvent.objects.count() >= 8
             and not force
         ):
-            self.stdout.write(self.style.SUCCESS(f'Ya existen {Ticket.objects.count()} tickets y {MonitoringEvent.objects.count()} eventos en la base de datos.'))
+            self.stdout.write(self.style.SUCCESS(
+                f'Ya existen {Ticket.objects.count()} tickets, {KdbArticle.objects.count()} artículos KDB y {MonitoringEvent.objects.count()} eventos.'
+            ))
             return
 
+        # Limpiar códigos obsoletos que duplicaban issues existentes
+        Ticket.objects.filter(codigo__in=['REQ-2026-0015', 'REQ-2026-0025', 'RFC-2026-0044']).delete()
+
+        # 2. Sembrado de Base de Conocimiento KDB (ITIL v4) con referencias reales a Jira Cloud (KAN)
+        kdb_seeds = [
+            {
+                "codigo": "KDB-2026-001",
+                "titulo": "Error 502 / 504 Bad Gateway: Microservicio Backend API no responde",
+                "categoria": KdbArticle.Categoria.INFRAESTRUCTURA,
+                "modulo": "Infraestructura & BD",
+                "prioridad": KdbArticle.Prioridad.P1_CRITICA,
+                "sintoma": "La aplicación muestra pantalla blanca o errores 502/504 al consultar citas o procesar pagos.",
+                "causa_raiz": "Proceso Gunicorn en sumaq-backend saturado por fuga de memoria temporal o bloqueo de E/S en proxy NGINX.",
+                "solucion_workaround": (
+                    "1. Abrir terminal del servidor Azure o local.\n"
+                    "2. Ejecutar reinicio del contenedor: docker restart sumaq-backend\n"
+                    "3. Verificar salud del servicio: docker logs sumaq-backend --tail 30\n"
+                    "4. Validar respuesta en http://localhost:8000/api/v1/health/. Tiempo de recuperación estimado: < 30 seg."
+                ),
+                "tiempo_estimado": "< 3 min",
+                "jira_ref": "KAN-3",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-002",
+                "titulo": "Error 401 Unauthorized / Token JWT Expirado en Pantalla de Cobro POS",
+                "categoria": KdbArticle.Categoria.SEGURIDAD,
+                "modulo": "Seguridad & Auth",
+                "prioridad": KdbArticle.Prioridad.P2_ALTA,
+                "sintoma": "Las recepcionistas son expulsadas a la pantalla de login con alerta 'Sesión caducada' al emitir boleta.",
+                "causa_raiz": "Access token de 120 minutos superó el tiempo de vida o clave de revocación en Redis fue purgada.",
+                "solucion_workaround": (
+                    "1. Solicitar re-login inmediato de la recepcionista para emitir nuevo Refresh Token.\n"
+                    "2. Si el error persiste, purgar caché de sesiones en Redis ejecutando: docker exec -it sumaq-redis redis-cli FLUSHDB\n"
+                    "3. Validar sincronización horaria del cliente con el servidor."
+                ),
+                "tiempo_estimado": "< 2 min",
+                "jira_ref": "KAN-5",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-003",
+                "titulo": "Desincronización de Kardex / Reporte Financiero en Nodo Slave (Puerto 3309)",
+                "categoria": KdbArticle.Categoria.BASE_DE_DATOS,
+                "modulo": "Base de Datos MySQL",
+                "prioridad": KdbArticle.Prioridad.P3_MEDIA,
+                "sintoma": "El informe analítico de caja o inventario no muestra las ventas recientes registradas en el Master.",
+                "causa_raiz": "Hilo de replicación Slave_SQL_Running o Slave_IO_Running detenido por microcorte de red.",
+                "solucion_workaround": (
+                    "1. Conectar a MySQL Slave (puerto 3309) y verificar estado: SHOW REPLICA STATUS\\G\n"
+                    "2. Si Replica_SQL_Running está en 'No', ejecutar: STOP REPLICA; START REPLICA;\n"
+                    "3. Como contingencia operativa inmediata, conmutar la lectura temporal al nodo Master (3308)."
+                ),
+                "tiempo_estimado": "< 5 min",
+                "jira_ref": "KAN-2",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-004",
+                "titulo": "Lentitud Extrema (>20s) en Checkout POS y Generación de Boletas PDF",
+                "categoria": KdbArticle.Categoria.APLICACIONES,
+                "modulo": "Punto de Venta / Caja",
+                "prioridad": KdbArticle.Prioridad.P2_ALTA,
+                "sintoma": "Al presionar 'Cobrar' en recepción, el modal se congela y demora en mostrar el comprobante descargable.",
+                "causa_raiz": "Saturación en el motor de renderizado de boletas PDF o acumulación excesiva de estado en navegador.",
+                "solucion_workaround": (
+                    "1. Instruir al personal de caja presionar Ctrl + F5 para recargar el bundle estático del navegador.\n"
+                    "2. Limpiar recibos temporales en almacenamiento local del navegador.\n"
+                    "3. Si persiste, reiniciar worker NGINX: docker restart sumaq-frontend."
+                ),
+                "tiempo_estimado": "< 4 min",
+                "jira_ref": "KAN-100",
+                "activo": True
+            },
+            {
+                "codigo": "KDB-2026-005",
+                "titulo": "Saturación de CPU al 98% en MySQL Master por Bloqueo Transaccional (Deadlock)",
+                "categoria": KdbArticle.Categoria.BASE_DE_DATOS,
+                "modulo": "Base de Datos MySQL",
+                "prioridad": KdbArticle.Prioridad.P1_CRITICA,
+                "sintoma": "Múltiples clientes y recepcionistas no pueden confirmar reservas; peticiones quedan en espera infinita.",
+                "causa_raiz": "Contención de bloqueos pesimistas entre reservas concurrentes y actualización masiva de stock BOM.",
+                "solucion_workaround": (
+                    "1. Ingresar a MySQL Master (3308) y ejecutar: SHOW FULL PROCESSLIST;\n"
+                    "2. Identificar el hilo en estado 'Waiting for table metadata lock' o con Time > 45 segundos.\n"
+                    "3. Ejecutar comando: KILL <process_id>; para liberar la tabla inmediatamente."
+                ),
+                "tiempo_estimado": "< 5 min",
+                "jira_ref": "KAN-7",
+                "activo": True
+            }
+        ]
+
+        for k in kdb_seeds:
+            KdbArticle.objects.update_or_create(codigo=k["codigo"], defaults=k)
+
+        # 3. Sincronizar desde Jira Cloud preservando fechas históricas reales
+        from apps.ti.views import _auto_sync_from_jira
+        sync_res = _auto_sync_from_jira(force=True)
+        self.stdout.write(self.style.SUCCESS(f'Resultado sincronización Jira Cloud: {sync_res}'))
+
+        # 4. Asegurar metadatos CAB completos en los 4 RFC de Control de Cambios (preservando sus fechas históricas 2026-10-29)
+        hist_oct23 = parse_datetime("2026-10-23T01:15:40+00:00")
+        hist_oct29 = parse_datetime("2026-10-29T23:54:50+00:00")
         now = timezone.now()
-        seeds = [
-            # =========================================================================
-            # SEMANA 10: MESA DE AYUDA (SERVICE DESK) - SERVICIO, ACCESO, INCIDENCIA
-            # =========================================================================
+
+        rfc_And_base_seeds = [
             {
                 "codigo": "REQ-2026-0001",
                 "tipo": Ticket.Tipo.SOLICITUD_SERVICIO,
@@ -61,12 +167,14 @@ class Command(BaseCommand):
                 "asignado_a": "Rafael Ramirez Quiroz (RQ)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
-                "fecha_aprobacion": now - timedelta(days=2),
+                "fecha_aprobacion": hist_oct23 + timedelta(hours=2),
                 "resolucion_tecnica": "Endpoints en /api/ conectando servicios de citas y pagos con axios y React Query.",
-                "fecha_resolucion": now - timedelta(days=1),
+                "fecha_resolucion": hist_oct23 + timedelta(hours=10),
                 "jira_key": "KAN-1",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-1",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti",
+                "kdb_codigo": "KDB-2026-004",
+                "created_at": hist_oct23,
             },
             {
                 "codigo": "REQ-2026-0008",
@@ -83,12 +191,14 @@ class Command(BaseCommand):
                 "asignado_a": "Anthony Luque (AL)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
-                "fecha_aprobacion": now - timedelta(days=2),
+                "fecha_aprobacion": hist_oct23 + timedelta(hours=2),
                 "resolucion_tecnica": "Script verificado con Checksum MD5 y Seconds_Behind_Master: 0 en contenedor 3309.",
-                "fecha_resolucion": now - timedelta(days=1),
+                "fecha_resolucion": hist_oct23 + timedelta(hours=8),
                 "jira_key": "KAN-8",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-8",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti",
+                "kdb_codigo": "KDB-2026-001",
+                "created_at": hist_oct23,
             },
             {
                 "codigo": "REQ-2026-0007",
@@ -105,12 +215,14 @@ class Command(BaseCommand):
                 "asignado_a": "Anthony Luque (AL)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
-                "fecha_aprobacion": now - timedelta(days=2),
+                "fecha_aprobacion": hist_oct23 + timedelta(hours=2),
                 "resolucion_tecnica": "Esquema de migración makemigrations generado con integridad referencial validada en tests unitarios.",
-                "fecha_resolucion": now - timedelta(days=1),
+                "fecha_resolucion": hist_oct23 + timedelta(hours=6),
                 "jira_key": "KAN-7",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-7",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti",
+                "kdb_codigo": "KDB-2026-005",
+                "created_at": hist_oct23,
             },
             {
                 "codigo": "REQ-2026-0006",
@@ -127,88 +239,49 @@ class Command(BaseCommand):
                 "asignado_a": "Bryan Alexis Mango (BT)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
-                "fecha_aprobacion": now - timedelta(days=2),
+                "fecha_aprobacion": hist_oct23 + timedelta(hours=2),
                 "resolucion_tecnica": "Seguridad RBAC configurada en común permissions.py y middleware de expiración de sesión.",
-                "fecha_resolucion": now - timedelta(days=1),
+                "fecha_resolucion": hist_oct23 + timedelta(hours=7),
                 "jira_key": "KAN-6",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-6",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti",
+                "kdb_codigo": "KDB-2026-002",
+                "created_at": hist_oct23,
             },
-            {
-                "codigo": "REQ-2026-0015",
-                "tipo": Ticket.Tipo.SOLICITUD_ACCESO,
-                "prioridad": Ticket.Prioridad.P2_ALTA,
-                "asunto": "Alta de cuenta para nueva recepcionista Camila Vega (Turno Tarde)",
-                "descripcion": "Creación de usuario en el sistema con permisos de cobro POS, agenda y emisión de boletas tributarias.",
-                "modulo": "Usuarios & Roles",
-                "solicitante_nombre": "Recepcionista Principal",
-                "solicitante_email": "recepcion@sumaqspa.pe",
-                "solicitante_rol": "RECEPCIONISTA",
-                "sla_horas": 8,
-                "estado": Ticket.Estado.PENDIENTE_APROBACION,
-                "asignado_a": "Anthony Luque (AL)",
-                "aprobado_por_gerencia": False,
-                "resolucion_tecnica": "",
-                "jira_key": "KAN-15",
-                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-15",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti"
-            },
-            {
-                "codigo": "REQ-2026-0025",
-                "tipo": Ticket.Tipo.INCIDENCIA,
-                "prioridad": Ticket.Prioridad.P2_ALTA,
-                "asunto": "Implementación de arquitectura y monitor de replicación MySQL Master-Slave",
-                "descripcion": "Configuración de nodo 3308 como maestro transaccional y 3309 como réplica de lectura para analítica de caja.",
-                "modulo": "Base de Datos MySQL",
-                "solicitante_nombre": "Bryan Mango (BT)",
-                "solicitante_email": "bryan.mango@sumaqspa.pe",
-                "solicitante_rol": "ADMIN",
-                "sla_horas": 8,
-                "estado": Ticket.Estado.EN_PROCESO,
-                "asignado_a": "Rafael Ramirez Quiroz (RQ)",
-                "aprobado_por_gerencia": True,
-                "aprobador_nombre": "Rafael Ramirez (Gerente General)",
-                "fecha_aprobacion": now - timedelta(hours=4),
-                "resolucion_tecnica": "Slave_IO_Running: Yes, Slave_SQL_Running: Yes, Seconds_Behind_Master: 0.",
-                "jira_key": "KAN-25",
-                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-25",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestion-ti"
-            },
-
-            # =========================================================================
-            # SEMANA 11: CONTROL DE CAMBIOS (ITIL v4) - LAS 4 ÁREAS DE CAMBIO
-            # =========================================================================
-            # ÁREA 1: INFRAESTRUCTURA (Hardware de red, Switch Administrable, VLANs)
             {
                 "codigo": "RFC-2026-0050",
                 "tipo": Ticket.Tipo.SOLICITUD_CAMBIO,
                 "prioridad": Ticket.Prioridad.P2_ALTA,
                 "asunto": "Reemplazo de Switch Administrable y Segmentación de VLANs 10, 20 y 30",
-                "descripcion": "Sustitución física del switch no administrable por Switch Cisco Catalyst Gigabit 24p L2/L3 con soporte 802.1Q. Segmentación estricta: VLAN 10 (Gestión/POS/Servidor 3307), VLAN 20 (Tablets Cabinas 1, 2 y 3) y VLAN 30 (Wi-Fi Clientes con Client Isolation para evitar accesos indebidos a BD).",
+                "descripcion": (
+                    "Sustitución física del switch no administrable por Switch Cisco Catalyst Gigabit 24p L2/L3 con soporte 802.1Q. "
+                    "Segmentación estricta: VLAN 10 (Gestión/POS/Servidor 3308), VLAN 20 (Tablets Cabinas 1, 2 y 3) y VLAN 30 (Wi-Fi Clientes con Client Isolation)."
+                ),
                 "modulo": "Redes & Hardware",
                 "area_cambio": Ticket.AreaCambio.INFRAESTRUCTURA,
                 "tipo_cambio": Ticket.TipoCambio.NORMAL,
                 "impacto_riesgo": Ticket.ImpactoRiesgo.ALTO,
                 "ventana_mantenimiento": "Martes 02:00 AM - 04:00 AM (Ventana Nocturna No Invasiva)",
-                "plan_rollback": "Reconexión de patch cords al switch anterior en rack físico en menos de 10 minutos si fallan pruebas de ping a Gateway o transacción POS de prueba.",
+                "plan_rollback": "Reconexión de patch cords al switch anterior en rack físico en menos de 10 minutos si fallan pruebas de ping a Gateway o transacción POS.",
                 "solicitante_nombre": "Bryan Mango (DBA / Infraestructura)",
                 "solicitante_email": "bryan.mango@sumaqspa.pe",
                 "solicitante_rol": "ADMIN",
                 "sla_horas": 48,
                 "estado": Ticket.Estado.APROBADO,
-                "asignado_a": "Bryan Mango (Infraestructura)",
+                "asignado_a": "Bryan Alexis Mango (BT)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)",
                 "cab_aprobado_por": "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)",
                 "cab_acta_numero": "ACTA-CAB-2026-W11-050",
-                "cab_fecha_aprobacion": now - timedelta(hours=12),
-                "fecha_aprobacion": now - timedelta(hours=12),
+                "cab_fecha_aprobacion": hist_oct29 + timedelta(hours=4),
+                "fecha_aprobacion": hist_oct29 + timedelta(hours=4),
                 "resolucion_tecnica": "Pre-configuración en staging completada. VLANs 10, 20 y 30 etiquetadas. Listo para swap físico.",
                 "jira_key": "KAN-40",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-40",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo",
+                "kdb_codigo": "KDB-2026-001",
+                "created_at": hist_oct29,
             },
-            # ÁREA 2: APLICACIONES Y BASE DE DATOS (Código, pasarelas, replicación)
             {
                 "codigo": "RFC-2026-0042",
                 "tipo": Ticket.Tipo.SOLICITUD_CAMBIO,
@@ -226,19 +299,20 @@ class Command(BaseCommand):
                 "solicitante_rol": "ADMIN",
                 "sla_horas": 24,
                 "estado": Ticket.Estado.APROBADO,
-                "asignado_a": "Anthony Luque (DevOps)",
+                "asignado_a": "Anthony Luque (AL)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)",
                 "cab_aprobado_por": "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)",
                 "cab_acta_numero": "ACTA-CAB-2026-W11-042",
-                "cab_fecha_aprobacion": now - timedelta(hours=6),
-                "fecha_aprobacion": now - timedelta(hours=6),
+                "cab_fecha_aprobacion": hist_oct29 + timedelta(hours=5),
+                "fecha_aprobacion": hist_oct29 + timedelta(hours=5),
                 "resolucion_tecnica": "Pipeline CI/CD en GitHub Actions verificado con Pytest 100% pass y scan de seguridad Trivy.",
                 "jira_key": "KAN-41",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-41",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo",
+                "kdb_codigo": "KDB-2026-003",
+                "created_at": hist_oct29,
             },
-            # ÁREA 3: DOCUMENTACIÓN (Manuales de Contingencia, Diagramas C4 y Topología)
             {
                 "codigo": "RFC-2026-0043",
                 "tipo": Ticket.Tipo.SOLICITUD_CAMBIO,
@@ -256,20 +330,21 @@ class Command(BaseCommand):
                 "solicitante_rol": "ADMIN",
                 "sla_horas": 24,
                 "estado": Ticket.Estado.RESUELTO,
-                "asignado_a": "Rafael Ramirez (PO)",
+                "asignado_a": "Rafael Ramirez Quiroz (RQ)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Change Manager)",
                 "cab_aprobado_por": "Rafael Ramirez (Change Manager)",
                 "cab_acta_numero": "ACTA-CAB-2026-W11-043",
-                "cab_fecha_aprobacion": now - timedelta(days=1),
-                "fecha_aprobacion": now - timedelta(days=1),
+                "cab_fecha_aprobacion": hist_oct29 + timedelta(hours=6),
+                "fecha_aprobacion": hist_oct29 + timedelta(hours=6),
                 "resolucion_tecnica": "Manuales y diagramas aprobados y distribuidos a recepción y cabinas de masajes.",
-                "fecha_resolucion": now - timedelta(hours=2),
+                "fecha_resolucion": hist_oct29 + timedelta(hours=12),
                 "jira_key": "KAN-42",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-42",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo",
+                "kdb_codigo": "KDB-2026-001",
+                "created_at": hist_oct29,
             },
-            # ÁREA 4: CALENDARIO (Change Freeze, Ventanas de Mantenimiento)
             {
                 "codigo": "RFC-2026-0030",
                 "tipo": Ticket.Tipo.SOLICITUD_CAMBIO,
@@ -287,100 +362,35 @@ class Command(BaseCommand):
                 "solicitante_rol": "ADMIN",
                 "sla_horas": 48,
                 "estado": Ticket.Estado.APROBADO,
-                "asignado_a": "Rafael Ramirez (Change Manager)",
+                "asignado_a": "Rafael Ramirez Quiroz (RQ)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)",
                 "cab_aprobado_por": "MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)",
                 "cab_acta_numero": "ACTA-CAB-2026-W11-030",
-                "cab_fecha_aprobacion": now - timedelta(days=1),
-                "fecha_aprobacion": now - timedelta(days=1),
+                "cab_fecha_aprobacion": hist_oct29 + timedelta(hours=8),
+                "fecha_aprobacion": hist_oct29 + timedelta(hours=8),
                 "resolucion_tecnica": "Calendario de despliegues actualizado en GitHub Releases y notificado a todo el personal.",
                 "jira_key": "KAN-43",
                 "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-43",
-                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo"
+                "github_url": "https://github.com/raforamqutp/SUMAQ-web/tree/feature/prueba-ti-v2-completo",
+                "kdb_codigo": "KDB-2026-001",
+                "created_at": hist_oct29,
             }
         ]
 
-        for s in seeds:
-            s["sla_fecha_limite"] = now + timedelta(hours=s["sla_horas"])
+        for s in rfc_And_base_seeds:
+            base_dt = s.get("created_at", now)
+            s["sla_fecha_limite"] = base_dt + timedelta(hours=s["sla_horas"])
             Ticket.objects.update_or_create(codigo=s["codigo"], defaults=s)
 
-        # Sembrado de Base de Conocimiento KDB (ITIL v4)
-        kdb_seeds = [
-            {
-                "codigo": "KDB-2026-001",
-                "titulo": "Error 502 / 504 Bad Gateway: Microservicio Backend API no responde",
-                "categoria": KdbArticle.Categoria.INFRAESTRUCTURA,
-                "modulo": "Infraestructura & Azure",
-                "prioridad": KdbArticle.Prioridad.P1_CRITICA,
-                "sintoma": "La aplicación muestra pantalla blanca o errores 502/504 al consultar citas o procesar pagos.",
-                "causa_raiz": "Proceso Gunicorn en sumaq-backend saturado por fuga de memoria temporal o timeout en proxy NGINX.",
-                "solucion_workaround": "1. Abrir terminal del servidor Azure o local.\n2. Ejecutar reinicio del contenedor: docker restart sumaq-backend\n3. Verificar salud del servicio: docker logs sumaq-backend --tail 30\n4. Validar respuesta en http://localhost:8000/api/catalogos/. Tiempo de recuperación estimado: < 30 seg.",
-                "tiempo_estimado": "< 3 min",
-                "jira_ref": "SUMAQ-KB-101",
-                "activo": True
-            },
-            {
-                "codigo": "KDB-2026-002",
-                "titulo": "Error 401 Unauthorized / Token JWT Expirado en Pantalla de Cobro POS",
-                "categoria": KdbArticle.Categoria.SEGURIDAD,
-                "modulo": "Seguridad & Auth",
-                "prioridad": KdbArticle.Prioridad.P2_ALTA,
-                "sintoma": "Las recepcionistas son expulsadas a la pantalla de login con alerta 'Sesión caducada' al emitir boleta.",
-                "causa_raiz": "Access token de 120 minutos superó el tiempo de vida o clave de revocación en Redis fue purgada.",
-                "solucion_workaround": "1. Solicitar re-login inmediato de la recepcionista para emitir nuevo Refresh Token.\n2. Si el error persiste, purgar caché de sesiones en Redis ejecutando: docker exec -it sumaq-redis redis-cli FLUSHDB\n3. Validar sincronización horaria del cliente con el servidor.",
-                "tiempo_estimado": "< 2 min",
-                "jira_ref": "SUMAQ-KB-102",
-                "activo": True
-            },
-            {
-                "codigo": "KDB-2026-003",
-                "titulo": "Desincronización de Kardex / Reporte Financiero en Nodo Slave (Puerto 3309)",
-                "categoria": KdbArticle.Categoria.BASE_DE_DATOS,
-                "modulo": "Base de Datos MySQL",
-                "prioridad": KdbArticle.Prioridad.P3_MEDIA,
-                "sintoma": "El informe analítico de caja o inventario no muestra las ventas recientes registradas en el Master.",
-                "causa_raiz": "Hilo de replicación Slave_SQL_Running o Slave_IO_Running detenido por microcorte de red.",
-                "solucion_workaround": "1. Conectar a MySQL Slave (puerto 3309) y verificar estado: SHOW SLAVE STATUS\\G\n2. Si Slave_SQL_Running está en 'No', ejecutar: STOP REPLICA; START REPLICA;\n3. Como contingencia operativa inmediata, conmutar la lectura temporal al nodo Master (3308).",
-                "tiempo_estimado": "< 5 min",
-                "jira_ref": "SUMAQ-KB-103",
-                "activo": True
-            },
-            {
-                "codigo": "KDB-2026-004",
-                "titulo": "Lentitud Extrema (>20s) en Checkout POS y Generación de Boletas PDF",
-                "categoria": KdbArticle.Categoria.APLICACIONES,
-                "modulo": "Punto de Venta / Caja",
-                "prioridad": KdbArticle.Prioridad.P2_ALTA,
-                "sintoma": "Al presionar 'Cobrar' en recepción, el modal se congela y demora en mostrar el comprobante descargable.",
-                "causa_raiz": "Saturación en el motor de renderizado de boletas PDF o acumulación excesiva de LocalStorage en navegador.",
-                "solucion_workaround": "1. Instruir al personal de caja presionar Ctrl + F5 para recargar el bundle estático del navegador.\n2. Limpiar recibos temporales en localStorage del navegador.\n3. Si persiste, reiniciar worker NGINX: docker restart sumaq-frontend.",
-                "tiempo_estimado": "< 4 min",
-                "jira_ref": "SUMAQ-KB-104",
-                "activo": True
-            },
-            {
-                "codigo": "KDB-2026-005",
-                "titulo": "Saturación de CPU al 98% en MySQL Master por Bloqueo Transaccional (Deadlock)",
-                "categoria": KdbArticle.Categoria.BASE_DE_DATOS,
-                "modulo": "Base de Datos MySQL",
-                "prioridad": KdbArticle.Prioridad.P1_CRITICA,
-                "sintoma": "Múltiples clientes y recepcionistas no pueden confirmar reservas; peticiones quedan en espera infinita.",
-                "causa_raiz": "Contención de bloqueos pesimistas entre reservas concurrentes y actualización masiva de stock BOM.",
-                "solucion_workaround": "1. Ingresar a MySQL Master (3308) y ejecutar: SHOW FULL PROCESSLIST;\n2. Identificar el hilo en estado 'Waiting for table metadata lock' o con Time > 45 segundos.\n3. Ejecutar comando: KILL <process_id>; para liberar la tabla inmediatamente.",
-                "tiempo_estimado": "< 5 min",
-                "jira_ref": "SUMAQ-KB-105",
-                "activo": True
-            }
-        ]
+        # Normalizar cualquier ticket de monitoreo previo que no tuviera jira_key asignado
+        for t_empty in Ticket.objects.filter(jira_key=''):
+            fallback_key = 'KAN-7' if 'MySQL' in (t_empty.modulo or '') or 'CPU' in (t_empty.asunto or '') else 'KAN-3'
+            t_empty.jira_key = fallback_key
+            t_empty.jira_url = f"https://sumaq-dev.atlassian.net/browse/{fallback_key}"
+            t_empty.save(update_fields=['jira_key', 'jira_url'])
 
-        for k in kdb_seeds:
-            KdbArticle.objects.update_or_create(codigo=k["codigo"], defaults=k)
-
-        # Vincular tickets existentes a los artículos de KDB
-        Ticket.objects.filter(modulo="Base de Datos MySQL").update(kdb_codigo="KDB-2026-003")
-
-        # Tickets de Incidente generados por el Motor de Monitoreo de Eventos
+        # 5. Tickets de Incidente generados por el Motor de Monitoreo de Eventos (con claves reales de Jira KAN-2 y KAN-3)
         incident_tickets_seeds = [
             {
                 "codigo": "INC-2026-0028",
@@ -401,12 +411,12 @@ class Command(BaseCommand):
                 "sla_horas": 8,
                 "sla_fecha_limite": now + timedelta(hours=8),
                 "estado": Ticket.Estado.EN_PROCESO,
-                "asignado_a": "Bryan Mango (DBA / Infraestructura L2)",
+                "asignado_a": "Bryan Alexis Mango (BT)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
                 "resolucion_tecnica": "Aislamiento de lecturas de reportes hacia contenedor Slave 3309 en curso.",
-                "jira_key": "KAN-28",
-                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-28",
+                "jira_key": "KAN-2",
+                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-2",
                 "kdb_codigo": "KDB-2026-005"
             },
             {
@@ -428,13 +438,13 @@ class Command(BaseCommand):
                 "sla_horas": 2,
                 "sla_fecha_limite": now + timedelta(hours=2),
                 "estado": Ticket.Estado.RESUELTO,
-                "asignado_a": "Rafael Ramirez (SysAdmin / Cloud L3)",
+                "asignado_a": "Rafael Ramirez Quiroz (RQ)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
                 "resolucion_tecnica": "Ejecución de PURGE BINARY LOGS en nodo 3308 y compresión de respaldos; ocupación reducida al 64.2%.",
                 "fecha_resolucion": now - timedelta(minutes=15),
-                "jira_key": "KAN-29",
-                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-29",
+                "jira_key": "KAN-3",
+                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-3",
                 "kdb_codigo": "KDB-2026-001"
             },
             {
@@ -456,13 +466,13 @@ class Command(BaseCommand):
                 "sla_horas": 2,
                 "sla_fecha_limite": now + timedelta(hours=2),
                 "estado": Ticket.Estado.RESUELTO,
-                "asignado_a": "Anthony Luque (DevOps / Backend L2)",
+                "asignado_a": "Anthony Luque (AL)",
                 "aprobado_por_gerencia": True,
                 "aprobador_nombre": "Rafael Ramirez (Gerente General)",
                 "resolucion_tecnica": "Contenedor sumaq-backend reiniciado vía healthcheck en 22 segundos. Respuesta 200 OK restablecida.",
                 "fecha_resolucion": now - timedelta(minutes=10),
-                "jira_key": "KAN-31",
-                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-31",
+                "jira_key": "KAN-3",
+                "jira_url": "https://sumaq-dev.atlassian.net/browse/KAN-3",
                 "kdb_codigo": "KDB-2026-001"
             }
         ]
@@ -472,7 +482,7 @@ class Command(BaseCommand):
             t_obj, _ = Ticket.objects.update_or_create(codigo=inc_data["codigo"], defaults=inc_data)
             created_inc_tickets[inc_data["codigo"]] = t_obj
 
-        # Sembrado de Bitácora Cronológica de Eventos de Monitoreo (09:00 a 09:25)
+        # 6. Sembrado de Bitácora Cronológica de Eventos de Monitoreo (09:00 a 09:25)
         event_seeds = [
             {
                 "codigo": "EVT-2026-0001",
@@ -533,7 +543,7 @@ class Command(BaseCommand):
                 "impacto": MonitoringEvent.NivelImpacto.BAJO,
                 "urgencia": MonitoringEvent.NivelUrgencia.MEDIA,
                 "prioridad_asignada": "N/A",
-                "responsable": "Anthony Luque (DevOps / L2)",
+                "responsable": "Anthony Luque (AL)",
                 "accion_respuesta": "Liberación preventiva de objetos expirados en memoria caché y supervisión de workers.",
                 "tiempo_respuesta_max": "30 min",
                 "estado": MonitoringEvent.Estado.MITIGADO,
@@ -555,7 +565,7 @@ class Command(BaseCommand):
                 "impacto": MonitoringEvent.NivelImpacto.BAJO,
                 "urgencia": MonitoringEvent.NivelUrgencia.MEDIA,
                 "prioridad_asignada": "N/A",
-                "responsable": "Bryan Mango (Seguridad TI L2)",
+                "responsable": "Bryan Alexis Mango (BT)",
                 "accion_respuesta": "Bloqueo temporal de IP por 15 minutos mediante política de Rate Limiting y registro en auditoría.",
                 "tiempo_respuesta_max": "15 min",
                 "estado": MonitoringEvent.Estado.MITIGADO,
@@ -577,7 +587,7 @@ class Command(BaseCommand):
                 "impacto": MonitoringEvent.NivelImpacto.MEDIO,
                 "urgencia": MonitoringEvent.NivelUrgencia.ALTA,
                 "prioridad_asignada": Ticket.Prioridad.P2_ALTA,
-                "responsable": "Bryan Mango (DBA / Infraestructura L2)",
+                "responsable": "Bryan Alexis Mango (BT)",
                 "accion_respuesta": "Terminar consultas bloqueadas, liberar conexiones en estado Sleep y conmutar lecturas analíticas a réplica 3309.",
                 "tiempo_respuesta_max": "15 min",
                 "estado": MonitoringEvent.Estado.ESCALADO,
@@ -599,7 +609,7 @@ class Command(BaseCommand):
                 "impacto": MonitoringEvent.NivelImpacto.ALTO,
                 "urgencia": MonitoringEvent.NivelUrgencia.ALTA,
                 "prioridad_asignada": Ticket.Prioridad.P1_CRITICA,
-                "responsable": "Rafael Ramirez (SysAdmin / Cloud L3)",
+                "responsable": "Rafael Ramirez Quiroz (RQ)",
                 "accion_respuesta": "Purgar binlogs antiguos ya replicados (PURGE BINARY LOGS), rotar logs de Nginx y liberar partición.",
                 "tiempo_respuesta_max": "5 min",
                 "estado": MonitoringEvent.Estado.CERRADO,
@@ -621,7 +631,7 @@ class Command(BaseCommand):
                 "impacto": MonitoringEvent.NivelImpacto.ALTO,
                 "urgencia": MonitoringEvent.NivelUrgencia.ALTA,
                 "prioridad_asignada": Ticket.Prioridad.P1_CRITICA,
-                "responsable": "Anthony Luque (DevOps / Backend L2)",
+                "responsable": "Anthony Luque (AL)",
                 "accion_respuesta": "Reinicio automático de contenedor sumaq-backend mediante Docker healthcheck y restablecimiento de pool.",
                 "tiempo_respuesta_max": "5 min",
                 "estado": MonitoringEvent.Estado.CERRADO,
@@ -657,9 +667,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Se sincronizaron exitosamente {len(seeds) + len(incident_tickets_seeds)} tickets, '
-                f'{len(kdb_seeds)} artículos KDB y {len(event_seeds)} eventos de monitoreo en la base de datos.'
+                f'Sincronización completa: {Ticket.objects.count()} tickets totales, '
+                f'{KdbArticle.objects.count()} artículos KDB y {MonitoringEvent.objects.count()} eventos de monitoreo.'
             )
         )
-
-

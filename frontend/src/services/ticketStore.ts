@@ -104,7 +104,7 @@ const SEED_TICKETS: Ticket[] = [
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-6'
   },
   {
-    id: 'REQ-2026-0015',
+    id: 'REQ-2026-0010',
     tipo: 'SOLICITUD_ACCESO',
     prioridad: 'P2_ALTA',
     asunto: 'Alta de cuenta para nueva recepcionista Camila Vega (Turno Tarde)',
@@ -113,38 +113,40 @@ const SEED_TICKETS: Ticket[] = [
     solicitanteNombre: 'Recepcionista Principal',
     solicitanteEmail: 'recepcion@sumaqspa.pe',
     solicitanteRol: 'RECEPCIONISTA',
-    fechaCreacion: '2026-10-23 09:30:00',
+    fechaCreacion: '2026-10-23 01:15:40',
     slaHoras: 8,
-    slaFechaLimite: '2026-10-23 17:30:00',
+    slaFechaLimite: '2026-10-23 09:15:40',
     estado: 'PENDIENTE_APROBACION',
     asignadoA: 'Anthony Luque (AL)',
     aprobadoPorGerencia: false,
     resolucionTecnica: '',
-    jiraKey: 'KAN-15',
-    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-15',
-    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti'
+    jiraKey: 'KAN-10',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-10',
+    githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
+    kdbCodigo: 'KDB-2026-002'
   },
   {
-    id: 'REQ-2026-0025',
+    id: 'REQ-2026-0002',
     tipo: 'INCIDENCIA',
     prioridad: 'P2_ALTA',
-    asunto: 'Implementación de arquitectura y monitor de réplicación MySQL Master-Slave',
+    asunto: 'Implementación de arquitectura y monitor de replicación MySQL Master-Slave',
     descripcion: 'Configuración de nodo 3308 como maestro transaccional y 3309 como réplica de lectura para analítica de caja.',
     modulo: 'Base de Datos MySQL',
     solicitanteNombre: 'Bryan Mango (BT)',
     solicitanteEmail: 'bryan.mango@sumaqspa.pe',
     solicitanteRol: 'ADMIN',
-    fechaCreacion: '2026-10-23 06:06:00',
+    fechaCreacion: '2026-10-23 01:15:40',
     slaHoras: 8,
-    slaFechaLimite: '2026-10-23 14:06:00',
-    estado: 'EN_PROCESO',
-    asignadoA: 'Rafael Ramirez Quiroz (RQ)',
+    slaFechaLimite: '2026-10-23 09:15:40',
+    estado: 'RESUELTO',
+    asignadoA: 'Bryan Alexis Mango (BT)',
     aprobadoPorGerencia: true,
     aprobadorNombre: 'Rafael Ramirez (Gerente General)',
     resolucionTecnica: 'Slave_IO_Running: Yes, Slave_SQL_Running: Yes, Seconds_Behind_Master: 0.',
     githubUrl: 'https://github.com/raforamqutp/SUMAQ-web/tree/feature/diseno-frontend-gestión-ti',
-    jiraKey: 'KAN-25',
-    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-25'
+    jiraKey: 'KAN-2',
+    jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-2',
+    kdbCodigo: 'KDB-2026-003'
   },
 
   // =========================================================================
@@ -246,7 +248,7 @@ const SEED_TICKETS: Ticket[] = [
   },
   // ÁREA 4: CALENDARIO (Change Freeze Campaña San Valentín)
   {
-    id: 'RFC-2026-0030',
+    id: 'RFC-2026-0044',
     tipo: 'SOLICITUD_CAMBIO',
     prioridad: 'P2_ALTA',
     asunto: 'Definición de Ventana de Congelamiento (Change Freeze) Campaña San Valentín',
@@ -260,16 +262,16 @@ const SEED_TICKETS: Ticket[] = [
     solicitanteNombre: 'Administradora General SUMAQ',
     solicitanteEmail: 'administracion@sumaqspa.pe',
     solicitanteRol: 'ADMIN',
-    fechaCreacion: '2026-10-28 09:00:00',
+    fechaCreacion: '2026-10-29 23:54:50',
     slaHoras: 48,
-    slaFechaLimite: '2026-10-30 09:00:00',
+    slaFechaLimite: '2026-10-31 23:54:50',
     estado: 'APROBADO',
-    asignadoA: 'Rafael Ramirez (Change Manager)',
+    asignadoA: 'Rafael Ramirez Quiroz (RQ)',
     aprobadoPorGerencia: true,
     aprobadorNombre: 'MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)',
     cabAprobador: 'MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)',
-    cabActa: 'ACTA-CAB-2026-W11-030',
-    cabFechaAprobacion: '2026-10-28 15:00:00',
+    cabActa: 'ACTA-CAB-2026-W11-044',
+    cabFechaAprobacion: '2026-10-30 07:54:50',
     resolucionTecnica: 'Calendario de despliegues actualizado en GitHub Releases y notificado a todo el personal.',
     jiraKey: 'KAN-43',
     jiraUrl: 'https://sumaq-dev.atlassian.net/browse/KAN-43',
@@ -301,6 +303,8 @@ function normalizeTicket(item: any): Ticket {
     jiraKey: item.jiraKey || item.jira_key || '',
     jiraUrl: item.jiraUrl || item.jira_url || '',
     githubUrl: item.githubUrl || item.github_url || '',
+    kdbCodigo: item.kdbCodigo || item.kdb_codigo || '',
+    kdb_codigo: item.kdb_codigo || item.kdbCodigo || '',
     areaCambio: item.areaCambio || item.area_cambio,
     tipoCambio: item.tipoCambio || item.tipo_cambio || 'NORMAL',
     impactoRiesgo: item.impactoRiesgo || item.impacto_riesgo || 'MEDIO',
@@ -477,7 +481,8 @@ export const TicketStore = {
       });
 
       if (resp.ok) {
-        const created: Ticket = await resp.json();
+        const rawCreated = await resp.json();
+        const created = normalizeTicket(rawCreated);
         const updated = this.getTickets().map(t => t.id === localId ? created : t);
         this.saveTickets(updated);
         return created;
@@ -487,6 +492,41 @@ export const TicketStore = {
     }
 
     return optimisticTicket;
+  },
+
+  async updateTicket(id: string, payload: Partial<Ticket> & { kdbCodigo?: string }): Promise<boolean> {
+    try {
+      const resp = await fetch(`/api/ti/tickets/${id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estado: payload.estado,
+          asignado_a: payload.asignadoA,
+          resolucion_tecnica: payload.resolucionTecnica,
+          github_url: payload.githubUrl,
+          jira_key: payload.jiraKey,
+          kdb_codigo: payload.kdbCodigo ?? payload.kdb_codigo,
+          prioridad: payload.prioridad,
+          modulo: payload.modulo,
+          asunto: payload.asunto,
+          descripcion: payload.descripcion,
+          ventana_mantenimiento: payload.ventanaMantenimiento,
+          plan_rollback: payload.planRollback
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.ticket) {
+          this.updateLocalTicket(id, normalizeTicket(data.ticket));
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Fallo en API updateTicket, aplicando local:', e);
+    }
+
+    this.updateLocalTicket(id, payload);
+    return true;
   },
 
   async approveTicket(id: string, aprobadorNombre?: string): Promise<boolean> {
@@ -499,7 +539,7 @@ export const TicketStore = {
       if (resp.ok) {
         const data = await resp.json();
         if (data.ticket) {
-          this.updateLocalTicket(id, data.ticket);
+          this.updateLocalTicket(id, normalizeTicket(data.ticket));
           return true;
         }
       }
@@ -530,7 +570,7 @@ export const TicketStore = {
       if (resp.ok) {
         const data = await resp.json();
         if (data.ticket) {
-          this.updateLocalTicket(id, data.ticket);
+          this.updateLocalTicket(id, normalizeTicket(data.ticket));
           return true;
         }
       }
@@ -555,6 +595,7 @@ export const TicketStore = {
     asignadoA?: string;
     githubUrl?: string;
     jiraKey?: string;
+    kdbCodigo?: string;
   }): Promise<boolean> {
     try {
       const resp = await fetch(`/api/ti/tickets/${id}/resolver/`, {
@@ -564,13 +605,14 @@ export const TicketStore = {
           resolucion_tecnica: payload.resolucionTecnica,
           asignado_a: payload.asignadoA,
           github_url: payload.githubUrl,
-          jira_key: payload.jiraKey
+          jira_key: payload.jiraKey,
+          kdb_codigo: payload.kdbCodigo || ''
         })
       });
       if (resp.ok) {
         const data = await resp.json();
         if (data.ticket) {
-          this.updateLocalTicket(id, data.ticket);
+          this.updateLocalTicket(id, normalizeTicket(data.ticket));
           return true;
         }
       }
@@ -584,6 +626,8 @@ export const TicketStore = {
       asignadoA: payload.asignadoA,
       githubUrl: payload.githubUrl,
       jiraKey: payload.jiraKey,
+      kdbCodigo: payload.kdbCodigo || '',
+      kdb_codigo: payload.kdbCodigo || '',
       fechaResolucion: new Date().toISOString().replace('T', ' ').substring(0, 19)
     });
     return true;
@@ -630,6 +674,96 @@ export const TicketStore = {
       console.warn('[TicketStore] Error obteniendo artículos KDB:', e);
     }
     return [];
+  },
+
+  async createKdbArticle(payload: {
+    titulo: string;
+    categoria: string;
+    modulo: string;
+    prioridad: string;
+    sintoma: string;
+    causa_raiz: string;
+    solucion_workaround: string;
+    tiempo_estimado: string;
+    jira_ref?: string;
+  }): Promise<KdbArticle | null> {
+    try {
+      const resp = await fetch('/api/ti/kdb/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        return (await resp.json()) as KdbArticle;
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error creando artículo KDB:', e);
+    }
+    return null;
+  },
+
+  async updateKdbArticle(id: number | string, payload: Partial<{
+    titulo: string;
+    categoria: string;
+    modulo: string;
+    prioridad: string;
+    sintoma: string;
+    causa_raiz: string;
+    solucion_workaround: string;
+    tiempo_estimado: string;
+    jira_ref: string;
+  }>): Promise<KdbArticle | null> {
+    try {
+      const resp = await fetch(`/api/ti/kdb/${id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        return (await resp.json()) as KdbArticle;
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Error actualizando artículo KDB:', e);
+    }
+    return null;
+  },
+
+  async deleteKdbArticle(id: number | string): Promise<boolean> {
+    try {
+      const resp = await fetch(`/api/ti/kdb/${id}/`, {
+        method: 'DELETE'
+      });
+      return resp.ok;
+    } catch (e) {
+      console.warn('[TicketStore] Error eliminando artículo KDB:', e);
+      return false;
+    }
+  },
+
+  async testJiraConnection(config: JiraConfig): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    project_name?: string;
+    user_display?: string;
+  }> {
+    try {
+      const resp = await fetch('/api/ti/jira/test-connection/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: config.enabled,
+          domain: config.domain,
+          email: config.email,
+          api_token: config.apiToken,
+          project_key: config.projectKey
+        })
+      });
+      const data = await resp.json();
+      return data;
+    } catch (e) {
+      return { success: false, error: 'No se pudo contactar al backend para probar la conexión con Jira.' };
+    }
   },
 
   async getMonitoringEvents(params?: {

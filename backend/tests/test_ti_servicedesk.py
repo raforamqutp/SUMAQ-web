@@ -1,6 +1,6 @@
 import pytest
 from rest_framework.test import APIClient
-from apps.ti.models import Ticket, MonitoringEvent
+from apps.ti.models import Ticket, MonitoringEvent, KdbArticle
 
 @pytest.mark.django_db
 def test_crear_ticket_servicedesk_itil():
@@ -229,4 +229,105 @@ def test_mitigar_evento_monitoreo():
     ev.refresh_from_db()
     assert ev.estado == MonitoringEvent.Estado.MITIGADO
     assert "liberado" in ev.accion_respuesta
+
+
+@pytest.mark.django_db
+def test_edicion_parcial_ticket_y_vinculacion_kdb():
+    """Valida que PATCH /api/ti/tickets/{id}/ persista cambios en cualquier estado e incremente veces_utilizado en KDB."""
+    client = APIClient()
+    kdb = KdbArticle.objects.create(
+        codigo="KDB-2026-099",
+        titulo="Workaround de prueba MySQL",
+        categoria=KdbArticle.Categoria.BASE_DE_DATOS,
+        modulo="Base de Datos MySQL",
+        prioridad=KdbArticle.Prioridad.P2_ALTA,
+        sintoma="Lentitud en consultas",
+        causa_raiz="Bloqueo de tabla",
+        solucion_workaround="Ejecutar KILL process",
+        jira_ref="KAN-7",
+    )
+    assert kdb.veces_utilizado == 0
+    ticket = Ticket.objects.create(
+        codigo="INC-2026-TEST-PATCH",
+        tipo=Ticket.Tipo.INCIDENCIA,
+        prioridad=Ticket.Prioridad.P2_ALTA,
+        asunto="Lentitud en módulo de citas",
+        descripcion="Demora al consultar disponibilidad",
+        estado=Ticket.Estado.ABIERTO,
+        sla_horas=8,
+    )
+
+    res = client.patch(f'/api/ti/tickets/{ticket.codigo}/', {
+        "estado": "EN_PROCESO",
+        "asignado_a": "Bryan Alexis Mango (BT)",
+        "resolucion_tecnica": "Aplicando workaround KDB-2026-099 en contenedor 3308",
+        "kdb_codigo": "KDB-2026-099",
+        "jira_key": "KAN-2",
+    }, format='json')
+    assert res.status_code == 200
+    ticket.refresh_from_db()
+    assert ticket.estado == Ticket.Estado.EN_PROCESO
+    assert ticket.asignado_a == "Bryan Alexis Mango (BT)"
+    assert ticket.kdb_codigo == "KDB-2026-099"
+    assert ticket.jira_key == "KAN-2"
+    assert kdb.veces_utilizado == 1
+    assert "INC-2026-TEST-PATCH" in kdb.tickets_vinculados
+
+
+@pytest.mark.django_db
+def test_crud_completo_articulos_kdb():
+    """Valida creación con autogeneración de código, edición y eliminación en /api/ti/kdb/."""
+    client = APIClient()
+    create_res = client.post('/api/ti/kdb/', {
+        "titulo": "Reinicio de servicio Redis ante saturación de sesiones",
+        "categoria": "INFRAESTRUCTURA",
+        "modulo": "Infraestructura & BD",
+        "prioridad": "P2_ALTA",
+        "sintoma": "Demora en validación de tokens JWT",
+        "causa_raiz": "Memoria de Redis al límite",
+        "solucion_workaround": "Ejecutar docker restart sumaq-redis",
+        "tiempo_estimado": "< 2 min",
+        "jira_ref": "KAN-5"
+    }, format='json')
+    assert create_res.status_code == 201
+    created = create_res.json()
+    assert created['codigo'].startswith('KDB-2026-')
+    assert created['jira_ref'] == 'KAN-5'
+
+    # Editar artículo KDB
+    patch_res = client.patch(f"/api/ti/kdb/{created['id']}/", {
+        "tiempo_estimado": "< 1 min",
+        "titulo": "Reinicio rápido de Redis 7"
+    }, format='json')
+    assert patch_res.status_code == 200
+    assert patch_res.json()['tiempo_estimado'] == '< 1 min'
+
+    # Eliminar artículo KDB
+    del_res = client.delete(f"/api/ti/kdb/{created['id']}/")
+    assert del_res.status_code == 204
+
+
+@pytest.mark.django_db
+def test_metricas_dashboard_dinamicas():
+    """Valida que /api/ti/tickets/metricas/ retorne evolucion_temporal y matriz_tecnicos reales desde BD."""
+    client = APIClient()
+    Ticket.objects.create(
+        codigo="INC-2026-MET-1",
+        tipo=Ticket.Tipo.INCIDENCIA,
+        prioridad=Ticket.Prioridad.P1_CRITICA,
+        modulo="Base de Datos MySQL",
+        asunto="Caída temporal nodo secundario",
+        descripcion="Prueba de métricas",
+        asignado_a="Anthony Luque (AL)",
+        estado=Ticket.Estado.RESUELTO,
+        sla_horas=2,
+    )
+    res = client.get('/api/ti/tickets/metricas/')
+    assert res.status_code == 200
+    data = res.json()
+    assert 'evolucion_temporal' in data
+    assert 'matriz_tecnicos' in data
+    assert len(data['evolucion_temporal']) >= 1
+    assert any('Anthony Luque' in t['nombre'] for t in data['matriz_tecnicos'])
+
 

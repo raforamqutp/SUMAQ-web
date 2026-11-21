@@ -59,7 +59,10 @@ import {
   PieChart,
   Copy,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Plus,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 
 export const TIPortalPage: React.FC = () => {
@@ -90,6 +93,22 @@ export const TIPortalPage: React.FC = () => {
   const [editGithubUrl, setEditGithubUrl] = useState<string>('');
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [editJiraKey, setEditJiraKey] = useState<string>('');
+  const [editKdbCodigo, setEditKdbCodigo] = useState<string>('');
+
+  // Estados para Modal de Creación de Ticket / RFC desde Portal TI
+  const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState<boolean>(false);
+  const [newTicketTipo, setNewTicketTipo] = useState<TicketType>('INCIDENCIA');
+  const [newTicketPrioridad, setNewTicketPrioridad] = useState<TicketPriority>('P2_ALTA');
+  const [newTicketModulo, setNewTicketModulo] = useState<string>('Base de Datos MySQL');
+  const [newTicketAsunto, setNewTicketAsunto] = useState<string>('');
+  const [newTicketDescripcion, setNewTicketDescripcion] = useState<string>('');
+  const [newTicketSolicitante, setNewTicketSolicitante] = useState<string>('Ing. Anthony Luque (Soporte TI)');
+  const [newTicketAreaCambio, setNewTicketAreaCambio] = useState<AreaCambio>('INFRAESTRUCTURA');
+  const [newTicketTipoCambio, setNewTicketTipoCambio] = useState<TipoCambio>('NORMAL');
+  const [newTicketRiesgo, setNewTicketRiesgo] = useState<'BAJO' | 'MEDIO' | 'ALTO'>('MEDIO');
+  const [newTicketVentana, setNewTicketVentana] = useState<string>('Martes 02:00 AM - 04:00 AM');
+  const [newTicketRollback, setNewTicketRollback] = useState<string>('Reversión a configuración previa en < 10 min');
+  const [isCreatingTicket, setIsCreatingTicket] = useState<boolean>(false);
 
   // Estados para Modal de Dictamen / Aprobación del Comité CAB
   const [cabModalTicket, setCabModalTicket] = useState<Ticket | null>(null);
@@ -123,6 +142,18 @@ export const TIPortalPage: React.FC = () => {
   const [expandedKDBId, setExpandedKDBId] = useState<string | null>('KDB-2026-001');
   const [kdbArticles, setKdbArticles] = useState<KdbArticle[]>([]);
   const [isLoadingKDB, setIsLoadingKDB] = useState<boolean>(false);
+  const [isKdbModalOpen, setIsKdbModalOpen] = useState<boolean>(false);
+  const [editingKdbArticle, setEditingKdbArticle] = useState<KdbArticle | null>(null);
+  const [kdbFormTitulo, setKdbFormTitulo] = useState<string>('');
+  const [kdbFormCategoria, setKdbFormCategoria] = useState<string>('BASE_DE_DATOS');
+  const [kdbFormModulo, setKdbFormModulo] = useState<string>('Base de Datos MySQL');
+  const [kdbFormPrioridad, setKdbFormPrioridad] = useState<string>('P2_ALTA');
+  const [kdbFormTiempo, setKdbFormTiempo] = useState<string>('< 5 min');
+  const [kdbFormJiraRef, setKdbFormJiraRef] = useState<string>('');
+  const [kdbFormSintoma, setKdbFormSintoma] = useState<string>('');
+  const [kdbFormCausaRaiz, setKdbFormCausaRaiz] = useState<string>('');
+  const [kdbFormSolucion, setKdbFormSolucion] = useState<string>('');
+  const [isSavingKdb, setIsSavingKdb] = useState<boolean>(false);
 
   // Estados de Monitoreo y Gestión de Eventos
   const [monitoringEvents, setMonitoringEvents] = useState<MonitoringEvent[]>([]);
@@ -304,14 +335,126 @@ export const TIPortalPage: React.FC = () => {
   useEffect(() => {
     loadData(false);
     const handleUpdate = () => {
-      // Solo refrescar si no hay una actualización en curso
       if (!isUpdatingRef.current) {
         loadData(false);
       }
     };
     window.addEventListener('sumaq_tickets_updated', handleUpdate);
-    return () => window.removeEventListener('sumaq_tickets_updated', handleUpdate);
+    // Sincronización automática periódica en segundo plano (sin botón manual)
+    const intervalId = window.setInterval(() => {
+      if (!isUpdatingRef.current) {
+        loadData(false);
+      }
+    }, 30000);
+    return () => {
+      window.removeEventListener('sumaq_tickets_updated', handleUpdate);
+      window.clearInterval(intervalId);
+    };
   }, []);
+
+  const handleOpenNewKdb = () => {
+    setEditingKdbArticle(null);
+    setKdbFormTitulo('');
+    setKdbFormCategoria('BASE_DE_DATOS');
+    setKdbFormModulo('Base de Datos MySQL');
+    setKdbFormPrioridad('P2_ALTA');
+    setKdbFormTiempo('< 5 min');
+    setKdbFormJiraRef('');
+    setKdbFormSintoma('');
+    setKdbFormCausaRaiz('');
+    setKdbFormSolucion('');
+    setIsKdbModalOpen(true);
+  };
+
+  const handleOpenEditKdb = (art: KdbArticle) => {
+    setEditingKdbArticle(art);
+    setKdbFormTitulo(art.titulo);
+    setKdbFormCategoria(art.categoria || 'BASE_DE_DATOS');
+    setKdbFormModulo(art.modulo || 'Base de Datos MySQL');
+    setKdbFormPrioridad(String(art.prioridad || 'P2_ALTA'));
+    setKdbFormTiempo(art.tiempoEstimado || art.tiempo_estimado || '< 5 min');
+    setKdbFormJiraRef(art.jiraRef || art.jira_ref || '');
+    setKdbFormSintoma(art.sintoma || '');
+    setKdbFormCausaRaiz(art.causaRaiz || art.causa_raiz || '');
+    setKdbFormSolucion(art.solucionWorkaround || art.solucion_workaround || '');
+    setIsKdbModalOpen(true);
+  };
+
+  const handleSaveKdbArticle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingKdb(true);
+    try {
+      const payload = {
+        titulo: kdbFormTitulo.trim(),
+        categoria: kdbFormCategoria,
+        modulo: kdbFormModulo.trim(),
+        prioridad: kdbFormPrioridad,
+        tiempo_estimado: kdbFormTiempo.trim() || '< 5 min',
+        jira_ref: kdbFormJiraRef.trim().toUpperCase(),
+        sintoma: kdbFormSintoma.trim(),
+        causa_raiz: kdbFormCausaRaiz.trim(),
+        solucion_workaround: kdbFormSolucion.trim()
+      };
+      if (editingKdbArticle) {
+        await TicketStore.updateKdbArticle(editingKdbArticle.id, payload);
+      } else {
+        await TicketStore.createKdbArticle(payload);
+      }
+      setIsKdbModalOpen(false);
+      await Promise.all([fetchKDB(), loadData(false)]);
+    } finally {
+      setIsSavingKdb(false);
+    }
+  };
+
+  const handleDeleteKdbArticle = async (art: KdbArticle) => {
+    const ok = await TicketStore.deleteKdbArticle(art.id);
+    if (ok) {
+      await Promise.all([fetchKDB(), loadData(false)]);
+    }
+  };
+
+  const handleOpenNewTicketModal = (defaultTipo: TicketType = 'INCIDENCIA') => {
+    setNewTicketTipo(defaultTipo);
+    setNewTicketPrioridad(defaultTipo === 'INCIDENCIA' ? 'P1_CRITICA' : 'P2_ALTA');
+    setNewTicketModulo(defaultTipo === 'SOLICITUD_CAMBIO' ? 'Redes & Hardware' : 'Base de Datos MySQL');
+    setNewTicketAsunto('');
+    setNewTicketDescripcion('');
+    setNewTicketSolicitante(user?.nombre_completo || 'Ing. Anthony Luque (Soporte TI)');
+    setNewTicketAreaCambio('INFRAESTRUCTURA');
+    setNewTicketTipoCambio('NORMAL');
+    setNewTicketRiesgo('MEDIO');
+    setNewTicketVentana('Martes 02:00 AM - 04:00 AM');
+    setNewTicketRollback('Reversión controlada a versión estable anterior en < 10 min');
+    setIsNewTicketModalOpen(true);
+  };
+
+  const handleCreateNewTicketFromTI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTicketAsunto.trim() || !newTicketDescripcion.trim()) return;
+    setIsCreatingTicket(true);
+    try {
+      await TicketStore.createTicket({
+        tipo: newTicketTipo,
+        prioridad: newTicketPrioridad,
+        modulo: newTicketModulo,
+        asunto: newTicketAsunto.trim(),
+        descripcion: newTicketDescripcion.trim(),
+        solicitanteNombre: newTicketSolicitante.trim() || 'Soporte TI SUMAQ',
+        solicitanteEmail: user?.email || 'soporte.ti@sumaqspa.pe',
+        solicitanteRol: user?.rol || 'SOPORTE_TI',
+        areaCambio: newTicketTipo === 'SOLICITUD_CAMBIO' ? newTicketAreaCambio : undefined,
+        tipoCambio: newTicketTipo === 'SOLICITUD_CAMBIO' ? newTicketTipoCambio : undefined,
+        impactoRiesgo: newTicketTipo === 'SOLICITUD_CAMBIO' ? newTicketRiesgo : undefined,
+        ventanaMantenimiento: newTicketTipo === 'SOLICITUD_CAMBIO' ? newTicketVentana : undefined,
+        planRollback: newTicketTipo === 'SOLICITUD_CAMBIO' ? newTicketRollback : undefined
+      });
+      setIsNewTicketModalOpen(false);
+      await Promise.all([loadData(false), fetchKDB()]);
+    } finally {
+      setIsCreatingTicket(false);
+    }
+  };
 
   const handleApproveAccessTicket = async (t: Ticket) => {
     const approver = user?.nombre_completo ? `${user.nombre_completo} (Gerente General)` : 'Rafael Ramirez (Gerente General)';
@@ -376,35 +519,28 @@ export const TIPortalPage: React.FC = () => {
       return;
     }
     setJiraTestMessage('Conectando con Jira Cloud API v3...');
-    try {
-      const resp = await fetch('/api/ti/jira/test-connection/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          domain: formJiraDomain,
-          email: formJiraEmail,
-          api_token: formJiraToken,
-          project_key: formJiraProject
-        })
-      });
-      const data = await resp.json();
-      if (resp.ok && data.success) {
-        setJiraTestMessage('✓ ' + data.message);
-      } else {
-        setJiraTestMessage('✗ ' + (data.message || 'Error validando credenciales de Jira'));
-      }
-    } catch {
-      setJiraTestMessage('✗ No se pudo establecer comunicación con Jira Cloud API v3. Verifique la conectividad.');
+    const res = await TicketStore.testJiraConnection({
+      enabled: formJiraEnabled,
+      domain: formJiraDomain,
+      email: formJiraEmail,
+      apiToken: formJiraToken,
+      projectKey: formJiraProject
+    });
+    if (res.success) {
+      setJiraTestMessage('✓ ' + (res.message || 'Conexión verificada con Atlassian Jira Cloud'));
+    } else {
+      setJiraTestMessage('✗ ' + (res.error || res.message || 'Error validando credenciales de Jira'));
     }
   };
 
   const openManageModal = (ticket: Ticket) => {
     setManagingTicket(ticket);
     setEditStatus(ticket.estado);
-    setEditAsignado(ticket.asignadoA || 'Especialista TI N2');
+    setEditAsignado(ticket.asignadoA || 'Anthony Luque (AL)');
     setEditResolucion(ticket.resolucionTecnica || '');
     setEditGithubUrl(ticket.githubUrl || '');
     setEditJiraKey(ticket.jiraKey || '');
+    setEditKdbCodigo(ticket.kdbCodigo || ticket.kdb_codigo || '');
     setSaveSuccess(false);
   };
 
@@ -414,28 +550,30 @@ export const TIPortalPage: React.FC = () => {
 
     if (editStatus === 'RESUELTO') {
       await TicketStore.resolveTicket(managingTicket.id, {
-        resolucionTecnica: editResolucion,
+        resolucionTecnica: editResolucion || 'Incidencia atendida y verificada por Soporte TI.',
         asignadoA: editAsignado,
         githubUrl: editGithubUrl,
-        jiraKey: editJiraKey
+        jiraKey: editJiraKey,
+        kdbCodigo: editKdbCodigo
       });
     } else {
-      TicketStore.updateLocalTicket(managingTicket.id, {
+      await TicketStore.updateTicket(managingTicket.id, {
         estado: editStatus,
         asignadoA: editAsignado,
         resolucionTecnica: editResolucion,
         githubUrl: editGithubUrl,
         jiraKey: editJiraKey,
+        kdbCodigo: editKdbCodigo,
         jiraUrl: editJiraKey ? `${jiraConfig.domain || 'https://sumaq-dev.atlassian.net'}/browse/${editJiraKey}` : undefined
       });
     }
 
     setSaveSuccess(true);
+    await Promise.all([loadData(false), fetchKDB()]);
     setTimeout(() => {
       setManagingTicket(null);
       setSaveSuccess(false);
-      loadData();
-    }, 600);
+    }, 500);
   };
 
   // Clasificación de Colecciones
@@ -576,17 +714,17 @@ export const TIPortalPage: React.FC = () => {
     });
   }, [tickets, dashFilterModulo, dashFilterPrioridad, dashFilterEstado]);
 
-  // Desglose de Prioridades para Donut Chart
+  // Desglose de Prioridades para Donut Chart (basado en dashFilteredTickets reales)
   const priorityStats = useMemo(() => {
-    const list = dashFilteredTickets.length > 0 ? dashFilteredTickets : tickets;
+    const list = dashFilteredTickets;
     const total = list.length || 1;
     const alta = list.filter(t => t.prioridad === 'P1_CRITICA' || t.prioridad === 'P2_ALTA').length;
     const media = list.filter(t => t.prioridad === 'P3_MEDIA').length;
     const baja = list.filter(t => t.prioridad === 'P4_BAJA').length;
 
-    const pctAlta = Math.round((alta / total) * 100);
-    const pctMedia = Math.round((media / total) * 100);
-    const pctBaja = Math.max(0, 100 - pctAlta - pctMedia);
+    const pctAlta = list.length > 0 ? Math.round((alta / total) * 100) : 0;
+    const pctMedia = list.length > 0 ? Math.round((media / total) * 100) : 0;
+    const pctBaja = list.length > 0 ? Math.max(0, 100 - pctAlta - pctMedia) : 0;
 
     return {
       total: list.length,
@@ -597,37 +735,142 @@ export const TIPortalPage: React.FC = () => {
       pctMedia,
       pctBaja
     };
-  }, [dashFilteredTickets, tickets]);
+  }, [dashFilteredTickets]);
 
-  // Desglose por Módulo y Estado para Barras Horizontales Apiladas
+  // Desglose por Módulo y Estado para Barras Horizontales Apiladas (100% real desde BD, sin mínimos ficticios)
   const areaEstadoStats = useMemo(() => {
-    const baseModules = [
-      { name: 'Base de Datos MySQL', alias: 'Base de Datos' },
-      { name: 'Infraestructura & Red', alias: 'Infraestructura' },
-      { name: 'Seguridad & Auth', alias: 'Seguridad' },
-      { name: 'Soporte & Usuarios', alias: 'Soporte' },
-      { name: 'Frontend & APIs', alias: 'Desarrollo' }
+    const buckets: Record<string, { name: string; resueltos: number; enProceso: number; abiertos: number; total: number }> = {};
+    for (const t of dashFilteredTickets) {
+      const modName = t.modulo || 'Infraestructura & BD';
+      if (!buckets[modName]) {
+        buckets[modName] = { name: modName, resueltos: 0, enProceso: 0, abiertos: 0, total: 0 };
+      }
+      if (t.estado === 'RESUELTO' || t.estado === 'APROBADO') {
+        buckets[modName].resueltos += 1;
+      } else if (t.estado === 'EN_PROCESO') {
+        buckets[modName].enProceso += 1;
+      } else {
+        buckets[modName].abiertos += 1;
+      }
+      buckets[modName].total += 1;
+    }
+    return Object.values(buckets).sort((a, b) => b.total - a.total);
+  }, [dashFilteredTickets]);
+
+  // Evolución Temporal Dinámica (basada en fechas históricas reales de Jira Cloud / MySQL)
+  const evolucionChartData = useMemo(() => {
+    const hasFilter = dashFilterModulo !== 'TODOS' || dashFilterPrioridad !== 'TODOS' || dashFilterEstado !== 'TODOS';
+    const mesesEs: Record<string, string> = {
+      '01': 'ene', '02': 'feb', '03': 'mar', '04': 'abr', '05': 'may', '06': 'jun',
+      '07': 'jul', '08': 'ago', '09': 'sep', '10': 'oct', '11': 'nov', '12': 'dic'
+    };
+
+    let rawSeries: { fecha: string; label: string; count: number }[] = [];
+    if (!hasFilter && computedMetrics.evolucion_temporal && computedMetrics.evolucion_temporal.length > 0) {
+      rawSeries = computedMetrics.evolucion_temporal;
+    } else {
+      const mapByDay: Record<string, { fecha: string; label: string; count: number }> = {};
+      for (const t of dashFilteredTickets) {
+        const rawDate = (t.fechaCreacion || '').substring(0, 10);
+        if (!rawDate || rawDate.length < 10) continue;
+        const [yr, mo, dy] = rawDate.split('-');
+        const lbl = `${dy} ${mesesEs[mo] || mo} ${yr}`;
+        if (!mapByDay[rawDate]) {
+          mapByDay[rawDate] = { fecha: rawDate, label: lbl, count: 0 };
+        }
+        mapByDay[rawDate].count += 1;
+      }
+      rawSeries = Object.values(mapByDay).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    }
+
+    if (rawSeries.length === 0) {
+      return { points: [], linePath: '', areaPath: '', yTicks: [0, 5, 10] };
+    }
+
+    const maxCount = Math.max(...rawSeries.map(r => r.count), 4);
+    const minX = 48;
+    const maxX = 482;
+    const topY = 28;
+    const bottomY = 122;
+    const stepX = rawSeries.length > 1 ? (maxX - minX) / (rawSeries.length - 1) : 0;
+
+    const points = rawSeries.map((r, i) => {
+      const x = rawSeries.length === 1 ? (minX + maxX) / 2 : Math.round(minX + i * stepX);
+      const ratio = r.count / maxCount;
+      const y = Math.round(bottomY - ratio * (bottomY - topY));
+      return { x, y, val: r.count, label: r.label };
+    });
+
+    let linePath = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const midX = Math.round((prev.x + curr.x) / 2);
+      linePath += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+    const areaPath = `${linePath} L ${points[points.length - 1].x} 135 L ${points[0].x} 135 Z`;
+    const yTicks = [maxCount, Math.round(maxCount / 2), 1];
+
+    return { points, linePath, areaPath, yTicks };
+  }, [dashFilteredTickets, dashFilterModulo, dashFilterPrioridad, dashFilterEstado, computedMetrics.evolucion_temporal]);
+
+  // Matriz de Técnicos Dinámica (calculada en vivo desde los tickets reales)
+  const matrizTecnicosRows = useMemo(() => {
+    const hasFilter = dashFilterModulo !== 'TODOS' || dashFilterPrioridad !== 'TODOS' || dashFilterEstado !== 'TODOS';
+    if (!hasFilter && computedMetrics.matriz_tecnicos && computedMetrics.matriz_tecnicos.length > 0) {
+      return computedMetrics.matriz_tecnicos;
+    }
+
+    const perfiles = [
+      {
+        match: ['bryan', 'alexis'],
+        nombre: 'Ing. Bryan Mango',
+        rol: 'DBA / Especialista Infraestructura N3',
+        area: 'Base de Datos MySQL & Redes',
+        is_cab: false
+      },
+      {
+        match: ['anthony'],
+        nombre: 'Ing. Anthony Luque',
+        rol: 'Ingeniero DevOps / Soporte TI N2',
+        area: 'Infraestructura, POS & Backend',
+        is_cab: false
+      },
+      {
+        match: ['rafael'],
+        nombre: 'Ing. Rafael Ramirez',
+        rol: 'Arquitecto Cloud / SysAdmin N3',
+        area: 'Frontend, APIs & Gobernanza',
+        is_cab: false
+      },
+      {
+        match: ['rené', 'rene', 'nieto', 'cab'],
+        nombre: 'MBA Mg. Ing. René Nieto',
+        rol: 'CAB Chair / Comité de Cambios',
+        area: 'Control de Cambios (RFC / CAB)',
+        is_cab: true
+      }
     ];
 
-    return baseModules.map(mod => {
-      const modTickets = tickets.filter(t => 
-        t.modulo.toLowerCase().includes(mod.alias.toLowerCase()) || 
-        t.modulo.toLowerCase().includes(mod.name.toLowerCase())
-      );
-      const resueltos = modTickets.filter(t => t.estado === 'RESUELTO' || t.estado === 'APROBADO').length;
-      const enProceso = modTickets.filter(t => t.estado === 'EN_PROCESO').length;
-      const abiertos = modTickets.filter(t => t.estado === 'ABIERTO' || t.estado === 'PENDIENTE_APROBACION').length;
-      const total = modTickets.length || (mod.alias === 'Soporte' ? 2 : mod.alias === 'Desarrollo' ? 1 : 2);
-
+    return perfiles.map(perf => {
+      const assigned = perf.is_cab
+        ? dashFilteredTickets.filter(t => t.tipo === 'SOLICITUD_CAMBIO')
+        : dashFilteredTickets.filter(t => perf.match.some(m => (t.asignadoA || '').toLowerCase().includes(m)));
+      const total = assigned.length;
+      const resueltos = assigned.filter(t => t.estado === 'RESUELTO' || t.estado === 'APROBADO').length;
+      const en_curso = total - resueltos;
       return {
-        ...mod,
-        total: Math.max(total, resueltos + enProceso + abiertos),
-        resueltos: Math.max(resueltos, mod.alias === 'Soporte' ? 1 : mod.alias === 'Desarrollo' ? 1 : 1),
-        enProceso: Math.max(enProceso, mod.alias === 'Base de Datos' ? 1 : mod.alias === 'Infraestructura' ? 1 : mod.alias === 'Seguridad' ? 1 : 0),
-        abiertos
+        nombre: perf.nombre,
+        rol: perf.rol,
+        area: perf.area,
+        total,
+        resueltos,
+        en_curso,
+        is_cab: perf.is_cab,
+        sla_pct: 100
       };
     });
-  }, [tickets]);
+  }, [dashFilteredTickets, dashFilterModulo, dashFilterPrioridad, dashFilterEstado, computedMetrics.matriz_tecnicos]);
 
   // Filtrado de Tickets para Vistas de Lista
   const displayedTickets = (activeViewMode === 'SERVICE_DESK' ? serviceDeskTickets : changeRfcs).filter(t => {
@@ -824,25 +1067,21 @@ export const TIPortalPage: React.FC = () => {
 
           <div className="flex items-center gap-2.5">
             <button
+              onClick={() => handleOpenNewTicketModal(activeViewMode === 'CONTROL_CAMBIOS' ? 'SOLICITUD_CAMBIO' : 'INCIDENCIA')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold border border-emerald-500 transition-colors cursor-pointer shadow-xs"
+              title="Registrar nuevo Ticket de Mesa de Ayuda o Solicitud de Cambio (RFC)"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Nuevo Ticket / RFC</span>
+            </button>
+
+            <button
               onClick={handleOpenJiraModal}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#26201E] hover:bg-[#382E2B] text-[#D8A78D] hover:text-white text-xs font-semibold border border-[#4A3B35] transition-colors cursor-pointer"
               title="Configurar credenciales de Jira Cloud y vinculación con GitHub"
             >
               <Settings className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Integración Jira Cloud</span>
-            </button>
-
-            <button
-              onClick={() => {
-                loadData(true);
-                fetchMonitoring();
-                fetchKDB();
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#26201E] hover:bg-[#382E2B] text-[#C9B29B] hover:text-white text-xs font-medium border border-[#4A3B35] transition-colors cursor-pointer"
-              title="Sincronizar registros desde la base de datos"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Sincronizar Datos</span>
             </button>
 
             {user && (
@@ -1037,38 +1276,11 @@ export const TIPortalPage: React.FC = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => loadData(true)}
-                    disabled={isLoadingMetrics}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-xs cursor-pointer ${
-                      justUpdated
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-600 scale-[1.02]'
-                        : isLoadingMetrics
-                        ? 'bg-stone-800 text-stone-300 border border-stone-700'
-                        : 'bg-stone-900 hover:bg-stone-800 text-white'
-                    }`}
-                    title="Consultar métricas y tickets en vivo desde el servidor"
-                  >
-                    {isLoadingMetrics ? (
-                      <>
-                        <RotateCcw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                        <span>Actualizando...</span>
-                      </>
-                    ) : justUpdated ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 animate-scaleIn" />
-                        <span>¡Métricas Actualizadas!</span>
-                      </>
-                    ) : (
-                      <>
-                        <RotateCcw className="w-3.5 h-3.5 text-stone-400" />
-                        <span>Actualizar Métricas</span>
-                      </>
-                    )}
-                  </button>
-                  <span className="text-[10px] text-stone-400 font-mono hidden xl:inline" title="Hora de la última actualización en vivo">
-                    sinc: {lastSyncTime}
+                <div className="px-3.5 py-2 rounded-xl bg-stone-900 text-stone-100 text-xs font-semibold flex items-center justify-center gap-2 shadow-xs">
+                  <Globe className={`w-3.5 h-3.5 text-sky-400 ${isLoadingMetrics ? 'animate-spin' : ''}`} />
+                  <span>Sincronización Automática Jira Cloud</span>
+                  <span className="text-[10px] text-stone-400 font-mono border-l border-stone-700 pl-2">
+                    {lastSyncTime}
                   </span>
                 </div>
                 <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-2">
@@ -1303,54 +1515,58 @@ export const TIPortalPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Barras Horizontales Apiladas */}
+                {/* Barras Horizontales Apiladas (Calculadas en vivo desde BD) */}
                 <div className="space-y-3.5 pt-1">
-                  {areaEstadoStats.map((item, idx) => {
-                    const maxVal = 3;
-                    const pctCerrado = (item.resueltos / maxVal) * 100;
-                    const pctProceso = (item.enProceso / maxVal) * 100;
-                    const pctAbierto = (item.abiertos / maxVal) * 100;
+                  {areaEstadoStats.length === 0 ? (
+                    <p className="text-xs text-stone-400 text-center py-6">No hay tickets que coincidan con los filtros seleccionados.</p>
+                  ) : (
+                    areaEstadoStats.map((item, idx) => {
+                      const maxVal = Math.max(...areaEstadoStats.map(x => x.total), 1);
+                      const pctCerrado = (item.resueltos / maxVal) * 100;
+                      const pctProceso = (item.enProceso / maxVal) * 100;
+                      const pctAbierto = (item.abiertos / maxVal) * 100;
 
-                    return (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-stone-800">{item.name}</span>
-                          <span className="text-[11px] font-mono text-stone-500">
-                            {item.resueltos + item.enProceso + item.abiertos} tickets
-                          </span>
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-stone-800">{item.name}</span>
+                            <span className="text-[11px] font-mono text-stone-500">
+                              {item.total} ticket{item.total !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="h-6 w-full bg-stone-100 rounded-lg flex overflow-hidden border border-stone-200/60 p-0.5 gap-0.5">
+                            {item.resueltos > 0 && (
+                              <div
+                                style={{ width: `${pctCerrado}%` }}
+                                className="bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
+                                title={`${item.resueltos} Cerrados / Resueltos`}
+                              >
+                                {item.resueltos}
+                              </div>
+                            )}
+                            {item.enProceso > 0 && (
+                              <div
+                                style={{ width: `${pctProceso}%` }}
+                                className="bg-amber-400 text-stone-900 text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
+                                title={`${item.enProceso} En Proceso`}
+                              >
+                                {item.enProceso}
+                              </div>
+                            )}
+                            {item.abiertos > 0 && (
+                              <div
+                                style={{ width: `${pctAbierto}%` }}
+                                className="bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
+                                title={`${item.abiertos} Abiertos`}
+                              >
+                                {item.abiertos}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="h-6 w-full bg-stone-100 rounded-lg flex overflow-hidden border border-stone-200/60 p-0.5 gap-0.5">
-                          {item.resueltos > 0 && (
-                            <div
-                              style={{ width: `${pctCerrado}%` }}
-                              className="bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
-                              title={`${item.resueltos} Cerrados / Resueltos`}
-                            >
-                              {item.resueltos}
-                            </div>
-                          )}
-                          {item.enProceso > 0 && (
-                            <div
-                              style={{ width: `${pctProceso}%` }}
-                              className="bg-amber-400 text-stone-900 text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
-                              title={`${item.enProceso} En Proceso`}
-                            >
-                              {item.enProceso}
-                            </div>
-                          )}
-                          {item.abiertos > 0 && (
-                            <div
-                              style={{ width: `${pctAbierto}%` }}
-                              className="bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-sm transition-all duration-500"
-                              title={`${item.abiertos} Abiertos`}
-                            >
-                              {item.abiertos}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -1490,62 +1706,59 @@ export const TIPortalPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* SVG Curve Chart */}
+                {/* SVG Curve Chart Dinámico (Fechas históricas reales de Jira Cloud / MySQL) */}
                 <div className="w-full overflow-hidden pt-2">
-                  <svg className="w-full h-44" viewBox="0 0 520 160">
-                    <defs>
-                      <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.45" />
-                        <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
+                  {evolucionChartData.points.length === 0 ? (
+                    <p className="text-xs text-stone-400 text-center py-10">Sin registros históricos para los filtros seleccionados.</p>
+                  ) : (
+                    <svg className="w-full h-44" viewBox="0 0 520 160">
+                      <defs>
+                        <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.45" />
+                          <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
 
-                    {/* Guías de fondo horizontales */}
-                    <line x1="40" y1="40" x2="490" y2="40" stroke="#E2E8F0" strokeDasharray="3 3" />
-                    <line x1="40" y1="75" x2="490" y2="75" stroke="#E2E8F0" strokeDasharray="3 3" />
-                    <line x1="40" y1="110" x2="490" y2="110" stroke="#E2E8F0" strokeDasharray="3 3" />
+                      {/* Guías de fondo horizontales */}
+                      <line x1="40" y1="30" x2="490" y2="30" stroke="#E2E8F0" strokeDasharray="3 3" />
+                      <line x1="40" y1="76" x2="490" y2="76" stroke="#E2E8F0" strokeDasharray="3 3" />
+                      <line x1="40" y1="122" x2="490" y2="122" stroke="#E2E8F0" strokeDasharray="3 3" />
 
-                    {/* Eje Y etiquetas */}
-                    <text x="25" y="44" fill="#94A3B8" fontSize="10" textAnchor="end">4</text>
-                    <text x="25" y="79" fill="#94A3B8" fontSize="10" textAnchor="end">3</text>
-                    <text x="25" y="114" fill="#94A3B8" fontSize="10" textAnchor="end">2</text>
+                      {/* Eje Y etiquetas dinámicas */}
+                      <text x="28" y="34" fill="#94A3B8" fontSize="10" textAnchor="end">{evolucionChartData.yTicks[0]}</text>
+                      <text x="28" y="80" fill="#94A3B8" fontSize="10" textAnchor="end">{evolucionChartData.yTicks[1]}</text>
+                      <text x="28" y="126" fill="#94A3B8" fontSize="10" textAnchor="end">{evolucionChartData.yTicks[2]}</text>
 
-                    {/* Área sombreada */}
-                    <path
-                      d="M 40 110 C 80 95, 80 75, 120 75 C 160 75, 160 40, 200 40 C 240 40, 240 40, 280 40 C 320 40, 320 110, 360 110 C 400 110, 400 40, 440 40 C 465 40, 465 110, 490 110 L 490 135 L 40 135 Z"
-                      fill="url(#curveGrad)"
-                    />
+                      {/* Área sombreada */}
+                      {evolucionChartData.areaPath && (
+                        <path d={evolucionChartData.areaPath} fill="url(#curveGrad)" />
+                      )}
 
-                    {/* Línea principal */}
-                    <path
-                      d="M 40 110 C 80 95, 80 75, 120 75 C 160 75, 160 40, 200 40 C 240 40, 240 40, 280 40 C 320 40, 320 110, 360 110 C 400 110, 400 40, 440 40 C 465 40, 465 110, 490 110"
-                      fill="none"
-                      stroke="#0284C7"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                    />
+                      {/* Línea principal */}
+                      {evolucionChartData.linePath && (
+                        <path
+                          d={evolucionChartData.linePath}
+                          fill="none"
+                          stroke="#0284C7"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                        />
+                      )}
 
-                    {/* Puntos de datos con valor */}
-                    {[
-                      { x: 40, y: 110, val: 2, label: 'feb 2026' },
-                      { x: 120, y: 75, val: 3, label: 'mar 2026' },
-                      { x: 200, y: 40, val: 4, label: 'abr 2026' },
-                      { x: 280, y: 40, val: 4, label: 'may 2026' },
-                      { x: 360, y: 110, val: 2, label: 'jun 2026' },
-                      { x: 440, y: 40, val: 4, label: 'oct 2026' },
-                      { x: 490, y: 110, val: 2, label: 'nov 2026' }
-                    ].map((pt, i) => (
-                      <g key={i}>
-                        <circle cx={pt.x} cy={pt.y} r="5.5" fill="#FFFFFF" stroke="#EA580C" strokeWidth="2.5" />
-                        <text x={pt.x} y={pt.y - 10} fill="#1E293B" fontSize="10" fontWeight="bold" textAnchor="middle">
-                          {pt.val}
-                        </text>
-                        <text x={pt.x} y="152" fill="#64748B" fontSize="9" textAnchor="middle">
-                          {pt.label}
-                        </text>
-                      </g>
-                    ))}
-                  </svg>
+                      {/* Puntos de datos reales con valor y fecha histórica */}
+                      {evolucionChartData.points.map((pt, i) => (
+                        <g key={i}>
+                          <circle cx={pt.x} cy={pt.y} r="5.5" fill="#FFFFFF" stroke="#EA580C" strokeWidth="2.5" />
+                          <text x={pt.x} y={pt.y - 9} fill="#1E293B" fontSize="10" fontWeight="bold" textAnchor="middle">
+                            {pt.val}
+                          </text>
+                          <text x={pt.x} y="152" fill="#64748B" fontSize="9" textAnchor="middle">
+                            {pt.label}
+                          </text>
+                        </g>
+                      ))}
+                    </svg>
+                  )}
                 </div>
               </div>
 
@@ -1580,65 +1793,32 @@ export const TIPortalPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
-                      <tr className="hover:bg-stone-50/70 transition-colors">
-                        <td className="py-2.5 px-3 font-semibold text-stone-900">
-                          <div>Ing. Bryan Mango</div>
-                          <span className="text-[10px] text-stone-500 font-normal">DBA / Especialista N3</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-stone-600">Base de Datos MySQL</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">3</td>
-                        <td className="py-2.5 px-3">
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            2 Resueltos &middot; 1 En Curso
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
-                      </tr>
-
-                      <tr className="hover:bg-stone-50/70 transition-colors">
-                        <td className="py-2.5 px-3 font-semibold text-stone-900">
-                          <div>Ing. Anthony Luque</div>
-                          <span className="text-[10px] text-stone-500 font-normal">Ingeniero Soporte TI N2</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-stone-600">Infraestructura & Red</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">3</td>
-                        <td className="py-2.5 px-3">
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            2 Resueltos &middot; 1 En Curso
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
-                      </tr>
-
-                      <tr className="hover:bg-stone-50/70 transition-colors">
-                        <td className="py-2.5 px-3 font-semibold text-stone-900">
-                          <div>MBA Mg. Ing. René Nieto</div>
-                          <span className="text-[10px] text-stone-500 font-normal">CAB Chair / Gobernanza</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-stone-600">Comité de Cambios (CAB)</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">4 RFCs</td>
-                        <td className="py-2.5 px-3">
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
-                            4 Aprobados CAB
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
-                      </tr>
-
-                      <tr className="hover:bg-stone-50/70 transition-colors">
-                        <td className="py-2.5 px-3 font-semibold text-stone-900">
-                          <div>Mesa de Ayuda N1</div>
-                          <span className="text-[10px] text-stone-500 font-normal">Recepción & Clientes</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-stone-600">Atención Web & Citas</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">2</td>
-                        <td className="py-2.5 px-3">
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            2 Resueltos
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">100%</td>
-                      </tr>
+                      {matrizTecnicosRows.map((row, rIdx) => (
+                        <tr key={rIdx} className="hover:bg-stone-50/70 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold text-stone-900">
+                            <div>{row.nombre}</div>
+                            <span className="text-[10px] text-stone-500 font-normal">{row.rol}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-stone-600">{row.area}</td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-stone-800 text-center">
+                            {row.is_cab ? `${row.total} RFCs` : row.total}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {row.is_cab ? (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                {row.resueltos} Aprobados CAB{row.en_curso > 0 ? ` · ${row.en_curso} Pend.` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                {row.resueltos} Resueltos{row.en_curso > 0 ? ` · ${row.en_curso} En Curso` : ''}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right">
+                            {row.sla_pct ?? 100}%
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1681,9 +1861,14 @@ export const TIPortalPage: React.FC = () => {
                           <h4 className="text-sm font-bold text-stone-900">
                             Módulo con Patrón Recurrente: <span className="text-[#8C6F55] font-black">{prob.modulo}</span>
                           </h4>
+                          {prob.kdb_codigo && (
+                            <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                              KEDB: {prob.kdb_codigo}
+                            </span>
+                          )}
                         </div>
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          {prob.incidencias_count} incidencias vinculadas en 48 horas
+                          {prob.incidencias_count} incidencias vinculadas
                         </span>
                       </div>
 
@@ -1701,10 +1886,10 @@ export const TIPortalPage: React.FC = () => {
                         <div className="p-3.5 rounded-xl bg-white border border-emerald-200/90 shadow-xs">
                           <p className="font-bold text-emerald-900 flex items-center gap-1.5 mb-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            Solución Definitiva (Known Error Database - KEDB):
+                            Solución Workaround Registrada ({prob.kdb_codigo || 'KEDB'}):
                           </p>
-                          <p className="text-stone-700 leading-relaxed font-normal">
-                            Implementar enrutamiento inteligente en Django (Database Router) para que reportes y lecturas masivas consuman de la réplica MySQL Slave (puerto 3309), protegiendo al Master para transacciones atómicas.
+                          <p className="text-stone-700 leading-relaxed font-normal whitespace-pre-line">
+                            {prob.solucion_kedb || 'Aplicar procedimiento estándar del catálogo KDB y aislamiento de carga en réplica MySQL Slave (3309).'}
                           </p>
                         </div>
                       </div>
@@ -1727,16 +1912,31 @@ export const TIPortalPage: React.FC = () => {
                           ))}
                         </div>
 
-                        <button
-                          onClick={() => {
-                            setActiveViewMode('CONTROL_CAMBIOS');
-                            setSearchTerm('MySQL');
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
-                        >
-                          <GitPullRequest className="w-3.5 h-3.5 text-purple-400" />
-                          <span>Ver RFC de Solución (RFC-2026-0042)</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {prob.kdb_codigo && (
+                            <button
+                              onClick={() => {
+                                setActiveViewMode('SERVICE_DESK');
+                                setIsKDBOpen(true);
+                                setKdbSearchTerm(prob.kdb_codigo || '');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>Ver {prob.kdb_codigo}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setActiveViewMode('CONTROL_CAMBIOS');
+                              setSearchTerm(prob.rfc_codigo || 'RFC-2026-0042');
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <GitPullRequest className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Ver RFC ({prob.rfc_codigo || 'RFC-2026-0042'})</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -2092,9 +2292,6 @@ export const TIPortalPage: React.FC = () => {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* VISTA 2: MONITOREO DE INFRAESTRUCTURA & GESTIÓN DE EVENTOS (ITIL v4)      */}
-        {/* ========================================================================= */}
         {activeViewMode === 'MONITOREO_EVENTOS' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Header de Monitoreo y Gestión de Eventos */}
@@ -2897,6 +3094,13 @@ export const TIPortalPage: React.FC = () => {
 
               <div className="flex flex-col sm:flex-row gap-2 shrink-0">
                 <button
+                  onClick={() => handleOpenNewTicketModal('SOLICITUD_CAMBIO')}
+                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold border border-rose-500 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Registrar Nuevo RFC</span>
+                </button>
+                <button
                   onClick={() => {
                     setSelectedArea('TODOS');
                     setSelectedTipoCambio('TODOS');
@@ -3101,6 +3305,13 @@ export const TIPortalPage: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => handleOpenNewTicketModal('INCIDENCIA')}
+                  className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Nuevo Ticket</span>
+                </button>
                 <span className="px-3 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold">
                   SLA Crítico P1: &le; 2 horas
                 </span>
@@ -3171,6 +3382,13 @@ export const TIPortalPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <button
+                    onClick={handleOpenNewKdb}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nuevo Artículo KDB</span>
+                  </button>
                   <button
                     onClick={() => setIsKDBOpen(!isKDBOpen)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold border border-stone-200 shadow-2xs transition-all cursor-pointer"
@@ -3267,6 +3485,7 @@ export const TIPortalPage: React.FC = () => {
                         const tiempo = art.tiempoEstimado || art.tiempo_estimado || '< 5 min';
                         const jira = art.jiraRef || art.jira_ref || '';
                         const veces = art.vecesUtilizado ?? art.veces_utilizado ?? 0;
+                        const linkedTickets = art.ticketsVinculados || art.tickets_vinculados || [];
 
                         return (
                           <div
@@ -3278,7 +3497,7 @@ export const TIPortalPage: React.FC = () => {
                                 <span className="font-mono text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                                   {art.codigo}
                                 </span>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap justify-end">
                                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
                                     {tiempo}
                                   </span>
@@ -3289,11 +3508,9 @@ export const TIPortalPage: React.FC = () => {
                                   }`}>
                                     {prioridadStr.replace('_', ' ')}
                                   </span>
-                                  {veces > 0 && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200" title="Número de tickets resueltos con este procedimiento en BD">
-                                      {veces} uso{veces > 1 ? 's' : ''}
-                                    </span>
-                                  )}
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200" title="Número real de tickets vinculados a este artículo KDB en MySQL">
+                                    {veces} uso{veces !== 1 ? 's' : ''}
+                                  </span>
                                 </div>
                               </div>
 
@@ -3318,39 +3535,90 @@ export const TIPortalPage: React.FC = () => {
                                   <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-400">
                                     <Zap className="w-3 h-3 text-amber-400" /> Receta de Resolución N1
                                   </span>
-                                  {jira && <span className="text-[9px] text-stone-400 font-mono">{jira}</span>}
+                                  {jira && (
+                                    <a
+                                      href={`${jiraConfig.domain || 'https://sumaq-dev.atlassian.net'}/browse/${jira}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[9px] text-sky-400 hover:text-sky-300 font-mono underline flex items-center gap-1"
+                                      title="Ver tarjeta vinculada en Jira Cloud"
+                                    >
+                                      <span>Jira: {jira}</span>
+                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                  )}
                                 </div>
                                 <pre className="whitespace-pre-wrap font-mono text-[10.5px] text-emerald-300">
                                   {solucion}
                                 </pre>
                               </div>
+
+                              {/* Tickets Vinculados a este KDB */}
+                              {linkedTickets.length > 0 && (
+                                <div className="mt-2.5 flex flex-wrap items-center gap-1">
+                                  <span className="text-[9px] font-bold text-stone-500 uppercase">Tickets vinculados:</span>
+                                  {linkedTickets.slice(0, 5).map((tCode) => (
+                                    <button
+                                      key={tCode}
+                                      type="button"
+                                      onClick={() => setSearchTerm(tCode)}
+                                      className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 cursor-pointer"
+                                      title="Filtrar ticket en la lista inferior"
+                                    >
+                                      {tCode}
+                                    </button>
+                                  ))}
+                                  {linkedTickets.length > 5 && (
+                                    <span className="text-[9px] text-stone-500 font-mono">+{linkedTickets.length - 5}</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between gap-2">
-                              <span className="text-[10px] text-stone-400 font-medium">
+                              <span className="text-[10px] text-stone-400 font-medium truncate">
                                 Módulo: <strong>{art.modulo}</strong>
                               </span>
-                              <button
-                                onClick={() => handleCopyWorkaround(art)}
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                                  isCopied
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
-                                }`}
-                                title="Copiar solución técnica para aplicarla al ticket"
-                              >
-                                {isCopied ? (
-                                  <>
-                                    <Check className="w-3 h-3" />
-                                    <span>¡Copiado!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3 h-3 text-stone-500" />
-                                    <span>Copiar Workaround</span>
-                                  </>
-                                )}
-                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditKdb(art)}
+                                  className="p-1.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+                                  title="Editar artículo KDB"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteKdbArticle(art)}
+                                  className="p-1.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                  title="Eliminar artículo KDB"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyWorkaround(art)}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
+                                    isCopied
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                                  }`}
+                                  title="Copiar solución técnica para aplicarla al ticket"
+                                >
+                                  {isCopied ? (
+                                    <>
+                                      <Check className="w-3 h-3" />
+                                      <span>¡Copiado!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3 text-stone-500" />
+                                      <span>Copiar</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -3367,7 +3635,7 @@ export const TIPortalPage: React.FC = () => {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   type="text"
-                  placeholder="Buscar por código, solicitante, módulo..."
+                  placeholder="Buscar por código, Jira (KAN-X), KDB, solicitante, módulo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8C6F55] bg-white text-stone-900"
@@ -3409,68 +3677,100 @@ export const TIPortalPage: React.FC = () => {
                     No se encontraron tickets que coincidan con los filtros seleccionados.
                   </div>
                 ) : (
-                  displayedTickets.map((t) => (
-                    <div
-                      key={t.id}
-                      className="p-5 hover:bg-stone-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-xs font-black text-[#8C6F55] bg-[#8C6F55]/10 px-2 py-0.5 rounded">
-                            {t.id}
-                          </span>
-                          {getTipoBadge(t.tipo)}
-                          {getPriorityBadge(t.prioridad)}
-                          {getStatusBadge(t.estado)}
-                        </div>
-
-                        <h4 className="text-sm font-bold text-stone-900 leading-snug">{t.asunto}</h4>
-                        <p className="text-xs text-stone-600 line-clamp-2">{t.descripcion}</p>
-
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-stone-500 pt-1">
-                          <span>Solicitante: <strong className="text-stone-700">{t.solicitanteNombre}</strong> ({t.solicitanteRol})</span>
-                          <span>Módulo: <strong className="text-stone-700">{t.modulo}</strong></span>
-                          <span>Registrado: {t.fechaCreacion}</span>
-                          <span className="text-red-700 font-semibold">SLA Límite: {t.slaFechaLimite}</span>
-                        </div>
-
-                        {t.aprobadoPorGerencia && (
-                          <div className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 w-fit">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Aprobado por: {t.aprobadorNombre || 'Gerencia General'}</span>
+                  displayedTickets.map((t) => {
+                    const tKdb = t.kdbCodigo || t.kdb_codigo || '';
+                    return (
+                      <div
+                        key={t.id}
+                        className="p-5 hover:bg-stone-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-black text-[#8C6F55] bg-[#8C6F55]/10 px-2 py-0.5 rounded">
+                              {t.id}
+                            </span>
+                            {getTipoBadge(t.tipo)}
+                            {getPriorityBadge(t.prioridad)}
+                            {getStatusBadge(t.estado)}
+                            {t.jiraKey && (
+                              <a
+                                href={t.jiraUrl || `${jiraConfig.domain || 'https://sumaq-dev.atlassian.net'}/browse/${t.jiraKey}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 transition-colors"
+                                title="Abrir ticket en Jira Cloud"
+                              >
+                                <Globe className="w-3 h-3 text-blue-600" />
+                                <span>Jira: {t.jiraKey}</span>
+                              </a>
+                            )}
+                            {tKdb && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsKDBOpen(true);
+                                  setKdbSearchTerm(tKdb);
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300 transition-colors cursor-pointer"
+                                title="Ver artículo KDB vinculado"
+                              >
+                                <BookOpen className="w-3 h-3 text-amber-700" />
+                                <span>{tKdb}</span>
+                              </button>
+                            )}
                           </div>
-                        )}
 
-                        {t.resolucionTecnica && (
-                          <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
-                            <p className="font-semibold flex items-center gap-1.5">
+                          <h4 className="text-sm font-bold text-stone-900 leading-snug">{t.asunto}</h4>
+                          <p className="text-xs text-stone-600 line-clamp-2">{t.descripcion}</p>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-stone-500 pt-1">
+                            <span>Solicitante: <strong className="text-stone-700">{t.solicitanteNombre}</strong> ({t.solicitanteRol})</span>
+                            <span>Módulo: <strong className="text-stone-700">{t.modulo}</strong></span>
+                            {t.asignadoA && (
+                              <span>Asignado a: <strong className="text-stone-800">{t.asignadoA}</strong></span>
+                            )}
+                            <span>Registrado: {t.fechaCreacion}</span>
+                            <span className="text-red-700 font-semibold">SLA Límite: {t.slaFechaLimite}</span>
+                          </div>
+
+                          {t.aprobadoPorGerencia && (
+                            <div className="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 w-fit">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              Resolución TI ({t.asignadoA || 'Técnico'}): {t.resolucionTecnica}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                              <span>Aprobado por: {t.aprobadorNombre || 'Gerencia General'}</span>
+                            </div>
+                          )}
 
-                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
-                        {t.tipo === 'SOLICITUD_ACCESO' && t.estado === 'PENDIENTE_APROBACION' && (
+                          {t.resolucionTecnica && (
+                            <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
+                              <p className="font-semibold flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>Resolución TI ({t.asignadoA || 'Técnico'}){tKdb ? ` [${tKdb}]` : ''}: {t.resolucionTecnica}</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
+                          {t.tipo === 'SOLICITUD_ACCESO' && t.estado === 'PENDIENTE_APROBACION' && (
+                            <button
+                              onClick={() => handleApproveAccessTicket(t)}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              <span>Aprobar Acceso</span>
+                            </button>
+                          )}
+
                           <button
-                            onClick={() => handleApproveAccessTicket(t)}
-                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                            onClick={() => openManageModal(t)}
+                            className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition-colors cursor-pointer"
                           >
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>Aprobar Acceso</span>
+                            Gestionar Ticket
                           </button>
-                        )}
-
-                        <button
-                          onClick={() => openManageModal(t)}
-                          className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          Gestionar Ticket
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -3559,7 +3859,7 @@ export const TIPortalPage: React.FC = () => {
                     className="w-full text-xs p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900 font-semibold focus:ring-2 focus:ring-[#8C6F55] focus:outline-none"
                   />
                   <p className="text-[10px] text-stone-400 mt-1">
-                    Representa al evaluador principal del Comité de Cambios (Docente de la asignatura).
+                    Presidente o representante autorizado del Comité de Cambios (CAB).
                   </p>
                 </div>
 
@@ -3629,34 +3929,80 @@ export const TIPortalPage: React.FC = () => {
               {saveSuccess && (
                 <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl font-bold flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>¡Actualización registrada y sincronizada correctamente!</span>
+                  <span>¡Actualización persistida en MySQL y sincronizada con Jira Cloud!</span>
                 </div>
               )}
 
-              <div>
-                <label className="block font-bold text-stone-700 uppercase mb-1">Estado del Ticket</label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as TicketStatus)}
-                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
-                >
-                  <option value="ABIERTO">Abierto (Nivel 1)</option>
-                  <option value="EN_PROCESO">En Atención (Nivel 2)</option>
-                  <option value="PENDIENTE_APROBACION">Pendiente de Aprobación</option>
-                  <option value="APROBADO">Aprobado</option>
-                  <option value="RESUELTO">Resuelto / Implementado</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Estado del Ticket</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as TicketStatus)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
+                  >
+                    <option value="ABIERTO">Abierto (Nivel 1)</option>
+                    <option value="EN_PROCESO">En Atención (Nivel 2)</option>
+                    <option value="PENDIENTE_APROBACION">Pendiente de Aprobación</option>
+                    <option value="APROBADO">Aprobado</option>
+                    <option value="RESUELTO">Resuelto / Implementado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Especialista TI Asignado</label>
+                  <input
+                    type="text"
+                    list="especialistas-ti-list"
+                    value={editAsignado}
+                    onChange={(e) => setEditAsignado(e.target.value)}
+                    placeholder="Ej: Bryan Alexis Mango (BT)"
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800 font-semibold"
+                  />
+                  <datalist id="especialistas-ti-list">
+                    <option value="Bryan Alexis Mango (BT)" />
+                    <option value="Anthony Luque (AL)" />
+                    <option value="Rafael Ramirez Quiroz (RQ)" />
+                    <option value="MBA Mg. Ing. René Alonso Nieto Valencia (CAB Chair)" />
+                  </datalist>
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-stone-700 uppercase mb-1">Especialista TI Asignado</label>
-                <input
-                  type="text"
-                  value={editAsignado}
-                  onChange={(e) => setEditAsignado(e.target.value)}
-                  placeholder="Ej: Bryan Mango (BT), Especialista TI N2"
-                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800"
-                />
+              {/* Vinculación directa con Base de Conocimiento (KDB) */}
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="font-bold text-amber-950 uppercase flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Artículo KDB Aplicado (Incrementa uso +1 en BD)</span>
+                  </label>
+                  {editKdbCodigo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const foundKdb = kdbArticles.find(k => k.codigo === editKdbCodigo);
+                        if (foundKdb) {
+                          const sol = foundKdb.solucionWorkaround || foundKdb.solucion_workaround || '';
+                          setEditResolucion(`[${foundKdb.codigo}] ${sol}`);
+                        }
+                      }}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer"
+                    >
+                      Insertar Workaround en Resolución
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={editKdbCodigo}
+                  onChange={(e) => setEditKdbCodigo(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-amber-300 bg-white font-semibold text-stone-800"
+                >
+                  <option value="">-- Sin artículo KDB vinculado --</option>
+                  {kdbArticles.map((art) => (
+                    <option key={art.codigo} value={art.codigo}>
+                      [{art.codigo}] {art.titulo} ({art.vecesUtilizado ?? art.veces_utilizado ?? 0} usos · Jira: {art.jiraRef || art.jira_ref || 'KAN'})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -3672,30 +4018,32 @@ export const TIPortalPage: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-stone-700 uppercase mb-1">
-                  Enlace a Commit / Pull Request en GitHub
-                </label>
-                <input
-                  type="url"
-                  value={editGithubUrl}
-                  onChange={(e) => setEditGithubUrl(e.target.value)}
-                  placeholder="https://github.com/..."
-                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800 font-mono text-[11px]"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">
+                    Clave de Ticket en Jira Cloud
+                  </label>
+                  <input
+                    type="text"
+                    value={editJiraKey}
+                    onChange={(e) => setEditJiraKey(e.target.value)}
+                    placeholder="KAN-10, KAN-12..."
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800 font-mono text-[11px]"
+                  />
+                </div>
 
-              <div>
-                <label className="block font-bold text-stone-700 uppercase mb-1">
-                  Clave de Ticket en Jira Cloud (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={editJiraKey}
-                  onChange={(e) => setEditJiraKey(e.target.value)}
-                  placeholder="KAN-10, KAN-12..."
-                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800 font-mono text-[11px]"
-                />
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">
+                    Enlace Pull Request en GitHub
+                  </label>
+                  <input
+                    type="url"
+                    value={editGithubUrl}
+                    onChange={(e) => setEditGithubUrl(e.target.value)}
+                    placeholder="https://github.com/..."
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-800 font-mono text-[11px]"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-3 border-t border-stone-200">
@@ -3710,7 +4058,7 @@ export const TIPortalPage: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-[#8C6F55] hover:bg-[#6D543F] text-white font-bold transition-all shadow cursor-pointer"
                 >
-                  Guardar Cambios
+                  Guardar en Base de Datos & Jira
                 </button>
               </div>
             </form>
@@ -3794,6 +4142,363 @@ export const TIPortalPage: React.FC = () => {
                   className="px-5 py-2 rounded-xl bg-[#8C6F55] text-white font-bold hover:bg-[#6D543F] cursor-pointer"
                 >
                   Guardar Configuración
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: CREAR / EDITAR ARTÍCULO DE BASE DE CONOCIMIENTO (KDB)            */}
+      {/* ========================================================================= */}
+      {isKdbModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            <div className="bg-[#1A1615] text-white p-5 flex items-center justify-between border-b border-[#382E2B]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold">
+                    {editingKdbArticle ? `Editar Artículo ${editingKdbArticle.codigo}` : 'Nuevo Artículo de Base de Conocimiento (KDB)'}
+                  </h3>
+                  <p className="text-[11px] text-[#C9B29B]">
+                    Registro en MySQL (<code className="font-mono">ti_kdb_articulos</code>) y vinculación con Jira Cloud ({jiraConfig.projectKey || 'KAN'})
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsKdbModalOpen(false)} className="text-stone-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveKdbArticle} className="flex-1 p-6 overflow-y-auto space-y-3.5">
+              <div>
+                <label className="block font-bold text-stone-700 uppercase mb-1">Título de la Solución / Error Conocido</label>
+                <input
+                  type="text"
+                  required
+                  value={kdbFormTitulo}
+                  onChange={(e) => setKdbFormTitulo(e.target.value)}
+                  placeholder="Ej: Error de Timeout en Pasarela de Pagos o Saturación de Pool MySQL"
+                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900 font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Categoría Técnica</label>
+                  <select
+                    value={kdbFormCategoria}
+                    onChange={(e) => setKdbFormCategoria(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
+                  >
+                    <option value="BASE_DE_DATOS">Base de Datos</option>
+                    <option value="INFRAESTRUCTURA">Infraestructura</option>
+                    <option value="SEGURIDAD">Seguridad & Auth</option>
+                    <option value="APLICACIONES">Aplicaciones</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Módulo Afectado</label>
+                  <input
+                    type="text"
+                    required
+                    value={kdbFormModulo}
+                    onChange={(e) => setKdbFormModulo(e.target.value)}
+                    placeholder="Ej: Base de Datos MySQL"
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Prioridad ITIL</label>
+                  <select
+                    value={kdbFormPrioridad}
+                    onChange={(e) => setKdbFormPrioridad(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
+                  >
+                    <option value="P1_CRITICA">P1 - Crítica</option>
+                    <option value="P2_ALTA">P2 - Alta</option>
+                    <option value="P3_MEDIA">P3 - Media</option>
+                    <option value="P4_BAJA">P4 - Baja</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Tiempo Estimado</label>
+                  <input
+                    type="text"
+                    value={kdbFormTiempo}
+                    onChange={(e) => setKdbFormTiempo(e.target.value)}
+                    placeholder="< 5 min"
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Clave Jira (KAN-X)</label>
+                  <input
+                    type="text"
+                    value={kdbFormJiraRef}
+                    onChange={(e) => setKdbFormJiraRef(e.target.value)}
+                    placeholder="Vacío = Auto-crear en Jira"
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-mono text-stone-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 uppercase mb-1">Síntoma Detectado</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={kdbFormSintoma}
+                  onChange={(e) => setKdbFormSintoma(e.target.value)}
+                  placeholder="Descripción del síntoma que reporta el usuario o el monitor..."
+                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 uppercase mb-1">Diagnóstico de Causa Raíz (RCA)</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={kdbFormCausaRaiz}
+                  onChange={(e) => setKdbFormCausaRaiz(e.target.value)}
+                  placeholder="Causa técnica subyacente..."
+                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 uppercase mb-1">Receta de Resolución / Workaround N1</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={kdbFormSolucion}
+                  onChange={(e) => setKdbFormSolucion(e.target.value)}
+                  placeholder="1. Paso uno...\n2. Paso dos..."
+                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-mono text-stone-900"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setIsKdbModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingKdb}
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all shadow cursor-pointer"
+                >
+                  {isSavingKdb ? 'Guardando...' : editingKdbArticle ? 'Guardar Cambios KDB' : 'Crear Artículo KDB'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: REGISTRAR NUEVO TICKET / RFC DESDE PORTAL TI                     */}
+      {/* ========================================================================= */}
+      {isNewTicketModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#FAF8F5] border border-[#E6DFD5] rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            <div className="bg-[#1A1615] text-white p-5 flex items-center justify-between border-b border-[#382E2B]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold">
+                    Registrar Nuevo Ticket / Solicitud de Cambio (RFC)
+                  </h3>
+                  <p className="text-[11px] text-[#C9B29B]">
+                    Creación simultánea en MySQL (<code className="font-mono">ti_tickets</code>) y Atlassian Jira Cloud ({jiraConfig.projectKey || 'KAN'})
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsNewTicketModalOpen(false)} className="text-stone-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewTicketFromTI} className="flex-1 p-6 overflow-y-auto space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Tipo de Registro ITIL</label>
+                  <select
+                    value={newTicketTipo}
+                    onChange={(e) => setNewTicketTipo(e.target.value as TicketType)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
+                  >
+                    <option value="INCIDENCIA">Incidencia Técnica (INC)</option>
+                    <option value="SOLICITUD_SERVICIO">Solicitud de Servicio (REQ)</option>
+                    <option value="SOLICITUD_ACCESO">Solicitud de Acceso (REQ)</option>
+                    <option value="SOLICITUD_INFORMACION">Solicitud de Información (REQ)</option>
+                    <option value="SOLICITUD_CAMBIO">Control de Cambios (RFC)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Prioridad & Acuerdo SLA</label>
+                  <select
+                    value={newTicketPrioridad}
+                    onChange={(e) => setNewTicketPrioridad(e.target.value as TicketPriority)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
+                  >
+                    <option value="P1_CRITICA">P1 - Crítica (SLA 2h)</option>
+                    <option value="P2_ALTA">P2 - Alta (SLA 8h)</option>
+                    <option value="P3_MEDIA">P3 - Media (SLA 24h)</option>
+                    <option value="P4_BAJA">P4 - Baja (SLA 48h)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Módulo / Subsistema</label>
+                  <select
+                    value={newTicketModulo}
+                    onChange={(e) => setNewTicketModulo(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white font-semibold text-stone-800"
+                  >
+                    <option value="Base de Datos MySQL">Base de Datos MySQL</option>
+                    <option value="Infraestructura & BD">Infraestructura & BD</option>
+                    <option value="Punto de Venta / Caja">Punto de Venta / Caja</option>
+                    <option value="Seguridad & Auth">Seguridad & Auth</option>
+                    <option value="Usuarios & Roles">Usuarios & Roles</option>
+                    <option value="Redes & Hardware">Redes & Hardware</option>
+                    <option value="Frontend & APIs">Frontend & APIs</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 uppercase mb-1">Solicitante</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTicketSolicitante}
+                    onChange={(e) => setNewTicketSolicitante(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900"
+                  />
+                </div>
+              </div>
+
+              {newTicketTipo === 'SOLICITUD_CAMBIO' && (
+                <div className="p-3.5 rounded-xl bg-rose-50/60 border border-rose-200 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block font-bold text-rose-900 uppercase mb-1">Área de Cambio</label>
+                      <select
+                        value={newTicketAreaCambio}
+                        onChange={(e) => setNewTicketAreaCambio(e.target.value as AreaCambio)}
+                        className="w-full p-2 rounded-lg border border-rose-200 bg-white font-semibold text-stone-800"
+                      >
+                        <option value="INFRAESTRUCTURA">1. Infraestructura</option>
+                        <option value="APLICACIONES">2. Aplicaciones & BD</option>
+                        <option value="DOCUMENTACION">3. Documentación</option>
+                        <option value="CALENDARIO">4. Calendario</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-rose-900 uppercase mb-1">Tipo de Cambio</label>
+                      <select
+                        value={newTicketTipoCambio}
+                        onChange={(e) => setNewTicketTipoCambio(e.target.value as TipoCambio)}
+                        className="w-full p-2 rounded-lg border border-rose-200 bg-white font-semibold text-stone-800"
+                      >
+                        <option value="NORMAL">Normal</option>
+                        <option value="ESTANDAR">Estándar</option>
+                        <option value="EMERGENCIA">Emergencia</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-rose-900 uppercase mb-1">Nivel de Riesgo</label>
+                      <select
+                        value={newTicketRiesgo}
+                        onChange={(e) => setNewTicketRiesgo(e.target.value as any)}
+                        className="w-full p-2 rounded-lg border border-rose-200 bg-white font-semibold text-stone-800"
+                      >
+                        <option value="BAJO">Bajo</option>
+                        <option value="MEDIO">Medio</option>
+                        <option value="ALTO">Alto</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block font-bold text-rose-900 uppercase mb-1">Ventana de Mantenimiento</label>
+                      <input
+                        type="text"
+                        value={newTicketVentana}
+                        onChange={(e) => setNewTicketVentana(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-rose-200 bg-white text-stone-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-rose-900 uppercase mb-1">Plan de Rollback</label>
+                      <input
+                        type="text"
+                        value={newTicketRollback}
+                        onChange={(e) => setNewTicketRollback(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-rose-200 bg-white text-stone-800"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block font-bold text-stone-700 uppercase mb-1">Asunto del Requerimiento / Incidente</label>
+                <input
+                  type="text"
+                  required
+                  value={newTicketAsunto}
+                  onChange={(e) => setNewTicketAsunto(e.target.value)}
+                  placeholder="Descripción breve y clara del requerimiento o incidente..."
+                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 uppercase mb-1">Descripción Técnica Detallada</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={newTicketDescripcion}
+                  onChange={(e) => setNewTicketDescripcion(e.target.value)}
+                  placeholder="Detalles técnicos, impacto operativo y pasos reproducibles..."
+                  className="w-full p-2.5 rounded-xl border border-[#E6DFD5] bg-white text-stone-900"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setIsNewTicketModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingTicket}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow cursor-pointer"
+                >
+                  {isCreatingTicket ? 'Registrando en MySQL & Jira...' : 'Crear y Sincronizar con Jira'}
                 </button>
               </div>
             </form>

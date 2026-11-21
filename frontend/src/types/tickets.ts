@@ -41,6 +41,8 @@ export interface Ticket {
   githubUrl?: string;
   jiraKey?: string;
   jiraUrl?: string;
+  kdbCodigo?: string;
+  kdb_codigo?: string;
 
   // ITIL v4 Change Management (Semana 11)
   areaCambio?: AreaCambio;
@@ -75,6 +77,10 @@ export interface ProblemaDetectado {
   modulo: string;
   incidencias_count: number;
   sugerencia_itil: string;
+  solucion_kedb?: string;
+  kdb_codigo?: string;
+  kdb_titulo?: string;
+  rfc_codigo?: string;
   estado_problema: string;
   tickets_relacionados: string[];
 }
@@ -87,7 +93,26 @@ export interface IncidenciaPendiente {
   prioridad: string;
   estado: string;
   solicitante: string;
+  jira_key?: string;
+  kdb_codigo?: string;
   sla_fecha_limite: string;
+}
+
+export interface EvolucionTemporalPoint {
+  fecha: string;
+  label: string;
+  count: number;
+}
+
+export interface TecnicoMatrizRow {
+  nombre: string;
+  rol: string;
+  area: string;
+  total: number;
+  resueltos: number;
+  en_curso: number;
+  is_cab?: boolean;
+  sla_pct?: number;
 }
 
 export interface ITILDashboardMetrics {
@@ -106,6 +131,8 @@ export interface ITILDashboardMetrics {
   ultimo_cambio_por_area: Record<string, UltimoCambioArea | null>;
   problemas_detectados: ProblemaDetectado[];
   incidencias_pendientes: IncidenciaPendiente[];
+  evolucion_temporal?: EvolucionTemporalPoint[];
+  matriz_tecnicos?: TecnicoMatrizRow[];
 }
 
 export interface KdbArticle {
@@ -127,6 +154,8 @@ export interface KdbArticle {
   activo: boolean;
   vecesUtilizado?: number;
   veces_utilizado?: number;
+  ticketsVinculados?: string[];
+  tickets_vinculados?: string[];
   created_at?: string;
   updated_at?: string;
 }

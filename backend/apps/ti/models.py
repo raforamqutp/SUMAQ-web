@@ -87,7 +87,7 @@ class Ticket(models.Model):
     github_url = models.URLField('URL GitHub RFC/PR', blank=True, default='')
     kdb_codigo = models.CharField('Código KDB Vinculado', max_length=50, blank=True, default='', db_index=True)
 
-    created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
+    created_at = models.DateTimeField('Fecha de Creación', default=timezone.now)
     updated_at = models.DateTimeField('Última Actualización', auto_now=True)
 
     class Meta:
@@ -98,6 +98,21 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"[{self.codigo}] {self.asunto} ({self.estado})"
+
+    @classmethod
+    def generar_siguiente_codigo(cls, prefix: str = 'REQ') -> str:
+        year = timezone.now().year
+        base = f"{prefix}-{year}-"
+        existentes = cls.objects.filter(codigo__startswith=base).values_list('codigo', flat=True)
+        max_num = 9
+        for cod in existentes:
+            suf = cod.replace(base, '').split('-')[0]
+            if suf.isdigit():
+                max_num = max(max_num, int(suf))
+        nuevo = max_num + 1
+        while cls.objects.filter(codigo=f"{base}{nuevo:04d}").exists():
+            nuevo += 1
+        return f"{base}{nuevo:04d}"
 
     def save(self, *args, **kwargs):
         # Implementación: sla
@@ -150,7 +165,7 @@ class KdbArticle(models.Model):
     jira_ref = models.CharField('Referencia Jira', max_length=50, blank=True, default='')
     activo = models.BooleanField('Activo', default=True)
 
-    created_at = models.DateTimeField('Fecha de Creación', auto_now_add=True)
+    created_at = models.DateTimeField('Fecha de Creación', default=timezone.now)
     updated_at = models.DateTimeField('Última Actualización', auto_now=True)
 
     class Meta:
@@ -162,9 +177,28 @@ class KdbArticle(models.Model):
     def __str__(self):
         return f"[{self.codigo}] {self.titulo}"
 
+    @classmethod
+    def generar_siguiente_codigo(cls) -> str:
+        year = timezone.now().year
+        base = f"KDB-{year}-"
+        existentes = cls.objects.filter(codigo__startswith=base).values_list('codigo', flat=True)
+        max_num = 0
+        for cod in existentes:
+            suf = cod.replace(base, '').split('-')[0]
+            if suf.isdigit():
+                max_num = max(max_num, int(suf))
+        nuevo = max_num + 1
+        while cls.objects.filter(codigo=f"{base}{nuevo:03d}").exists():
+            nuevo += 1
+        return f"{base}{nuevo:03d}"
+
     @property
     def veces_utilizado(self):
         return Ticket.objects.filter(kdb_codigo=self.codigo).count()
+
+    @property
+    def tickets_vinculados(self):
+        return list(Ticket.objects.filter(kdb_codigo=self.codigo).order_by('-created_at').values_list('codigo', flat=True))
 
 
 class MonitoringEvent(models.Model):
@@ -231,7 +265,7 @@ class MonitoringEvent(models.Model):
     )
     ticket_codigo = models.CharField('Código de Ticket Vinculado', max_length=40, blank=True, default='')
 
-    created_at = models.DateTimeField('Fecha de Detección', auto_now_add=True)
+    created_at = models.DateTimeField('Fecha de Detección', default=timezone.now)
     updated_at = models.DateTimeField('Última Actualización', auto_now=True)
 
     class Meta:
@@ -242,6 +276,21 @@ class MonitoringEvent(models.Model):
 
     def __str__(self):
         return f"[{self.codigo}] {self.nivel} - {self.metrica} ({self.valor_registrado})"
+
+    @classmethod
+    def generar_siguiente_codigo(cls) -> str:
+        year = timezone.now().year
+        base = f"EVT-{year}-"
+        existentes = cls.objects.filter(codigo__startswith=base).values_list('codigo', flat=True)
+        max_num = 0
+        for cod in existentes:
+            suf = cod.replace(base, '').split('-')[0]
+            if suf.isdigit():
+                max_num = max(max_num, int(suf))
+        nuevo = max_num + 1
+        while cls.objects.filter(codigo=f"{base}{nuevo:04d}").exists():
+            nuevo += 1
+        return f"{base}{nuevo:04d}"
 
     @staticmethod
     def calcular_prioridad_matriz(impacto: str, urgencia: str) -> str:
